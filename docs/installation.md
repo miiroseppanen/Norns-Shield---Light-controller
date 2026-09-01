@@ -2,6 +2,8 @@
 
 **Do not run this against the production lighting Pi or the Norns SD card.**
 
+Hardware bring-up on a **new** microSD is gated: [`milestone-0.2-hardware-bringup.md`](milestone-0.2-hardware-bringup.md). Do not skip PASS/FAIL gates.
+
 Milestone 0.1 is Mac-only:
 
 ```bash
