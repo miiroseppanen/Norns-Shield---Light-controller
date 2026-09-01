@@ -63,7 +63,7 @@ Hardware facts and UNKNOWN pins: [`research/shieldxl.md`](research/shieldxl.md).
 | Ver | Meaning |
 |-----|---------|
 | 0.1.0 | Simulator + docs (now) |
-| 0.2.0 | Shield XL hardware proof on a **new** SD |
+| 0.2.0 | Shield XL hardware proof on a **new** SD — gated: [`docs/milestone-0.2-hardware-bringup.md`](docs/milestone-0.2-hardware-bringup.md) |
 | 0.3.0 | QLC WebSocket |
 | 0.4.0 | Network / status |
 | 0.5.0 | Pi standalone prototype |
