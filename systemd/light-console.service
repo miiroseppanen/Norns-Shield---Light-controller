@@ -1,0 +1,19 @@
+[Unit]
+Description=Shield XL Light Console (OLED UI)
+# Do not require internet. Do not restart QLC+.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lightconsole
+Group=lightconsole
+WorkingDirectory=/opt/light-console
+ExecStart=/opt/light-console/.venv/bin/light-console --config /etc/light-console/light-console.yaml
+Restart=on-failure
+RestartSec=3
+# UI crash must not take the show down; this unit is UI only.
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+---
+description: Shield XL light console — isolated from production lighting Pi
+alwaysApply: true
+---
+
+# Shield XL Light Console
+
+This repo is a **new, separate** lighting console for Raspberry Pi 4 + Denki Oto shieldXL.
+
+- Do not modify the production wiz-bridge Pi (`valot.local`) or its Norns Shield SD card.
+- Do not deploy here unless the user explicitly asks.
+- Do not guess GPIO pins. Hardware facts live in `research/shieldxl.md` with sources. Unknowns stay UNKNOWN.
+- QLC+ is the show engine. Do not write a DMX/show engine.
+- Do not strip failsafe, reconnect, or status coalescing because it looks unused.
+- UI crash must not stop QLC+ or the show.
+- Internet/upstream is not required for WiZ.
+- No automatic WiZ AP restart until separately approved.

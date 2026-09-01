@@ -1,0 +1,40 @@
+display:
+  fps: 15
+  scale: 6
+
+wiz:
+  expected: 6
+
+controls:
+  encoder1: master_dimmer
+  encoder2: select
+  encoder3: speed
+  long_press_ms: 600
+  key1:
+    short: blackout
+    long: all_off
+  key2:
+    short: go
+    long: home
+  key3:
+    short: special
+    long: menu
+  special_name: special
+
+qlc:
+  websocket: ws://127.0.0.1:9999/qlcplusWS
+  reconnect_seconds: 2.0
+
+network:
+  wiz_interface: wlan1
+  upstream_interface: wlan0
+  wiz_ap_ssid: WIZ-LIGHTS
+
+dmx:
+  pknight_ip: 192.168.88.201
+
+midi:
+  launchpad_usb_id: "1235:0036"
+  launchpad_alsa_name: "Launchpad Mini"
+
+debug: false
