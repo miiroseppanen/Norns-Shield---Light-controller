@@ -7,7 +7,27 @@ WIP pauses: `dfc5dc4`, `47d4293`
 
 ## Result
 
-**PASS.** Headless QLC+ 5.2.2 is a separate systemd unit (`-w` only). Light Console reconnects without restart. PLAY MASTER maps to `GM_VALUE`.
+**PASS** (automated + physical). Headless QLC+ 5.2.2 is a separate systemd unit (`-w` only). Light Console reconnects without restart. PLAY MASTER maps to `GM_VALUE`.
+
+Software commit: `c9a2327`. Physical acceptance: 2026-09-02, operator on real Shield.
+
+## Physical acceptance PASS
+
+Verified on real Shield:
+
+- PLAY E1 controls MASTER
+- PARAMS shares the same MASTER state
+- OUTPUT shows QLC CONNECTED / ENGINE 5.2.2
+- stopping `qlcplus` does not stop or restart Light Console
+- OUTPUT transitions to OFFLINE
+- MASTER remains usable while QLC is offline
+- starting `qlcplus` causes automatic reconnect
+- OUTPUT returns to CONNECTED without restarting Light Console
+- offline intended MASTER state resynchronizes to QLC
+
+Automated tests: **75 PASS**.
+
+Tag: `v0.5.0` (do not move `v0.4.0`).
 
 ## Runtime (verified)
 

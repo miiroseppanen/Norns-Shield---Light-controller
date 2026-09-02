@@ -91,7 +91,8 @@ wlan1 = WIZ-LIGHTS AP, NetworkManager shared, 10.42.0.1/24. wlan0 = optional ups
 | 0.2.0 | Shield XL hardware proof on a **new** SD |
 | 0.3.0 | QLC+ 5.2.2 engine baseline |
 | 0.4.0 | Norns-like UI framework |
-| 0.4c | Appliance autostart (`light-console.service`; QLC still manual) |
+| 0.4c | Appliance autostart (`light-console.service`) |
+| 0.5.0 | QLC+ 5.2.2 systemd + MASTER WebSocket (physically verified) |
 | 1.0.0 | Show-ready |
 
 ## Milestone 0.1 out of scope

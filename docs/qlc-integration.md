@@ -11,6 +11,8 @@ Show engine: **QLC+ 5.2.2** (`/usr/bin/qlcplus-qml`). light-console is a WebSock
 
 Neither `Requires=` the other. If `qlcplus.service` is stopped, the UI stays up and OUTPUT shows `OFFLINE`.
 
+**Physical acceptance PASS** (2026-09-02, real Shield): PLAY E1 MASTER, PARAMS shared MASTER, OUTPUT CONNECTED/OFFLINE, QLC stop/start without Light Console restart, offline MASTER resync.
+
 ```
 QT_QPA_PLATFORM=offscreen
 /usr/bin/qlcplus-qml -w

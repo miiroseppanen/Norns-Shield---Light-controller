@@ -2,9 +2,9 @@
 
 Deterministic, diagnosable, no restart loops that flash the show.
 
-## Milestone 0.4c (now)
+## Milestone 0.5 (now)
 
-`light-console.service` starts the OLED UI on boot. `qlcplus.service` is a **separate** unit (0.5). Light Console does not `Require=` QLC.
+`light-console.service` starts the OLED UI on boot. `qlcplus.service` starts headless QLC+ 5.2.2 (`-w`, web :9999). Light Console does not `Require=` QLC. Physical acceptance PASS 2026-09-02.
 
 ```
 packaging/systemd/light-console.service
