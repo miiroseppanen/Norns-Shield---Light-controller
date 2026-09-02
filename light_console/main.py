@@ -69,8 +69,25 @@ def dump_views(config: AppConfig, ascii_path: Path | None, ppm_path: Path | None
 
 
 def run_loop(controller: Controller, hardware: HardwareBackend) -> int:
+    import signal
+
+    from light_console.hardware.events import E1, EncoderEvent
+
+    pending_e1 = {"delta": 0}
+
+    def _usr1(_signum: int, _frame: object) -> None:
+        pending_e1["delta"] += 5
+
+    if hasattr(signal, "SIGUSR1"):
+        signal.signal(signal.SIGUSR1, _usr1)
     try:
         while controller.running:
+            delta = pending_e1["delta"]
+            if delta:
+                pending_e1["delta"] = 0
+                controller.nav.go_play(controller.state)
+                controller.inject_cooked(EncoderEvent(E1, delta))
+                LOG.info("PLAY E1 %+d master=%s%%", delta, controller.state.master)
             controller.tick()
             hardware.idle(1.0 / max(30, controller.config.display.fps * 2))
     except KeyboardInterrupt:

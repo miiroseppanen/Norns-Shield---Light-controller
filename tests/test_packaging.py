@@ -49,7 +49,9 @@ def test_qlcplus_unit_is_independent():
     assert "QT_QPA_PLATFORM=offscreen" in text
     assert "/usr/bin/qlcplus-qml" in text
     assert "-w" in text
-    assert "--open /home/light/light-console/qlc/projects/light-console-test.qxw" in text
+    exec_start = next(ln for ln in text.splitlines() if ln.startswith("ExecStart="))
+    assert exec_start == "ExecStart=/usr/bin/qlcplus-qml -w"
+    assert "--open" not in exec_start
     assert "light-console.service" not in [
         ln for ln in text.splitlines() if ln.startswith(("After=", "Requires=", "Wants=", "BindsTo="))
     ]

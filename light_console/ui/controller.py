@@ -8,6 +8,7 @@ from pathlib import Path
 from light_console.config import AppConfig
 from light_console.controls.buttons import ButtonTracker
 from light_console.display.renderer import Renderer
+from light_console.display.screens import qlc_output_label
 from light_console.hardware.base import HardwareBackend
 from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEvent, SimCommandEvent
 from light_console.power import MockPowerService, PowerService
@@ -23,6 +24,7 @@ from light_console.ui.params import bind_console_params
 from light_console.ui.shell import NornsUIShell
 
 LOG = logging.getLogger("light-console")
+STATUS_PATH = Path("/tmp/light-console.status")
 
 
 def _read_cpu_temp() -> float | None:
@@ -58,6 +60,7 @@ class Controller:
         self._t0 = time.monotonic()
         self._last_draw = 0.0
         self.running = True
+        self._status_body = ""
         if not self.state.hostname:
             try:
                 self.state.hostname = socket.gethostname()
@@ -169,3 +172,20 @@ class Controller:
         self.params.store_index(self.state)
         self._sync_qlc()
         self.state.rebuild_warnings()
+        self._write_status()
+
+    def _write_status(self) -> None:
+        screen = self.state.screen.value if hasattr(self.state.screen, "value") else str(self.state.screen)
+        body = (
+            f"screen={screen}\n"
+            f"master={self.state.master}\n"
+            f"qlc_state={self.state.qlc_state}\n"
+            f"qlc={qlc_output_label(self.state)}\n"
+        )
+        if body == self._status_body:
+            return
+        self._status_body = body
+        try:
+            STATUS_PATH.write_text(body)
+        except OSError:
+            LOG.debug("status write failed", exc_info=True)

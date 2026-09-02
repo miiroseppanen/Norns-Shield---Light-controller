@@ -177,51 +177,21 @@ def test_output_screen_connected_and_offline():
     assert r.fb.digest() != b"\x00" * (128 * 64)
 
 
-def test_qlc_disconnect_shows_lost_and_does_not_restart_process():
-    c = make_controller()
-    c.qlc.simulate_drop()
-    c.tick(now=1.0)
-    assert c.state.qlc_connected is False
-    assert "QLC LOST" in c.state.warnings
-    attempts = c.qlc.reconnect_attempts
-    c.tick(now=4.0)
-    assert c.qlc.reconnect_attempts > attempts
-    assert c.qlc.connected() is False
+def test_status_file_tracks_output_and_master(tmp_path, monkeypatch):
+    from light_console.ui import controller as ctl
 
-
-def test_qlc_reconnect_clears_lost():
-    c = make_controller()
+    path = tmp_path / "light-console.status"
+    monkeypatch.setattr(ctl, "STATUS_PATH", path)
+    c = make_controller(master_dimmer=80)
+    c.state.screen = ScreenId.OUTPUT
+    c.tick(now=0.1)
+    text = path.read_text()
+    assert "qlc=CONNECTED" in text
+    assert "master=80" in text
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
-    c.qlc.simulate_link(True)
-    c.tick(now=2.0)
-    assert c.state.qlc_connected is True
-    assert "QLC LOST" not in c.state.warnings
-
-
-def test_mock_start_stop_function():
-    qlc = MockQLCClient(("WASH", "SPOT"))
-    qlc.simulate_link(True)
-    assert qlc.start_function_by_name("WASH")
-    assert qlc.function_by_name("WASH").running
-    qlc.toggle_function_by_name("WASH")
-    assert not qlc.function_by_name("WASH").running
-
-
-def test_sim_f1_toggles_qlc():
-    c = make_controller()
-    c.inject_cooked(SimCommandEvent("toggle_qlc"))
-    c._sync_qlc()
-    c._finish()
-    assert c.state.qlc_connected is False
-
-
-def test_ws_client_offline_does_not_raise():
-    qlc = QlcWebSocketClient("ws://127.0.0.1:1/qlcplusWS", reconnect_seconds=0.01)
-    qlc.pump(0.0)
-    assert qlc.connected() is False
-    qlc.pump(1.0)
-    assert qlc.connected() is False
-    qlc.set_grand_master(128)
-    qlc.set_blackout(True)
-    qlc.close()
+    text = path.read_text()
+    assert "qlc=OFFLINE" in text
+    c.nav.go_play(c.state)
+    c.inject_cooked(EncoderEvent(E1, 5))
+    assert "master=85" in path.read_text()

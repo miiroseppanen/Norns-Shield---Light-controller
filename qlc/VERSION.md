@@ -8,7 +8,7 @@ CURRENT:
 - Web **9999**
 - WebSocket `/qlcplusWS`
 
-Host: `shieldxl-light`. systemd: `qlcplus.service` (`-w --open` test workspace).
+Host: `shieldxl-light`. systemd: `qlcplus.service` (`-w` only; do **not** `--open`).
 
 QML modules required for `--open` without SEGV:
 

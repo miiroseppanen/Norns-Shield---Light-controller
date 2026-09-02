@@ -49,6 +49,7 @@ class QlcBinding:
             if gm != self._sent_gm:
                 self.qlc.set_grand_master(gm)
                 self._sent_gm = gm
+                LOG.info("QLC GM_VALUE|%s master=%s%%", gm, state.master)
             if state.blackout != self._sent_blackout:
                 self.qlc.set_blackout(state.blackout)
                 self._sent_blackout = state.blackout
