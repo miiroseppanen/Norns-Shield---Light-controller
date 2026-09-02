@@ -1,6 +1,6 @@
 # Architecture
 
-Version **0.1.0** — Mac simulator / design. No Pi deploy.
+Version **0.4.0** — Norns-like UI framework. Control mapping is **per page**, not a global E1=master table. See [`docs/ui-architecture.md`](ui-architecture.md).
 
 ## Goal
 
@@ -59,28 +59,13 @@ Rules:
 
 See `light_console/state.py`. UI screens are functions of this snapshot. Workers take a lock or use a single-thread event loop (0.1 is single-threaded plus mock toggles).
 
-## Control model
+## Control model (0.4)
 
-YAML maps E1–E3 and K1–K3 short/long actions. Defaults:
+YAML no longer maps E1–E3 / K1–K3 globally. `HomePage` owns the live mapping (E1 master, E2 scene, E3 speed, K1 blackout, K3 menu). Other pages define their own handlers. Hardware only emits events.
 
-| Control | Action |
-|---------|--------|
-| E1 | master dimmer 0–100 |
-| E2 | select scene/function |
-| E3 | speed / BPM |
-| K1 short | blackout toggle |
-| K1 long | all off / panic (clear active + blackout) |
-| K2 short | GO (activate selected) |
-| K2 long | home screen |
-| K3 short | `special` (name from config — not hardcoded fog) |
-| K3 long | menu |
+## Screens (0.4)
 
-## Screens
-
-- **boot** — QLC / WIZ AP / WiZ n/m / MIDI / DMX checklist
-- **home** — scene name, WiZ count, DMX, dim, BPM, encoder legend, warnings
-- **menu** — HOME SHOW WIZ NETWORK SYSTEM ABOUT
-- **show / wiz / network / system / about** — diagnostics
+HOME, MENU, SCENES, LIVE, EFFECTS, OUTPUT, SYSTEM. Data-driven `MenuItem` list in `light_console/ui/menu.py`.
 
 Refresh 10–20 fps. Skip SPI/window blit if the 128×64 buffer is unchanged.
 
@@ -92,7 +77,7 @@ Used later: `isProjectLoaded`, `getFunctionsList`, `getFunctionType`, `getFuncti
 
 Chaser speed: QLC documents Speed Dial widget messages (`SPEED_TIME`, etc.). Treat dedicated “set chaser BPM” as **needs a VC widget** until proven against 5.2.x on the Pi.
 
-0.1 uses `MockQLCClient` only.
+0.4 uses `MockQLCClient` in the simulator and `QlcWebSocketClient` on the Shield. The UI does not talk to the socket directly.
 
 ## Networking (later)
 
@@ -102,11 +87,10 @@ wlan1 = WIZ-LIGHTS AP, NetworkManager shared, 10.42.0.1/24. wlan0 = optional ups
 
 | Version | Meaning |
 |---------|---------|
-| 0.1.0 | Simulator + docs (this) |
+| 0.1.0 | Simulator + docs |
 | 0.2.0 | Shield XL hardware proof on a **new** SD |
-| 0.3.0 | QLC WebSocket |
-| 0.4.0 | Network / WiZ / MIDI / DMX status |
-| 0.5.0 | Pi standalone prototype |
+| 0.3.0 | QLC+ 5.2.2 engine baseline |
+| 0.4.0 | Norns-like UI framework (this) |
 | 1.0.0 | Show-ready |
 
 ## Milestone 0.1 out of scope

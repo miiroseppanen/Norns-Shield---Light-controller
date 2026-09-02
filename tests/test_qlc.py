@@ -1,5 +1,6 @@
 from light_console.hardware.events import SimCommandEvent
 from light_console.qlc.client import MockQLCClient
+from light_console.qlc.ws_client import QlcWebSocketClient
 
 from tests.conftest import make_controller
 
@@ -27,12 +28,12 @@ def test_qlc_reconnect_clears_lost():
 
 
 def test_mock_start_stop_function():
-    qlc = MockQLCClient()
+    qlc = MockQLCClient(("WASH", "SPOT"))
     qlc.simulate_link(True)
-    assert qlc.start_function_by_name("SININEN")
-    assert qlc.function_by_name("SININEN").running
-    qlc.toggle_function_by_name("SININEN")
-    assert not qlc.function_by_name("SININEN").running
+    assert qlc.start_function_by_name("WASH")
+    assert qlc.function_by_name("WASH").running
+    qlc.toggle_function_by_name("WASH")
+    assert not qlc.function_by_name("WASH").running
 
 
 def test_sim_f1_toggles_qlc():
@@ -41,3 +42,14 @@ def test_sim_f1_toggles_qlc():
     c._sync_qlc()
     c._finish()
     assert c.state.qlc_connected is False
+
+
+def test_ws_client_offline_does_not_raise():
+    qlc = QlcWebSocketClient("ws://127.0.0.1:1/qlcplusWS", reconnect_seconds=0.01)
+    qlc.pump(0.0)
+    assert qlc.connected() is False
+    qlc.pump(1.0)
+    assert qlc.connected() is False
+    qlc.set_grand_master(128)
+    qlc.set_blackout(True)
+    qlc.close()

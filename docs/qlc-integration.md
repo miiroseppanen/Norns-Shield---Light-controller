@@ -50,4 +50,4 @@ Messages are `field|field|…` text.
 
 WiZ fixture map (6 channels each): dimmer, R, G, B, white, CCT. Slot *n* uses DMX `(n-1)*6+1` … `n*6`. Expected lamp count is YAML `wiz.expected`.
 
-0.1: `MockQLCClient` only.
+0.4: `MockQLCClient` on the Mac simulator; `QlcWebSocketClient` on the Shield (reconnect, never spawn QLC+).

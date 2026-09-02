@@ -1,147 +1,115 @@
 from __future__ import annotations
 
 from light_console.display.framebuffer import Framebuffer
-from light_console.display.widgets import ROW, invert_bar, status_pair, text, text_center, text_right
-from light_console.state import MENU_ITEMS, AppState, ScreenId
+from light_console.display.widgets import ROW, invert_bar, status_pair, text, text_right
+from light_console.state import AppState, ScreenId
+from light_console.ui.menu import MENU_ITEMS, MenuItem
 
 
-def _ok(flag: bool) -> str:
-    return "OK" if flag else "--"
+def _qlc_word(state: AppState) -> str:
+    return "ON" if state.qlc_connected else "OFF"
 
 
-def _qlc_label(state: AppState) -> str:
-    if state.qlc_connected:
-        return "OK"
-    return "LOST" if not state.startup_running else "WAIT"
+def _fmt_uptime(seconds: int) -> str:
+    mins, sec = divmod(max(0, seconds), 60)
+    hours, mins = divmod(mins, 60)
+    if hours:
+        return f"{hours:d}:{mins:02d}:{sec:02d}"
+    return f"{mins:02d}:{sec:02d}"
 
 
-def _wiz_label(state: AppState) -> str:
-    base = f"{state.wiz_online}/{state.wiz_expected}"
-    if state.wiz_waiting:
-        return f"{base} WAIT"
-    if state.wiz_online >= state.wiz_expected and state.wiz_ap_up:
-        return f"{base} OK"
-    return base
+def _header(fb: Framebuffer, title: str, state: AppState) -> None:
+    text(fb, 0, 0, title[:16])
+    text_right(fb, fb.width, 0, state.qlc_status_glyph)
 
 
-def _dmx_home(state: AppState) -> str:
-    if state.dmx_node_reachable:
-        return "DMX OK"
-    if state.dmx_net_ok:
-        return "DMX NET"
-    return "DMX --"
+def draw_list(fb: Framebuffer, labels: list[str], selected: int, y0: int = ROW * 2, rows: int = 6) -> None:
+    if not labels:
+        return
+    start = 0
+    if selected >= start + rows:
+        start = selected - rows + 1
+    window = labels[start : start + rows]
+    for i, label in enumerate(window):
+        idx = start + i
+        y = y0 + i * ROW
+        prefix = ">" if idx == selected else " "
+        text(fb, 0, y, f"{prefix} {label}"[:21])
+        if idx == selected:
+            invert_bar(fb, y)
 
 
-def _midi_label(state: AppState) -> str:
-    return "MIDI LP OK" if state.launchpad_connected else "MIDI LP --"
-
-
-def draw_boot(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "LIGHT CONSOLE")
-    status_pair(fb, ROW, "QLC", _qlc_label(state))
-    status_pair(fb, ROW * 2, "WIZ AP", _ok(state.wiz_ap_up))
-    status_pair(fb, ROW * 3, "WiZ", _wiz_label(state))
-    status_pair(fb, ROW * 4, "MIDI", "OK" if state.launchpad_connected else "--")
-    status_pair(fb, ROW * 5, "DMX", "OK" if state.dmx_node_reachable else "--")
-    if state.warnings:
-        text(fb, 0, ROW * 7, state.warnings[0][:21])
-
-
-def draw_home(fb: Framebuffer, state: AppState) -> None:
-    title = state.active_function or state.selected_function
+def draw_play(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "LIGHT CONSOLE", state)
+    scene = state.current_scene or "--"
     if state.blackout:
-        text(fb, 0, 0, "BLACKOUT")
-        invert_bar(fb, 0)
+        text(fb, 0, ROW * 2, "BLACKOUT")
     else:
-        text(fb, 0, 0, title[:21])
-        if state.active_function and state.selected_function != state.active_function:
-            text_right(fb, fb.width, 0, "*")
-
-    status_pair(fb, ROW, f"WiZ {_wiz_label(state)}", _dmx_home(state))
-    status_pair(fb, ROW * 2, f"DIM {state.master_dimmer}%", f"BPM {state.bpm}")
-    text(fb, 0, ROW * 3, "E1 DIM E2 FX E3 SPD")
-
-    warn_y = ROW * 5
-    for i, w in enumerate(state.warnings[:2]):
-        if w == "BLACKOUT":
-            continue
-        text(fb, 0, warn_y + i * ROW, w[:21])
-
-    if not state.qlc_connected:
-        text(fb, 0, ROW * 7, "QLC LOST")
+        status_pair(fb, ROW * 2, "SCENE", scene)
+    status_pair(fb, ROW * 3, "MASTER", f"{state.master}%")
+    status_pair(fb, ROW * 4, "SPEED", str(state.speed))
 
 
-def draw_menu(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "MENU")
-    for i, item in enumerate(MENU_ITEMS):
-        prefix = ">" if i == state.menu_index else " "
-        text(fb, 0, ROW + i * ROW, f"{prefix}{item.value.upper()}")
+def draw_menu(fb: Framebuffer, state: AppState, items: tuple[MenuItem, ...] | None = None) -> None:
+    _header(fb, "MENU", state)
+    rows = items if items is not None else MENU_ITEMS
+    labels = [item.label for item in rows]
+    draw_list(fb, labels, state.menu_index)
 
 
-def draw_show(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "SHOW")
-    text(fb, 0, ROW, f"SEL {state.selected_function[:16]}")
-    text(fb, 0, ROW * 2, f"ACT {state.active_function or '--'}")
-    text(fb, 0, ROW * 3, f"QLC {_qlc_label(state)}")
-    text(fb, 0, ROW * 4, f"DIM {state.master_dimmer}%")
-    text(fb, 0, ROW * 5, f"K2 GO  K1 BLK")
+def draw_params(fb: Framebuffer, state: AppState, params=None) -> None:
+    _header(fb, "PARAMS", state)
+    if params is None:
+        labels = [
+            f"Master       {state.master}%",
+            f"Speed        {state.speed}",
+            f"Blackout     {'On' if state.blackout else 'Off'}",
+            f"Scene        {state.current_scene}",
+        ]
+    else:
+        labels = []
+        for p in params:
+            val = p.formatted()
+            pad = max(1, 14 - len(p.name))
+            labels.append(f"{p.name}{' ' * pad}{val}"[:21])
+    draw_list(fb, labels, state.param_index)
 
 
-def draw_wiz(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "WIZ")
-    status_pair(fb, ROW, "AP", _ok(state.wiz_ap_up))
-    status_pair(fb, ROW * 2, "ONLINE", f"{state.wiz_online}/{state.wiz_expected}")
-    if state.wiz_waiting:
-        text(fb, 0, ROW * 3, "WAIT COLDBOOT")
-    # Per-fixture mock: first N expected, online prefix OK
-    for i in range(min(4, state.wiz_expected)):
-        mark = "OK" if i < state.wiz_online else "--"
-        rssi = f"-{60 + i * 4}" if i < state.wiz_online else ""
-        text(fb, 0, ROW * (4 + i), f"W{i + 1} {mark} {rssi}".strip())
+def draw_scenes(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "SCENES", state)
+    if not state.scenes:
+        text(fb, 0, ROW * 2, "NO SCENES")
+        return
+    labels = list(state.scenes)
+    draw_list(fb, labels, state.scene_index)
 
 
-def draw_network(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "NETWORK")
-    status_pair(fb, ROW, "WIZ-LTS", _ok(state.wiz_ap_up))
-    up = state.upstream_ssid[:9] if state.upstream_connected else "--"
-    status_pair(fb, ROW * 2, "WLAN0", up if state.upstream_connected else "--")
-    text(fb, 0, ROW * 3, "10.42.0.1" if state.wiz_ap_up else "AP DOWN")
-    if not state.upstream_connected:
-        text(fb, 0, ROW * 5, "NO UPSTREAM OK")
-    text(fb, 0, ROW * 7, "WiZ INDEP OF U0")
+def draw_output(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "OUTPUT", state)
+    status_pair(fb, ROW * 2, "QLC", _qlc_word(state))
+    status_pair(fb, ROW * 3, "WIZ", "--")
+    status_pair(fb, ROW * 4, "DMX", "--")
 
 
 def draw_system(fb: Framebuffer, state: AppState) -> None:
-    text(fb, 0, 0, "SYSTEM")
-    mins, sec = divmod(state.uptime_s, 60)
-    hours, mins = divmod(mins, 60)
-    text(fb, 0, ROW, f"UP {hours:02d}:{mins:02d}:{sec:02d}")
-    temp = f"{state.cpu_temp_c:.0f}C" if state.cpu_temp_c is not None else "--"
-    status_pair(fb, ROW * 2, "CPU", temp)
-    status_pair(fb, ROW * 3, "QLC", _qlc_label(state))
-    text(fb, 0, ROW * 4, f"LC {state.version}")
-    text(fb, 0, ROW * 6, "UI CRASH != SHOW")
-
-
-def draw_about(fb: Framebuffer, state: AppState) -> None:
-    text_center(fb, ROW, "SHIELD XL")
-    text_center(fb, ROW * 2, "LIGHT CONSOLE")
-    text_center(fb, ROW * 4, f"v{state.version}")
-    text_center(fb, ROW * 6, "QLC+ ENGINE")
+    _header(fb, "SYSTEM", state)
+    status_pair(fb, ROW * 2, "QLC", _qlc_word(state))
+    status_pair(fb, ROW * 3, "HOST", (state.hostname or "--")[:12])
+    status_pair(fb, ROW * 4, "VER", state.version[:9])
+    status_pair(fb, ROW * 5, "UP", _fmt_uptime(state.uptime_s))
 
 
 DRAWERS = {
-    ScreenId.BOOT: draw_boot,
-    ScreenId.HOME: draw_home,
+    ScreenId.PLAY: draw_play,
     ScreenId.MENU: draw_menu,
-    ScreenId.SHOW: draw_show,
-    ScreenId.WIZ: draw_wiz,
-    ScreenId.NETWORK: draw_network,
+    ScreenId.PARAMS: draw_params,
+    ScreenId.SCENES: draw_scenes,
+    ScreenId.OUTPUT: draw_output,
     ScreenId.SYSTEM: draw_system,
-    ScreenId.ABOUT: draw_about,
 }
 
 
 def draw_screen(fb: Framebuffer, state: AppState) -> None:
     fb.clear()
-    DRAWERS[state.screen](fb, state)
+    drawer = DRAWERS.get(state.screen, draw_play)
+    drawer(fb, state)

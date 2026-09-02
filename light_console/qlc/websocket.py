@@ -1,14 +1,5 @@
-"""Real QLC+ WebSocket transport. Not used in Milestone 0.1."""
-
 from __future__ import annotations
 
+from light_console.qlc.ws_client import QlcWebSocketClient as QLCWebSocket
 
-class QLCWebSocket:
-    def __init__(self, url: str) -> None:
-        self.url = url
-
-    def connect(self) -> None:
-        raise NotImplementedError(
-            "Real QLC WebSocket is Milestone 0.3. 0.1 uses MockQLCClient. "
-            "Documented API: docs/qlc-integration.md"
-        )
+__all__ = ["QLCWebSocket"]

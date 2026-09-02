@@ -14,6 +14,17 @@ pip install -e ".[sim,dev]"
 python -m simulator.run
 ```
 
+## Phase 0 OS flash (Mac, explicit permission)
+
+Identity is discovered each run (`scripts/identify-sd.py`). Do not hardcode a disk number.
+
+```bash
+./scripts/flash-raspios-sd.sh --plan    # read-only: target + dd command
+./scripts/flash-raspios-sd.sh --write   # only after asserts PASS; no retry on FAIL
+```
+
+The write pipeline is `xzcat IMAGE | dd of=/dev/rdiskN bs=4m status=progress` followed by `sync`. Do not add `conv=sync` (on macOS that pads short pipe reads and overwrites the whole card).
+
 ## Later (new microSD, explicit permission)
 
 ```bash

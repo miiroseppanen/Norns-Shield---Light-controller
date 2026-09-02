@@ -2,7 +2,7 @@
 
 Standalone lighting console UI for **Raspberry Pi 4 + Denki Oto shieldXL**. QLC+ is the show engine. This repository is **new and separate** from the production wiz-bridge Pi and from the Norns Shield SD card.
 
-**Milestone 0.1.0** — architecture, hardware research, Mac OLED simulator. Nothing is deployed to a Raspberry Pi.
+**Milestone 0.4.0** — Norns UI model (PLAY / MENU / PARAMS). Same code on Mac simulator and Shield.
 
 ## Mac simulator
 
@@ -14,29 +14,20 @@ pip install -e ".[sim,dev]"
 python -m simulator.run
 ```
 
-A window shows a **128×64 OLED** (scaled) plus a control strip.
-
-Static dumps of the framebuffer (no window required):
-
-![HOME](docs/screenshots/oled-home.png)
-![BOOT](docs/screenshots/oled-boot.png)
+The window is a scaled **128×64** copy of the same framebuffer the OLED uses. There is no separate fake UI.
 
 | Input | Action |
 |-------|--------|
-| Q / A or ← → | Encoder E1 (dimmer) |
-| W / S or ↑ ↓ | Encoder E2 (select / menu) |
-| E / D or `,` `.` | Encoder E3 (speed / BPM) |
-| Z or 1 (hold = long) | K1 blackout / all off |
-| X or 2 (hold = long) | K2 GO / home |
-| C or 3 (hold = long) | K3 special / menu |
-| F1 | QLC connected / lost |
-| F2 | Launchpad present / missing |
-| F3 | PKNight node OK / -- |
-| F4 | upstream Wi-Fi |
-| F5 | WIZ-LIGHTS AP |
-| `-` / `=` | WiZ online −1 / +1 |
-| 0 / 6 | WiZ 0/expected or full |
+| Q / A or ← → | Encoder E1 |
+| W / S or ↑ ↓ | Encoder E2 |
+| E / D or `,` `.` | Encoder E3 |
+| Z or 1 | K1 |
+| X or 2 | K2 |
+| C or 3 | K3 |
+| F1 | QLC connected / offline |
 | ESC | quit |
+
+K1 = PLAY/MENU. PLAY: E1 master, E2 scene, E3 speed, K3 GO. MENU: E2 select, K3 enter, K2 back. PARAMS: E2 select, E3 value.
 
 Headless dump (no pygame window):
 
@@ -50,21 +41,22 @@ Tests:
 python -m pytest
 ```
 
+UI model: [`docs/norns-ui-model.md`](docs/norns-ui-model.md). Architecture: [`docs/ui-architecture.md`](docs/ui-architecture.md).
+
 ## What this is not
 
 - Not a replacement for QLC+ or wizbridge
 - Not a Norns image
 - Not a deploy onto `valot.local` or the existing Norns microSD
 
-Hardware facts and UNKNOWN pins: [`research/shieldxl.md`](research/shieldxl.md). Architecture: [`docs/architecture.md`](docs/architecture.md).
+Hardware facts: [`research/shieldxl.md`](research/shieldxl.md).
 
 ## Version
 
 | Ver | Meaning |
 |-----|---------|
-| 0.1.0 | Simulator + docs (now) |
-| 0.2.0 | Shield XL hardware proof on a **new** SD — gated: [`docs/milestone-0.2-hardware-bringup.md`](docs/milestone-0.2-hardware-bringup.md) |
-| 0.3.0 | QLC WebSocket |
-| 0.4.0 | Network / status |
-| 0.5.0 | Pi standalone prototype |
+| 0.1.0 | Simulator + docs |
+| 0.2.0 | Shield XL hardware proof |
+| 0.3.0 | QLC+ 5.2.2 engine baseline |
+| 0.4.0 | Norns-like UI framework (now) |
 | 1.0.0 | Show-ready |

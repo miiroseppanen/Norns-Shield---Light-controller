@@ -5,20 +5,9 @@ display:
 wiz:
   expected: 6
 
+# 0.4: encoder/key YAML is unused. HOME mapping lives on HomePage.
 controls:
-  encoder1: master_dimmer
-  encoder2: select
-  encoder3: speed
   long_press_ms: 600
-  key1:
-    short: blackout
-    long: all_off
-  key2:
-    short: go
-    long: home
-  key3:
-    short: special
-    long: menu
   special_name: special
 
 qlc:

@@ -1,22 +1,37 @@
 from __future__ import annotations
 
 import logging
+import socket
 import time
+from pathlib import Path
 
 from light_console.config import AppConfig
 from light_console.controls.buttons import ButtonTracker
-from light_console.controls.mappings import ControlMapper
 from light_console.display.renderer import Renderer
 from light_console.hardware.base import HardwareBackend
 from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEvent, SimCommandEvent
+from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
-from light_console.state import AppState, ScreenId
+from light_console.state import AppState
 from light_console.status.dmx import apply_dmx
 from light_console.status.midi import apply_launchpad
 from light_console.status.network import apply_upstream, apply_wiz_ap
 from light_console.status.wiz import bump_wiz
+from light_console.ui.nav import Navigation
+from light_console.ui.params import bind_console_params
+from light_console.ui.shell import NornsUIShell
 
 LOG = logging.getLogger("light-console")
+
+
+def _read_cpu_temp() -> float | None:
+    path = Path("/sys/class/thermal/thermal_zone0/temp")
+    if not path.exists():
+        return None
+    try:
+        return int(path.read_text().strip()) / 1000.0
+    except (OSError, ValueError):
+        return None
 
 
 class Controller:
@@ -31,42 +46,52 @@ class Controller:
         self.state = state
         self.hardware = hardware
         self.qlc = qlc
-        self.mapper = ControlMapper(config.controls)
+        self.nav = Navigation()
+        self.params = bind_console_params(state)
+        self.shell = NornsUIShell(state, nav=self.nav, params=self.params)
         self.buttons = ButtonTracker(long_press_s=config.controls.long_press_ms / 1000.0)
         self.renderer = Renderer(config.display.width, config.display.height)
+        self.binding = QlcBinding(qlc)
         self._t0 = time.monotonic()
         self._last_draw = 0.0
         self.running = True
+        if not self.state.hostname:
+            try:
+                self.state.hostname = socket.gethostname()
+            except OSError:
+                self.state.hostname = ""
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now
         if isinstance(event, SimCommandEvent):
             self._sim(event)
         elif isinstance(event, EncoderEvent):
-            self.mapper.handle_encoder(event, self.state, self.qlc)
+            self.shell.enc(event.encoder, event.delta)
         elif isinstance(event, ButtonEvent):
             if event.action == "press":
-                # Simulator may send cooked press/long_press. Hardware sends raw press/release.
                 cooked = self.buttons.on_hardware_press(event.button, now)
                 if cooked:
                     for c in cooked:
-                        self.mapper.handle_button(c, self.state, self.qlc)
-                else:
-                    # raw down: wait for tracker
-                    pass
+                        self._dispatch_key(c)
             elif event.action == "release":
                 for c in self.buttons.on_hardware_release(event.button, now):
-                    self.mapper.handle_button(c, self.state, self.qlc)
+                    self._dispatch_key(c)
             elif event.action == "long_press":
-                self.mapper.handle_button(event, self.state, self.qlc)
+                self._dispatch_key(event)
         self._finish()
+
+    def _dispatch_key(self, event: ButtonEvent) -> None:
+        if event.action == "release":
+            self.shell.key(event.button, 0)
+        else:
+            self.shell.key(event.button, 1)
 
     def inject_cooked(self, event: HardwareEvent) -> None:
         """Tests: already short/long ButtonEvents, skip debounce tracker."""
         if isinstance(event, ButtonEvent):
-            self.mapper.handle_button(event, self.state, self.qlc)
+            self._dispatch_key(event)
         elif isinstance(event, EncoderEvent):
-            self.mapper.handle_encoder(event, self.state, self.qlc)
+            self.shell.enc(event.encoder, event.delta)
         elif isinstance(event, SimCommandEvent):
             self._sim(event)
         self._finish()
@@ -74,13 +99,17 @@ class Controller:
     def tick(self, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now
         self.state.uptime_s = int(now - self._t0)
+        temp = _read_cpu_temp()
+        if temp is not None:
+            self.state.cpu_temp_c = temp
         for ev in self.hardware.read_events():
             self.handle_event(ev, now)
         for ev in self.buttons.poll(now):
-            self.mapper.handle_button(ev, self.state, self.qlc)
-        self.qlc.pump(now)
-        self._sync_qlc()
-        self._boot_advance()
+            self._dispatch_key(ev)
+        try:
+            self.qlc.pump(now)
+        except Exception:
+            LOG.exception("QLC pump failed; UI continues")
         self._finish()
         interval = 1.0 / max(1, self.config.display.fps)
         if now - self._last_draw >= interval:
@@ -90,22 +119,8 @@ class Controller:
             self._last_draw = now
 
     def _sync_qlc(self) -> None:
-        was = self.state.qlc_connected
-        self.state.qlc_connected = self.qlc.connected()
-        self.state.qlc_project_loaded = self.qlc.project_loaded()
-        if was and not self.state.qlc_connected:
-            LOG.warning("QLC connection lost")
-        if not was and self.state.qlc_connected:
-            LOG.info("QLC connected")
-            names = tuple(fn.name for fn in self.qlc.list_functions())
-            if names:
-                self.state.functions = names
-
-    def _boot_advance(self) -> None:
-        if self.state.startup_running and self.state.qlc_connected and self.state.qlc_project_loaded:
-            self.state.startup_running = False
-            if self.state.screen == ScreenId.BOOT:
-                self.state.screen = ScreenId.HOME
+        self.binding.pull(self.state)
+        self.binding.push(self.state)
 
     def _sim(self, event: SimCommandEvent) -> None:
         cmd = event.command
@@ -142,9 +157,10 @@ class Controller:
         elif cmd == "quit":
             self.running = False
         elif cmd == "screen_boot":
-            self.state.screen = ScreenId.BOOT
-            self.state.startup_running = True
+            self.nav.go_play(self.state)
 
     def _finish(self) -> None:
         self.state.clamp_indices()
+        self.params.store_index(self.state)
+        self._sync_qlc()
         self.state.rebuild_warnings()

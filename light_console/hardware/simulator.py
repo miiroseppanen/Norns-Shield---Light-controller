@@ -160,10 +160,9 @@ class SimulatorBackend(HardwareBackend):
         pg.draw.rect(self.screen, (24, 24, 28), hud)
         font = pg.font.SysFont("Menlo", 13) if "Menlo" in pg.font.get_fonts() else pg.font.SysFont(None, 16)
         lines = [
-            "OLED 128x64  |  E1 Q/A or LEFT/RIGHT  E2 W/S or UP/DOWN  E3 E/D or ,/.",
-            "K1 Z or 1   K2 X or 2   K3 C or 3   (hold for long press)",
-            "F1 QLC  F2 Launchpad  F3 PKNight  F4 upstream  F5 WIZ-AP  -/= WiZ  0 empty  6 full",
-            "ESC quit   click buttons below",
+            "Same 128x64 UI as Shield    E1 Q/A   E2 W/S   E3 E/D    K1 Z  K2 X  K3 C",
+            "K1 PLAY/MENU   MENU: E2 select  K3 enter  K2 back   PARAMS: E2 select  E3 value",
+            "PLAY: E1 master  E2 scene  E3 speed  K3 GO     F1 QLC   ESC quit",
         ]
         y = self.oled_h + 4
         for line in lines:

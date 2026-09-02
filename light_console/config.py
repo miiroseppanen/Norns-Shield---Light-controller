@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ImportError:  # Pi may run without PyYAML if no config file is used
+    yaml = None  # type: ignore[assignment]
 
 DEFAULT_CONFIG_NAME = "light-console.yaml"
 
@@ -93,6 +96,8 @@ def _key_mapping(raw: Any, default: KeyMapping) -> KeyMapping:
 def load_config(path: Path | None = None) -> AppConfig:
     data: dict[str, Any] = {}
     if path is not None:
+        if yaml is None:
+            raise RuntimeError("PyYAML is required to load a config file")
         data = yaml.safe_load(path.read_text()) or {}
 
     display_raw = data.get("display") or {}

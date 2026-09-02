@@ -1,6 +1,6 @@
 [project]
 name = "shieldxl-light-console"
-version = "0.1.0"
+version = "0.4.0"
 description = "Standalone lighting console UI for Raspberry Pi 4 + Denki Oto shieldXL, using QLC+ as the show engine."
 readme = "README.md"
 requires-python = ">=3.11"

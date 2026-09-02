@@ -38,12 +38,12 @@ ENCODER_OVERLAY: dict[int, tuple[PinFact, PinFact]] = {
         PinFact(27, "e1_b"),
     ),
     2: (
-        PinFact(12, "e2_a", confidence="HIGH-overlay", note="schematic part E3 A — verify knob"),
-        PinFact(25, "e2_b", confidence="HIGH-overlay", note="schematic part E3 B — verify knob"),
+        PinFact(12, "e2_a", note="physical E2 A; schematic part E3 A"),
+        PinFact(25, "e2_b", note="physical E2 B; schematic part E3 B"),
     ),
     3: (
-        PinFact(24, "e3_a", confidence="HIGH-overlay", note="schematic part E2 A — verify knob"),
-        PinFact(23, "e3_b", confidence="HIGH-overlay", note="schematic part E2 B — verify knob"),
+        PinFact(24, "e3_a", note="physical E3 A; schematic part E2 A"),
+        PinFact(23, "e3_b", note="physical E3 B; schematic part E2 B"),
     ),
 }
 

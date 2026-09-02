@@ -18,7 +18,7 @@ def make_controller(**state_kw) -> Controller:
         wiz_online=6,
         wiz_ap_up=True,
         launchpad_connected=True,
-        screen=ScreenId.HOME,
+        screen=ScreenId.PLAY,
     )
     defaults.update(state_kw)
     state = AppState(**defaults)

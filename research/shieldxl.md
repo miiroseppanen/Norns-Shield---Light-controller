@@ -1,6 +1,6 @@
 # Shield XL hardware research
 
-Status: Milestone 0.1 research. **No GPIO driver is implemented from this document yet.**
+Status: Milestone 0.1 research + 0.2 Phase 1 inventory (2026-09-01). **No GPIO driver is implemented from this document yet.**
 
 This file records facts from primary sources. Missing items are listed as UNKNOWN with a verification plan. Do not copy pin numbers from the original norns Compute Module documentation onto a Raspberry Pi 4.
 
@@ -44,10 +44,10 @@ The kernel overlay `norns-buttons-encoders` **defaults** to the CM3 pins, but ex
 | RESET | **GPIO6** (header pin 31), active low | Eagle net `O_RESET`: `X1.GPIO06` → OLED `/RES` | HIGH |
 | MISO | Not wired to the OLED (write-only SPI) | No MISO net to `U$1` in Eagle 210330 | HIGH |
 | Init | Newhaven example: `/RES` low ≥200 µs, then command sequence (`0xAE` off … `0xAF` on). Kernel `fb_ssd1322` / overlay does this if used. | Newhaven spec “Example Software Routines” | HIGH for datasheet; overlay init **not re-read from a running Pi yet** |
-| Linux driver (norns) | `dtoverlay=ssd1322-spi`, `dtparam=spi=on`, `dtparam=rotate=180` | shieldXL `install/boot/config.txt` | HIGH for norns image; **must be revalidated on Raspberry Pi OS** |
+| Linux driver (norns) | `dtoverlay=ssd1322-spi`, `dtparam=spi=on`, `dtparam=rotate=180` | shieldXL `install/boot/config.txt` | HIGH for norns image; **stock Raspberry Pi OS Lite 6.18.34+rpt-rpi-v8 has neither overlay nor `fb_ssd1322`** (inventory 2026-09-01) |
 | Framebuffer | norns: fbtft SSD1322, historically `/dev/fb1` (or `fb0` if no HDMI). 4-bit packed greyscale. | norns-image hardware notes; matron screen code | MEDIUM — device node name is distro/HDMI dependent |
 | Cable | 20-pin 1 mm pitch FFC, opposite-side contacts, 31 or 51 mm. Blue side up, away from PCB, into bottom Molex. | BUILD.md, BOM.md | HIGH |
-| Can we reuse norns driver? | **Possibly** the kernel overlay + `fb_ssd1322`, **not** matron/cairo/norns userspace. Overlay must exist on the **new** OS kernel. | Research conclusion | MEDIUM until proven on Raspberry Pi OS |
+| Can we reuse norns driver? | Stock Pi OS does **not** ship `ssd1322-spi.dtbo` or `fb_ssd1322`. Nearby overlays (`ssd1306`/`ssd1327`/`ssd1331`/`ssd1351`) are **wrong ICs**. Path is: bring a 1322 overlay later, or userspace SPI. Not matron/cairo. | Inventory 2026-09-01 | HIGH for this kernel; MEDIUM for a later custom overlay |
 
 Do not assume SSD1306. This panel is SSD1322.
 
@@ -80,10 +80,12 @@ dtparam=e3_pin_b=23
 | Norns overlay name | Pins | Matches schematic part |
 |--------------------|------|------------------------|
 | e1 | GPIO 4 / 27 | E1 | HIGH |
-| e2 | GPIO 12 / 25 | schematic **E3** | see UNKNOWN |
-| e3 | GPIO 24 / 23 | schematic **E2** | see UNKNOWN |
+| e2 | GPIO 12 / 25 | schematic **E3**; **physical E2** (2026-09-01) |
+| e3 | GPIO 24 / 23 | schematic **E2**; **physical E3** (2026-09-01) |
 
-Direction (CW vs CCW) and which physical knob is norns “E2” vs “E3” are **not** assumed. Verify with `evtest` on hardware (Milestone 0.2).
+Physical E2/E3 follow norns overlay names, not Eagle part labels. Software CW = A leads B = physical clockwise on this unit.
+
+Direction (CW vs CCW) verified on hardware for E1–E3 (Milestone 0.2). Do not guess E2/E3 from schematic part names.
 
 Debounce: hardware RC plus kernel encoder driver. Userspace extra debounce is optional.
 
@@ -184,14 +186,14 @@ Plus optional MIDI block (see D).
 
 | ID | Unknown | How to verify (Milestone 0.2, new SD, do not touch Norns card) |
 |----|---------|----------------------------------------------------------------|
-| U1 | Physical knob E2 vs E3 vs overlay `e2`/`e3` | `evtest` on each encoder while turning the left/middle/right knob |
-| U2 | Encoder CW delta sign | Turn clockwise; record REL axis sign |
-| U3 | Raspberry Pi OS has `fb_ssd1322` / overlay | `ls /boot/firmware/overlays/*ssd1322*`; `modinfo fb_ssd1322`; fallback: userspace SPI |
-| U4 | Framebuffer device name | `ls /sys/class/graphics/fb*` with HDMI connected and disconnected |
-| U5 | Rotate 180 required on this enclosure | Draw a known pixel; check orientation vs silkscreen |
+| U1 | Physical knob E2 vs E3 vs overlay `e2`/`e3` | **Closed:** physical E2 = GPIO12/25 (overlay e2, schematic E3). physical E3 = GPIO24/23 (overlay e3, schematic E2). See `research/phase-4b-encoders-e2-e3.md`. |
+| U2 | Encoder CW delta sign | **Closed:** A leads B = physical clockwise on E1–E3. Software `CW +1` matches physical CW. |
+| U3 | Raspberry Pi OS has `fb_ssd1322` / overlay | **Closed for this kernel:** no `ssd1322-spi.dtbo`, no `fb_ssd1322`. See `research/phase-1-hardware-inventory.md`. OLED Phase 5 must not enable a wrong SSD13xx overlay. |
+| U4 | Framebuffer device name | **No kernel fb for OLED.** Userspace writes 8192-byte SSD1322 RAM (128 bytes/row). HDMI DRM unchanged. |
+| U5 | Rotate 180 required on this enclosure | **Yes.** Geometry/text with `0x16,0x11` is upright in RAM but 180° vs enclosure. Use remap `0x04,0x11`. |
 | U6 | MIDI_TX/RX continuity to GPIO14/15 | Continuity or scope; only if we ever enable UART MIDI |
-| U7 | Button bounce in userspace | Press K1–K3; confirm no double events after 10 nF + gpio-keys |
-| U8 | OLED contrast / init on Pi OS | First “LIGHT CONSOLE” proof |
+| U7 | Button bounce in userspace | **Closed for one press each:** K1/K2/K3 produced 1 PRESS+RELEASE, no chatter (`research/phase-3-buttons.md`). |
+| U8 | OLED contrast / init on Pi OS | **Closed:** `LIGHT CONSOLE` / `OLED PASS` readable, remap `0x04,0x11`, 128 bytes/row. `research/phase-5-oled.md`. |
 | U9 | Header pin numbers vs BCM | Cross-check with `pinctrl` / `gpioinfo` once overlay loads |
 | U10 | shieldXL KiCad vs 210330 Eagle delta besides MIDI | Diff nets if a later PCB revision is in hand (BOM has 20251025 xlsx) |
 

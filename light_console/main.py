@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import logging
+import socket
 import sys
-import time
 from pathlib import Path
 
 from light_console import VERSION
@@ -22,26 +21,36 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--config", type=Path, default=None)
     p.add_argument("--simulator", action="store_true", help="Mac OLED + encoder simulator")
     p.add_argument("--headless", action="store_true", help="No window (tests / dump)")
+    p.add_argument("--shield", action="store_true", help="Physical shieldXL GPIO + SSD1322")
     p.add_argument("--dump-screen", type=Path, default=None, help="Write ASCII OLED dump and exit")
     p.add_argument("--screenshot", type=Path, default=None, help="Write PPM screenshot and exit")
-    p.add_argument("--boot", action="store_true", help="Start on boot screen (default for dump is home live)")
+    p.add_argument("--boot", action="store_true", help="Start with QLC assumed offline")
     p.add_argument("--debug", action="store_true")
     return p.parse_args(argv)
 
 
-def build_state(config: AppConfig, boot: bool) -> AppState:
-    if boot:
+def _hostname() -> str:
+    try:
+        return socket.gethostname()
+    except OSError:
+        return ""
+
+
+def build_state(config: AppConfig, boot: bool, live: bool = True) -> AppState:
+    if boot or not live:
         state = AppState(
             wiz_expected=config.wiz.expected,
             special_name=config.controls.special_name,
             version=VERSION,
-            screen=ScreenId.BOOT,
-            startup_running=True,
+            screen=ScreenId.PLAY,
+            hostname=_hostname(),
+            current_scene="WASH",
         )
     else:
         state = demo_live_state(config.wiz.expected)
         state.special_name = config.controls.special_name
         state.version = VERSION
+        state.hostname = _hostname()
     state.rebuild_warnings()
     return state
 
@@ -68,15 +77,27 @@ def run_loop(controller: Controller, hardware: HardwareBackend) -> int:
         controller.running = False
     finally:
         hardware.close()
+        close = getattr(controller.qlc, "close", None)
+        if callable(close):
+            close()
     return 0
+
+
+def _load_config(path: Path | None) -> AppConfig:
+    if path is not None:
+        return load_config(path)
+    example = example_config_path()
+    try:
+        if example.exists():
+            return load_config(example)
+    except RuntimeError:
+        pass
+    return load_config(None)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    cfg_path = args.config
-    if cfg_path is None and example_config_path().exists():
-        cfg_path = example_config_path()
-    config = load_config(cfg_path)
+    config = _load_config(args.config)
     if args.debug:
         config.debug = True
     setup_logging(config.debug)
@@ -84,25 +105,33 @@ def main(argv: list[str] | None = None) -> int:
     if args.dump_screen or args.screenshot:
         return dump_views(config, args.dump_screen, args.screenshot, boot=args.boot)
 
-    if not args.simulator and not args.headless:
-        # Milestone 0.1 default: simulator when not on a dedicated flag? User asked python -m simulator.run
-        LOG.error("Use python -m simulator.run  (Milestone 0.1 has no Pi GPIO backend)")
+    if not args.simulator and not args.headless and not args.shield:
+        LOG.error("Use python -m simulator.run  or  python -m light_console.main --shield")
         return 2
 
-    state = build_state(config, boot=args.boot)
-    qlc = MockQLCClient(state.functions)
-    if not args.boot:
-        qlc.simulate_link(True)
+    live = not args.boot and not args.shield
+    state = build_state(config, boot=args.boot, live=live)
 
-    if args.headless:
-        hardware: HardwareBackend = HeadlessBackend()  # type: ignore[assignment]
+    if args.shield:
+        from light_console.hardware.shieldxl import ShieldXLBackend
+        from light_console.qlc.ws_client import QlcWebSocketClient
+
+        hardware: HardwareBackend = ShieldXLBackend()
+        qlc = QlcWebSocketClient(config.qlc.websocket, config.qlc.reconnect_seconds)
+        print(f"light-console {VERSION}  shield  PLAY  Ctrl-C to quit", flush=True)
     else:
-        from light_console.hardware.simulator import SimulatorBackend
+        qlc = MockQLCClient(state.functions)
+        if live:
+            qlc.simulate_link(True)
+        if args.headless:
+            hardware = HeadlessBackend()
+        else:
+            from light_console.hardware.simulator import SimulatorBackend
 
-        hardware = SimulatorBackend(scale=config.display.scale)
+            hardware = SimulatorBackend(scale=config.display.scale)
 
     controller = Controller(config, state, hardware, qlc)
-    LOG.info("light-console %s simulator", VERSION)
+    LOG.info("light-console %s", VERSION)
     return run_loop(controller, hardware)
 
 

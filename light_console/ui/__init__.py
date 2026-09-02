@@ -1,3 +1,1 @@
-from light_console.ui.controller import Controller
-
-__all__ = ["Controller"]
+"""UI layer: navigation, pages, controller. Import submodules directly."""

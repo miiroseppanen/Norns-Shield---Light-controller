@@ -8,7 +8,7 @@ Raspberry Pi 4 + Denki Oto shieldXL (norns shield 210330 remix). OLED 128×64 SS
 
 ## Software rule
 
-`light_console` never imports `RPi.GPIO` / `gpiozero` / `spidev` outside `light_console.hardware.shieldxl`. Milestone 0.1 does not open those devices.
+`light_console` never imports `RPi.GPIO` / `gpiozero` / `spidev` outside `light_console.hardware` (`shieldxl.py`, `oled.py`).
 
 ## Pin table (BCM) — verified for 210330 / shieldXL overlay
 
@@ -25,17 +25,17 @@ Raspberry Pi 4 + Denki Oto shieldXL (norns shield 210330 remix). OLED 128×64 SS
 | Codec reset | 17 | do not reuse |
 | I2S | 18–21 | do not reuse |
 | K1 | 22 | active low |
-| E3 B (schematic E2 B) / overlay e3_pin_b | 23 | confirm knob in 0.2 |
-| overlay e3_pin_a | 24 | confirm knob in 0.2 |
-| overlay e2_pin_b | 25 | confirm knob in 0.2 |
+| E3 B (physical E3 / overlay e3_pin_b; schematic E2 B) | 23 | A-leads-B = CW |
+| E3 A (physical E3 / overlay e3_pin_a; schematic E2 A) | 24 | |
+| E2 B (physical E2 / overlay e2_pin_b; schematic E3 B) | 25 | |
 | K2 | 26 | active low |
 | E1 B | 27 | |
 | E1 A | 4 | |
-| overlay e2_pin_a | 12 | confirm knob in 0.2 |
+| E2 A (physical E2 / overlay e2_pin_a; schematic E3 A) | 12 | |
 
-E2 vs E3 physical identity: UNKNOWN until `evtest` (research U1).
+Physical E2 = GPIO12/25 (overlay e2, schematic part E3). Physical E3 = GPIO24/23 (overlay e3, schematic part E2). See `research/phase-4b-encoders-e2-e3.md`.
 
 ## Backends
 
-- `SimulatorBackend` — pygame 128×64 window + keyboard/mouse (0.1)
-- `ShieldXLBackend` — raises until Milestone 0.2
+- `SimulatorBackend` — pygame 128×64 window + keyboard (same UI code as Shield)
+- `ShieldXLBackend` — gpiod + SSD1322 SPI (Milestone 0.4 prototype)

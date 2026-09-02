@@ -66,19 +66,22 @@ def test_sim_toggles():
     assert c.state.wiz_online == 1
 
 
-def test_menu_go_opens_page():
+def test_menu_enter_opens_scenes():
     c = make_controller()
-    c.inject_cooked(ButtonEvent(3, "long_press"))
+    c.inject_cooked(ButtonEvent(1, "press"))
     assert c.state.screen == ScreenId.MENU
-    c.state.menu_index = 2  # WIZ
-    c.inject_cooked(ButtonEvent(2, "press"))
-    assert c.state.screen == ScreenId.WIZ
+    c.state.menu_index = 2
+    c.inject_cooked(ButtonEvent(3, "press"))
+    assert c.state.screen == ScreenId.SCENES
 
 
 def test_blackout_is_local_state_not_a_stuck_output_loop():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
+    c.state.menu_index = 1
+    c.inject_cooked(ButtonEvent(3, "press"))
+    c.state.param_index = 2
+    c.params.index = 2
+    c.inject_cooked(ButtonEvent(3, "press"))
     assert c.state.blackout is True
-    # Dropping the UI process would drop this flag; QLC mock blackout is a separate field
-    # that production must map to GM/VC so Launchpad can clear it.
     assert c.qlc.blackout is True

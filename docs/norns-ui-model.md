@@ -1,0 +1,81 @@
+# Norns UI model (Shield XL Light Console)
+
+This is **not** Norns OS. It is the Norns interaction model on Raspberry Pi OS + Python.
+
+See also [`ui-architecture.md`](ui-architecture.md).
+
+## Controls
+
+Physical names everywhere: **K1 K2 K3** and **E1 E2 E3**.
+
+K1 is the shell PLAY ↔ MENU toggle. Show functions are not wired in the hardware layer.
+
+### PLAY
+
+- **E1 / E2 / E3** — active play screen (prototype: master, scene, speed)
+- **K2 / K3** — play-screen actions (K3 = GO)
+- **K1** — MENU
+
+### MENU
+
+- **E2** — selection
+- **K3** — forward / enter
+- **K2** — back (no-op at root)
+- **K1** — PLAY, from any menu depth
+
+Stack: `root → submenu → page`. K2 pops.
+
+Root:
+
+```
+HOME
+PARAMS
+SCENES
+OUTPUT
+SYSTEM
+```
+
+HOME enters PLAY. PARAMS / SCENES / OUTPUT / SYSTEM are screens.
+
+## Screens vs parameters
+
+A **PLAY screen** is for live performance. **PARAMS** lists every adjustable value.
+
+The same `Parameter` objects back both. AppState holds the values once.
+
+## Parameter types
+
+`Parameter`, `NumberParameter`, `OptionParameter`, `ToggleParameter`, `ActionParameter`
+
+Metadata: id, name, type, value, min/max/step, options, formatter.
+
+PARAMS: E2 select, E3 change, K3 trigger, K2 back.
+
+Encoder path: `E3 → Parameter.delta → AppState → QlcBinding`. Never GPIO → QLC.
+
+## Screen API
+
+Python equivalent of norns `enc` / `key` / `redraw`:
+
+```python
+screen.enc(n, delta)   # n is E1/E2/E3
+screen.key(n, z)       # n is K1/K2/K3; z=1 tap, z=0 up
+screen.redraw(fb)
+```
+
+`NornsUIShell` consumes K1 globally, then dispatches to the active screen.
+
+## Event flow
+
+```
+GPIO → HardwareEvent → NornsUIShell → Screen → Parameter/Action
+     → AppState → QLC client
+
+AppState → 128×64 framebuffer → OLED
+```
+
+OLED driver does not know QLC. QLC client does not know GPIO numbers.
+
+## Rendering
+
+128×64, sparse, header + list, `>` and inverted selected row, no per-widget boxes.
