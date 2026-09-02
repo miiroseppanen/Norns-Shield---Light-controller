@@ -1,4 +1,4 @@
-from light_console.hardware.events import ButtonEvent, EncoderEvent, K1, K2, K3, E2
+from light_console.hardware.events import ButtonEvent, EncoderEvent, K1, K2, K3, E1, E2, E3
 from light_console.state import ScreenId
 from light_console.ui.menu import MENU_ITEMS
 
@@ -21,16 +21,42 @@ def test_menu_k1_returns_play():
     assert c.state.screen == ScreenId.PLAY
 
 
-def test_menu_selection_moves():
+def test_menu_e1_changes_selection():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.inject_cooked(EncoderEvent(E2, 1))
+    c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.menu_index == 1
     assert MENU_ITEMS[c.state.menu_index].label == "PARAMS"
-    c.inject_cooked(EncoderEvent(E2, -1))
+    c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == 0
-    c.inject_cooked(EncoderEvent(E2, -1))
+    c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == len(MENU_ITEMS) - 1
+
+
+def test_menu_e2_does_not_change_selection():
+    c = make_controller()
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    c.state.menu_index = 1
+    c.inject_cooked(EncoderEvent(E2, 2))
+    assert c.state.menu_index == 1
+    assert c.state.screen == ScreenId.MENU
+
+
+def test_menu_e3_does_not_change_selection():
+    c = make_controller()
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    c.state.menu_index = 1
+    c.inject_cooked(EncoderEvent(E3, 2))
+    assert c.state.menu_index == 1
+    assert c.state.screen == ScreenId.MENU
+
+
+def test_menu_k3_enters_selected_item():
+    c = make_controller()
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    c.inject_cooked(EncoderEvent(E1, 1))
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.PARAMS
 
 
 def test_menu_k3_forward_k2_back():
@@ -113,11 +139,14 @@ def test_play_and_params_share_master():
 
 
 def test_play_mapping_not_used_on_menu():
-    c = make_controller(master_dimmer=50)
+    c = make_controller(master_dimmer=50, scene_index=0, current_scene="WASH", bpm=124)
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.inject_cooked(EncoderEvent(1, 10))
+    c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.master == 50
+    assert c.state.current_scene == "WASH"
+    assert c.state.bpm == 124
     assert c.state.blackout is False
+    assert c.state.menu_index == 1
 
 
 def test_qlc_offline_does_not_block_ui():

@@ -27,7 +27,7 @@ The window is a scaled **128×64** copy of the same framebuffer the OLED uses. T
 | F1 | QLC connected / offline |
 | ESC | quit |
 
-K1 = PLAY/MENU. PLAY: E1 master, E2 scene, E3 speed, K3 GO. MENU: E2 select, K3 enter, K2 back. PARAMS: E2 select, E3 value.
+K1 = PLAY/MENU. PLAY: E1 master, E2 scene, E3 speed, K3 GO. MENU: E1 select, K3 enter, K2 back. PARAMS: E2 select, E3 value.
 
 Headless dump (no pygame window):
 

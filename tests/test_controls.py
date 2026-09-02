@@ -33,11 +33,15 @@ def test_e3_speed_clamped():
     assert c.state.bpm == 20
 
 
-def test_menu_e2_navigates_menu_not_scenes():
+def test_menu_e1_navigates_menu_not_scenes():
     c = make_controller(scene_index=0, current_scene="WASH")
     c.state.screen = ScreenId.MENU
     c.state.menu_index = 0
-    c.inject_cooked(EncoderEvent(E2, 2))
+    c.inject_cooked(EncoderEvent(E1, 2))
     assert c.state.menu_index == 2
     assert c.state.current_scene == "WASH"
     assert c.state.scene_index == 0
+    c.inject_cooked(EncoderEvent(E2, 1))
+    c.inject_cooked(EncoderEvent(E3, 1))
+    assert c.state.menu_index == 2
+    assert c.state.current_scene == "WASH"

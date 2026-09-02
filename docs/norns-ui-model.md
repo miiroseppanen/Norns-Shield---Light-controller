@@ -18,7 +18,8 @@ K1 is the shell PLAY ↔ MENU toggle. Show functions are not wired in the hardwa
 
 ### MENU
 
-- **E2** — selection
+- **E1** — selection
+- **E2 / E3** — no-op (do not move the cursor)
 - **K3** — forward / enter
 - **K2** — back (no-op at root)
 - **K1** — PLAY, from any menu depth
@@ -67,7 +68,7 @@ screen.key(n, z)       # n is K1/K2/K3; z=1 tap, z=0 up
 screen.redraw(fb)
 ```
 
-`NornsUIShell` consumes K1 globally, then dispatches to the active screen.
+`NornsUIShell` consumes K1 globally, MENU E1/K2/K3, then dispatches to the active screen. PARAMS still uses E2/E3.
 
 ## Event flow
 

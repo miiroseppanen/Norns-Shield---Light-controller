@@ -1,4 +1,4 @@
-from light_console.hardware.events import ButtonEvent, EncoderEvent, E2, E3, K1, K3
+from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K3
 from light_console.state import AppState, ScreenId
 from light_console.ui.params import (
     ActionParameter,
@@ -72,6 +72,8 @@ def test_params_screen_e2_e3():
     assert c.state.screen == ScreenId.PARAMS
     c.state.param_index = 0
     c.params.index = 0
+    c.inject_cooked(EncoderEvent(E1, 1))
+    assert c.params.selected.id == "master"
     c.inject_cooked(EncoderEvent(E3, 5))
     assert c.state.master == 45
     c.inject_cooked(EncoderEvent(E2, 2))

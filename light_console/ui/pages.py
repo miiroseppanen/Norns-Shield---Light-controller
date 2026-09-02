@@ -1,7 +1,7 @@
 """Norns-like screens: enc(n, delta), key(n, z), redraw(fb).
 
 n is E1/E2/E3 or K1/K2/K3 (1,2,3). z is 1 down/tap, 0 up.
-K1 PLAY↔MENU is handled by NornsUIShell, not these screens.
+K1 PLAY↔MENU and MENU E1/K2/K3 are handled by NornsUIShell, not these screens.
 """
 
 from __future__ import annotations
@@ -79,23 +79,6 @@ class PlayScreen(Screen):
 class MenuScreen(Screen):
     id = ScreenId.MENU
     title = "MENU"
-
-    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n != E2:
-            return
-        items = ctx.nav.current_items()
-        if not items:
-            return
-        ctx.state.menu_index = wrap_index(ctx.state.menu_index, delta, len(items))
-        ctx.state.menu_count = len(items)
-
-    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
-        if z != 1:
-            return
-        if n == K3:
-            ctx.nav.forward(ctx.state)
-        elif n == K2:
-            ctx.nav.back(ctx.state)
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_menu(fb, ctx.state, ctx.nav.current_items())

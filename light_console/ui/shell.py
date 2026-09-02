@@ -1,12 +1,16 @@
 """Global Norns UI shell: K1 PLAY↔MENU, menu stack, dispatch to the active screen.
 
+MENU (this shell): E1 select, K2 back, K3 enter. E2/E3 do not move the cursor.
+PLAY and PARAMS keep their own encoder maps.
+
 Show functions are not here — screens talk to parameters, parameters mutate AppState.
 """
 
 from __future__ import annotations
 
+from light_console.controls.encoders import wrap_index
 from light_console.display.framebuffer import Framebuffer
-from light_console.hardware.events import K1, K2
+from light_console.hardware.events import E1, K1, K2, K3
 from light_console.power import MockPowerService, PowerService
 from light_console.state import AppState, ScreenId
 from light_console.ui.nav import Navigation
@@ -39,6 +43,15 @@ class NornsUIShell:
         return self.screens[self.state.screen]
 
     def enc(self, n: int, delta: int) -> None:
+        if self.state.screen == ScreenId.MENU:
+            if n == E1:
+                items = self.nav.current_items()
+                if items:
+                    self.state.menu_index = wrap_index(
+                        self.state.menu_index, delta, len(items)
+                    )
+                    self.state.menu_count = len(items)
+            return
         self.active_screen().enc(n, delta, self.ctx())
         self.params.store_index(self.state)
 
@@ -51,7 +64,13 @@ class NornsUIShell:
             else:
                 self.nav.go_play(self.state)
             return
-        if n == K2 and self.state.screen not in (ScreenId.PLAY, ScreenId.MENU):
+        if self.state.screen == ScreenId.MENU:
+            if n == K3:
+                self.nav.forward(self.state)
+            elif n == K2:
+                self.nav.back(self.state)
+            return
+        if n == K2 and self.state.screen != ScreenId.PLAY:
             self.nav.back(self.state)
             return
         self.active_screen().key(n, z, self.ctx())

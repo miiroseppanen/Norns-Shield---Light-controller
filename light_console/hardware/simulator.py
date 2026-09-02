@@ -161,7 +161,7 @@ class SimulatorBackend(HardwareBackend):
         font = pg.font.SysFont("Menlo", 13) if "Menlo" in pg.font.get_fonts() else pg.font.SysFont(None, 16)
         lines = [
             "Same 128x64 UI as Shield    E1 Q/A   E2 W/S   E3 E/D    K1 Z  K2 X  K3 C",
-            "K1 PLAY/MENU   MENU: E2 select  K3 enter  K2 back   PARAMS: E2 select  E3 value",
+            "K1 PLAY/MENU   MENU: E1 select  K3 enter  K2 back   PARAMS: E2 select  E3 value",
             "PLAY: E1 master  E2 scene  E3 speed  K3 GO     F1 QLC   ESC quit",
         ]
         y = self.oled_h + 4
