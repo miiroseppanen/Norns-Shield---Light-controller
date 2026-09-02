@@ -55,7 +55,13 @@ class Navigation:
             self.stack.append(item.id)
             state.screen = ScreenId(item.page_id)
 
+    def open_shutdown_confirm(self, state: AppState) -> None:
+        state.screen = ScreenId.SHUTDOWN
+
     def back(self, state: AppState) -> None:
+        if state.screen == ScreenId.SHUTDOWN:
+            state.screen = ScreenId.SYSTEM
+            return
         if state.screen != ScreenId.MENU:
             if self.stack:
                 self.stack.pop()

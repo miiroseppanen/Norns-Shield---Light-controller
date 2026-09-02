@@ -1,0 +1,33 @@
+[Unit]
+Description=Shield XL Light Console (OLED + K1-K3 + E1-E3)
+Documentation=file:///home/light/light-console/docs/boot.md
+After=local-fs.target
+# Do not After=/Wants= dev-spidev0.0.device. On Raspberry Pi OS the
+# systemd .device unit can stay inactive while /dev/spidev0.0 exists,
+# which leaves this service as a pending job and the OLED blank.
+# Rate-limit crash restarts (must live in [Unit], not [Service]).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+# QLC+ is not started here. Do not add qlcplus.service until a later milestone.
+
+[Service]
+Type=simple
+User=light
+Group=light
+SupplementaryGroups=gpio spi
+WorkingDirectory=/home/light/light-console
+Environment=PYTHONPATH=/home/light/light-console
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -u -m light_console.main --shield
+RuntimeDirectory=light-console
+RuntimeDirectoryMode=0755
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=light-console
+
+[Install]
+WantedBy=multi-user.target

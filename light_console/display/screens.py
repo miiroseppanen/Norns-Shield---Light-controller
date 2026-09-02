@@ -93,10 +93,24 @@ def draw_output(fb: Framebuffer, state: AppState) -> None:
 
 def draw_system(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "SYSTEM", state)
-    status_pair(fb, ROW * 2, "QLC", _qlc_word(state))
-    status_pair(fb, ROW * 3, "HOST", (state.hostname or "--")[:12])
-    status_pair(fb, ROW * 4, "VER", state.version[:9])
-    status_pair(fb, ROW * 5, "UP", _fmt_uptime(state.uptime_s))
+    host = (state.hostname or "--")[:9]
+    labels = [
+        f"QLC STATUS  {_qlc_word(state)}",
+        f"HOSTNAME    {host}"[:21],
+        f"VERSION     {state.version[:9]}",
+        f"UPTIME      {_fmt_uptime(state.uptime_s)}",
+        "SHUTDOWN",
+    ]
+    draw_list(fb, labels, state.system_index, y0=ROW)
+
+
+def draw_shutdown(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "SHUTDOWN?", state)
+    if state.shutdown_requested:
+        text(fb, 0, ROW * 3, "SHUTDOWN REQUESTED"[:21])
+        return
+    text(fb, 0, ROW * 3, "K2  CANCEL")
+    text(fb, 0, ROW * 4, "K3  CONFIRM")
 
 
 DRAWERS = {
@@ -106,6 +120,7 @@ DRAWERS = {
     ScreenId.SCENES: draw_scenes,
     ScreenId.OUTPUT: draw_output,
     ScreenId.SYSTEM: draw_system,
+    ScreenId.SHUTDOWN: draw_shutdown,
 }
 
 

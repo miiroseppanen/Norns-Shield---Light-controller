@@ -26,7 +26,7 @@ QLC+ is the show engine. light-console is UI and orchestration only. wizbridge s
 |---------|------|------------|
 | `qlcplus` | Show engine, Art-Net, MIDI | Show stops — this is the engine, not our UI |
 | `wizbridge` | Art-Net U0 → WiZ | WiZ looks freeze; DMX/PKNight unaffected |
-| `light-console` | OLED, encoders, status, QLC WebSocket client | **QLC keeps running.** Last QLC state remains. |
+| `light-console.service` | OLED, encoders, status, QLC WebSocket client (user `light`, boot) | **QLC keeps running.** Last QLC state remains. Restarts on-failure with a 5/60s limit. |
 
 light-console must never `systemctl restart qlcplus` on connection loss. It reconnects the WebSocket in the background and shows `QLC LOST`.
 
@@ -90,9 +90,10 @@ wlan1 = WIZ-LIGHTS AP, NetworkManager shared, 10.42.0.1/24. wlan0 = optional ups
 | 0.1.0 | Simulator + docs |
 | 0.2.0 | Shield XL hardware proof on a **new** SD |
 | 0.3.0 | QLC+ 5.2.2 engine baseline |
-| 0.4.0 | Norns-like UI framework (this) |
+| 0.4.0 | Norns-like UI framework |
+| 0.4c | Appliance autostart (`light-console.service`; QLC still manual) |
 | 1.0.0 | Show-ready |
 
 ## Milestone 0.1 out of scope
 
-Pi deploy, systemd install, GPIO, production `.qxw`, wizbridge changes, network config, AP restart workaround.
+Production `.qxw`, wizbridge changes, network config, AP restart workaround. GPIO and OLED autostart are 0.2 / 0.4c.

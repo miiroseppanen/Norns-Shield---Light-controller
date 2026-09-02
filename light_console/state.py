@@ -18,6 +18,7 @@ class ScreenId(str, Enum):
     SCENES = "scenes"
     OUTPUT = "output"
     SYSTEM = "system"
+    SHUTDOWN = "shutdown"
 
 
 PLACEHOLDER_SCENES = (
@@ -61,6 +62,9 @@ class AppState:
     menu_count: int = 5
     param_index: int = 0
     param_count: int = 4
+    system_index: int = 0
+    system_count: int = 5
+    shutdown_requested: bool = False
     version: str = "0.4.0"
     hostname: str = ""
     uptime_s: int = 0
@@ -111,6 +115,7 @@ class AppState:
             self.selected_index %= len(self.functions)
         self.menu_index %= max(1, self.menu_count)
         self.param_index %= max(1, self.param_count)
+        self.system_index %= max(1, self.system_count)
         self.master_dimmer = max(0, min(100, self.master_dimmer))
         self.bpm = max(20, min(240, self.bpm))
         self.wiz_online = max(0, min(self.wiz_expected, self.wiz_online))

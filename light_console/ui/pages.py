@@ -17,12 +17,17 @@ from light_console.display.screens import (
     draw_params,
     draw_play,
     draw_scenes,
+    draw_shutdown,
     draw_system,
 )
 from light_console.hardware.events import E1, E2, E3, K2, K3
+from light_console.power import PowerService
 from light_console.state import AppState, ScreenId
 from light_console.ui.nav import Navigation
 from light_console.ui.params import Params
+
+SYSTEM_SHUTDOWN_ROW = 4
+SYSTEM_ROW_COUNT = 5
 
 
 @dataclass
@@ -30,6 +35,7 @@ class ScreenContext:
     state: AppState
     nav: Navigation
     params: Params
+    power: PowerService
 
 
 class Screen(ABC):
@@ -151,8 +157,43 @@ class SystemScreen(Screen):
     id = ScreenId.SYSTEM
     title = "SYSTEM"
 
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        if n != E2:
+            return
+        ctx.state.system_count = SYSTEM_ROW_COUNT
+        ctx.state.system_index = wrap_index(
+            ctx.state.system_index, delta, SYSTEM_ROW_COUNT
+        )
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1 or n != K3:
+            return
+        if ctx.state.system_index == SYSTEM_SHUTDOWN_ROW:
+            ctx.nav.open_shutdown_confirm(ctx.state)
+
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_system(fb, ctx.state)
+
+
+class ShutdownScreen(Screen):
+    id = ScreenId.SHUTDOWN
+    title = "SHUTDOWN"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        del n, delta, ctx
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1:
+            return
+        if n == K3:
+            accepted = ctx.power.request_shutdown()
+            ctx.state.shutdown_requested = ctx.power.shutdown_requested
+            del accepted
+        elif n == K2:
+            ctx.nav.back(ctx.state)
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_shutdown(fb, ctx.state)
 
 
 def build_screens() -> dict[ScreenId, Screen]:
@@ -163,5 +204,6 @@ def build_screens() -> dict[ScreenId, Screen]:
         ScenesScreen(),
         OutputScreen(),
         SystemScreen(),
+        ShutdownScreen(),
     )
     return {s.id: s for s in screens}

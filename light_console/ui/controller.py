@@ -10,6 +10,7 @@ from light_console.controls.buttons import ButtonTracker
 from light_console.display.renderer import Renderer
 from light_console.hardware.base import HardwareBackend
 from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEvent, SimCommandEvent
+from light_console.power import MockPowerService, PowerService
 from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
 from light_console.state import AppState
@@ -41,14 +42,16 @@ class Controller:
         state: AppState,
         hardware: HardwareBackend,
         qlc: QLCClient,
+        power: PowerService | None = None,
     ) -> None:
         self.config = config
         self.state = state
         self.hardware = hardware
         self.qlc = qlc
+        self.power = power or MockPowerService()
         self.nav = Navigation()
         self.params = bind_console_params(state)
-        self.shell = NornsUIShell(state, nav=self.nav, params=self.params)
+        self.shell = NornsUIShell(state, nav=self.nav, params=self.params, power=self.power)
         self.buttons = ButtonTracker(long_press_s=config.controls.long_press_ms / 1000.0)
         self.renderer = Renderer(config.display.width, config.display.height)
         self.binding = QlcBinding(qlc)

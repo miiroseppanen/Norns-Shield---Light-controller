@@ -112,17 +112,35 @@ def main(argv: list[str] | None = None) -> int:
     live = not args.boot and not args.shield
     state = build_state(config, boot=args.boot, live=live)
 
+    lock = None
     if args.shield:
         from light_console.hardware.shieldxl import ShieldXLBackend
+        from light_console.instance import InstanceLock, InstanceLockHeld
+        from light_console.power import LinuxPowerService
         from light_console.qlc.ws_client import QlcWebSocketClient
 
-        hardware: HardwareBackend = ShieldXLBackend()
+        lock = InstanceLock()
+        try:
+            lock.acquire()
+        except InstanceLockHeld as exc:
+            LOG.error("%s", exc)
+            print(str(exc), file=sys.stderr, flush=True)
+            return 1
+        try:
+            hardware: HardwareBackend = ShieldXLBackend()
+        except Exception:
+            lock.close()
+            raise
         qlc = QlcWebSocketClient(config.qlc.websocket, config.qlc.reconnect_seconds)
+        power = LinuxPowerService()
         print(f"light-console {VERSION}  shield  PLAY  Ctrl-C to quit", flush=True)
     else:
+        from light_console.power import MockPowerService
+
         qlc = MockQLCClient(state.functions)
         if live:
             qlc.simulate_link(True)
+        power = MockPowerService()
         if args.headless:
             hardware = HeadlessBackend()
         else:
@@ -130,9 +148,13 @@ def main(argv: list[str] | None = None) -> int:
 
             hardware = SimulatorBackend(scale=config.display.scale)
 
-    controller = Controller(config, state, hardware, qlc)
+    controller = Controller(config, state, hardware, qlc, power=power)
     LOG.info("light-console %s", VERSION)
-    return run_loop(controller, hardware)
+    try:
+        return run_loop(controller, hardware)
+    finally:
+        if lock is not None:
+            lock.close()
 
 
 if __name__ == "__main__":

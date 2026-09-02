@@ -12,7 +12,9 @@
 
 | Symptom | Check |
 |---------|--------|
-| Black OLED | SPI overlay, RESET/DC wiring, HDMI stealing fb numbering — see research U3/U4 |
+| Black OLED after boot | `systemctl status light-console`; `journalctl -u light-console -b`. Pending `dev-spidev0.0.device` job means the unit still has `After=`/`Wants=` on that device — remove them. |
+| Black OLED while running | SPI overlay, RESET/DC wiring, HDMI stealing fb numbering — see research U3/U4 |
+| `light-console --shield` from SSH fails | Another instance holds `/tmp/light-console.instance.lock`. `sudo systemctl stop light-console` if you need the foreground. |
 | No encoder events | Overlay pin overrides, `evtest`, E2/E3 identity (U1) |
 | Keys inverted | Active low; overlay flags |
 | Show dead when UI dies | QLC/wizbridge still running? If not, that is a systemd issue, not OLED |

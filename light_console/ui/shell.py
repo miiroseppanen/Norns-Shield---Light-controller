@@ -7,24 +7,33 @@ from __future__ import annotations
 
 from light_console.display.framebuffer import Framebuffer
 from light_console.hardware.events import K1, K2
+from light_console.power import MockPowerService, PowerService
 from light_console.state import AppState, ScreenId
 from light_console.ui.nav import Navigation
-from light_console.ui.pages import Screen, ScreenContext, build_screens
+from light_console.ui.pages import SYSTEM_ROW_COUNT, Screen, ScreenContext, build_screens
 from light_console.ui.params import Params, bind_console_params
 
 
 class NornsUIShell:
-    def __init__(self, state: AppState, nav: Navigation | None = None, params: Params | None = None) -> None:
+    def __init__(
+        self,
+        state: AppState,
+        nav: Navigation | None = None,
+        params: Params | None = None,
+        power: PowerService | None = None,
+    ) -> None:
         self.state = state
         self.nav = nav or Navigation()
         self.params = params or bind_console_params(state)
+        self.power = power or MockPowerService()
         self.screens = build_screens()
         state.menu_count = len(self.nav.current_items())
         state.param_count = len(self.params)
+        state.system_count = SYSTEM_ROW_COUNT
         self.params.sync_index_to_state(state)
 
     def ctx(self) -> ScreenContext:
-        return ScreenContext(state=self.state, nav=self.nav, params=self.params)
+        return ScreenContext(state=self.state, nav=self.nav, params=self.params, power=self.power)
 
     def active_screen(self) -> Screen:
         return self.screens[self.state.screen]

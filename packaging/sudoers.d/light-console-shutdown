@@ -1,0 +1,5 @@
+# Allow user light to halt the Shield only.
+# visudo -cf this file before install.
+# install: install -m 440 -o root -g root light-console-shutdown /etc/sudoers.d/light-console-shutdown
+
+light ALL=(root) NOPASSWD: /usr/sbin/shutdown -h now

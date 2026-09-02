@@ -36,3 +36,16 @@ The write pipeline is `xzcat IMAGE | dd of=/dev/rdiskN bs=4m status=progress` fo
 `--configure-network` is a stub until a network milestone is approved.
 
 Back up any config file the installer would overwrite (`scripts/backup-config.sh`).
+
+## Shield appliance (Milestone 0.4c)
+
+On `shieldxl-light` (not production), already logged in over SSH:
+
+```bash
+sudo bash /home/light/light-console/packaging/install-appliance.sh
+```
+
+Do not wrap that in another `ssh -t light@shieldxl-light.local …` from the Pi itself.
+
+Installs the shutdown sudoers drop-in and `light-console.service`. Does not start QLC+.
+

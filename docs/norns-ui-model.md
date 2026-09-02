@@ -37,6 +37,10 @@ SYSTEM
 
 HOME enters PLAY. PARAMS / SCENES / OUTPUT / SYSTEM are screens.
 
+SYSTEM list: QLC STATUS, HOSTNAME, VERSION, UPTIME, SHUTDOWN.
+
+SHUTDOWN is not a single K3. It opens `SHUTDOWN?` (K2 cancel, K3 confirm). K1 returns PLAY and cancels. Encoders never halt. UI calls `PowerService.request_shutdown()`; the Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
+
 ## Screens vs parameters
 
 A **PLAY screen** is for live performance. **PARAMS** lists every adjustable value.
