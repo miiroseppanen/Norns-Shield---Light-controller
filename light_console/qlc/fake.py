@@ -35,6 +35,8 @@ class FakeTransport(WsTransport):
         self.connect_count = 0
         self.project_loaded = True
         self.gm: int | None = None
+        self.desk: list[tuple[int, int]] = []
+        self.io: list[str] = []
 
     def connect(self, host: str, port: int, path: str) -> None:
         del host, port, path
@@ -54,6 +56,12 @@ class FakeTransport(WsTransport):
             value = int(text.split("|", 1)[1])
             self.gm = value
             self.inbox.append(f"GM_VALUE|{value}|{value}")
+        elif text.startswith("CH|"):
+            parts = text.split("|")
+            if len(parts) >= 3:
+                self.desk.append((int(parts[1]), int(parts[2])))
+        elif text.startswith("QLC+IO|"):
+            self.io.append(text)
         if self.drop_after_send:
             self.alive = False
             raise OSError("connection reset")

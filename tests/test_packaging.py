@@ -63,9 +63,9 @@ def test_qlcplus_unit_is_independent():
 
 def test_test_workspace_has_no_show_outputs():
     text = QXW.read_text().lower()
-    assert "artnet" not in text
-    assert "art-net" not in text
     assert "launchpad" not in text
     assert "pknight" not in text
-    assert "wiz" not in text
+    assert "192.168.88.201" not in text
     assert "<!doctype workspace>" in text
+    assert "outputip=\"127.0.0.1\"" in text
+    assert "plugin=\"artnet\"" in text

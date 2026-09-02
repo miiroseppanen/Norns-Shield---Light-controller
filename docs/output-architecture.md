@@ -127,6 +127,10 @@ If Shield and production Pi are both on, they can both send Art-Net U1 to PKNigh
 
 There is no safe automatic “preempt production.” Isolation is **arming + detection + unicast + one AP**.
 
+ICMP ping to `.248` is **not** enough: the Pi can be up with QLC/wizbridge stopped, or down while another sender uses the same Art-Net universe. Later interlock should combine: host up, **UDP 6454 ArtDMX sourced from `.248`**, optional HTTP `:9999` (QLC web). Do not SSH the production Pi to decide.
+
+**QLC can bypass Light Console:** the web `/config` page can still select `[ArtNet] 192.168.88.246`. Do not treat LC `patch_output` as a hard gate. Real-output enforcement should be: QLC patched **only** to loopback, plus a project-owned forwarder that is the only process allowed to send to PKNight when ARMED.
+
 ## 9. Startup / shutdown (target)
 
 ```
@@ -187,11 +191,11 @@ Light Console still talks to QLC over WebSocket. It does not import `services/wi
 
 | Stage | Proof | Still forbidden |
 |-------|--------|-----------------|
-| **0.6B** | QLC Art-Net → **127.0.0.1** only; capture/parse on Shield; web/WS still up | Any `.201` / broadcast / lamps |
+| **0.6B** | **PASS 2026-09-02.** Art-Net loopback via `QLC+IO\|OUTPUT\|0\|ArtNet\|0` (web `/config` protocol). `--open` still not used. | Any `.201` / broadcast / lamps |
 | **0.6C** | Unicast Art-Net U1 → **one** PKNight universe; **one** PAR at low intensity; arming prototype | WiZ, AIR2DMX, broadcast, prod Pi as engine |
 | **0.6D** | Dual network: USB `wlan1` **or** eth0 + `wlan0` AP; SSID WIZ-LIGHTS **without** lamps if possible | Automatic AP restart; tearing down LIGHT-CONTROL accidentally |
 | **0.6E** | WiZ service + **one** lamp on universe 0; expected-count WAIT | Full 9-lamp blast; LC→UDP |
 | **0.6F** | Remaining WiZ + PARs + fog; PARAMS/PLAY still QLC | Dual node DMX |
 | **0.6G** | Production Pi **off**; cold boot; DISARMED then ARM; full rig | Shipping dual-controller |
 
-0.6B must solve or explicitly work around **`--open` vs web** before any patched workspace is the systemd `ExecStart`.
+0.6B workaround: keep systemd `ExecStart=-w`. Intended IO lives in `qlc/projects/light-console-test.qxw` (loopback only). Runtime patch uses documented `QLC+IO|OUTPUT|0|ArtNet|0` (QLC 5.2.2 `/config` page). Never `ArtNet|1` (192.168.88.246). See [`research/phase-06b-local-artnet-proof.md`](../research/phase-06b-local-artnet-proof.md).

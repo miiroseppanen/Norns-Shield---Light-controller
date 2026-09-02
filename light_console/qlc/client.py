@@ -65,6 +65,14 @@ class QLCClient(ABC):
     def all_off(self) -> None:
         ...
 
+    def patch_output(self, universe: int, spec: str) -> None:
+        """QLC+IO|OUTPUT|<uni>|<Plugin>|<line> as used by the 5.2.2 /config page."""
+        del universe, spec
+
+    def set_simple_desk_channel(self, address_1_based: int, value: int) -> None:
+        """Documented Simple Desk: CH|<abs>|<0-255>."""
+        del address_1_based, value
+
     def pump(self, now: float) -> None:
         """Background reconnect. Must never restart the QLC process."""
         del now
@@ -174,6 +182,12 @@ class MockQLCClient(QLCClient):
     def all_off(self) -> None:
         for fn in self._functions:
             fn.running = False
+
+    def patch_output(self, universe: int, spec: str) -> None:
+        del universe, spec
+
+    def set_simple_desk_channel(self, address_1_based: int, value: int) -> None:
+        del address_1_based, value
 
     def pump(self, now: float) -> None:
         if self._closed or self.connected() or not self._want_connected:

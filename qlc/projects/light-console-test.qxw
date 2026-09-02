@@ -8,8 +8,22 @@
  </Creator>
  <Engine>
   <InputOutputMap>
-   <Universe Name="Universe 1" ID="0"/>
+   <Universe Name="WiZ-test" ID="0">
+    <Output Plugin="ArtNet" UID="127.0.0.1" Line="0">
+     <PluginParameters outputIP="127.0.0.1" outputUni="0"/>
+    </Output>
+   </Universe>
   </InputOutputMap>
+  <Fixture>
+   <Manufacturer>Generic</Manufacturer>
+   <Model>Generic Smoke</Model>
+   <Mode>Amount</Mode>
+   <ID>0</ID>
+   <Name>TEST-CH1</Name>
+   <Universe>0</Universe>
+   <Address>0</Address>
+   <Channels>1</Channels>
+  </Fixture>
  </Engine>
  <VirtualConsole>
  </VirtualConsole>

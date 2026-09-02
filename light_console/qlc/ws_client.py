@@ -186,6 +186,17 @@ class QlcWebSocketClient(QLCClient):
     def all_off(self) -> None:
         return
 
+    def patch_output(self, universe: int, spec: str) -> None:
+        if not spec.startswith("ArtNet|0"):
+            LOG.warning("refusing non-loopback QLC+IO spec %s", spec)
+            return
+        self._send(f"QLC+IO|OUTPUT|{int(universe)}|{spec}")
+
+    def set_simple_desk_channel(self, address_1_based: int, value: int) -> None:
+        addr = max(1, int(address_1_based))
+        val = max(0, min(255, int(value)))
+        self._send(f"CH|{addr}|{val}")
+
     def pump(self, now: float) -> None:
         if self._closed:
             return
