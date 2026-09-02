@@ -77,7 +77,7 @@ Used later: `isProjectLoaded`, `getFunctionsList`, `getFunctionType`, `getFuncti
 
 Chaser speed: QLC documents Speed Dial widget messages (`SPEED_TIME`, etc.). Treat dedicated “set chaser BPM” as **needs a VC widget** until proven against 5.2.x on the Pi.
 
-0.4 uses `MockQLCClient` in the simulator and `QlcWebSocketClient` on the Shield. The UI does not talk to the socket directly.
+0.4 uses `MockQLCClient` in the simulator and `QlcWebSocketClient` on the Shield. The UI does not talk to the socket directly. See [`qlc-integration.md`](qlc-integration.md).
 
 ## Networking (later)
 

@@ -10,6 +10,14 @@ def _qlc_word(state: AppState) -> str:
     return "ON" if state.qlc_connected else "OFF"
 
 
+def qlc_output_label(state: AppState) -> str:
+    if state.qlc_connected:
+        return "CONNECTED"
+    if state.qlc_state == "error":
+        return "ERROR"
+    return "OFFLINE"
+
+
 def _fmt_uptime(seconds: int) -> str:
     mins, sec = divmod(max(0, seconds), 60)
     hours, mins = divmod(mins, 60)
@@ -86,9 +94,9 @@ def draw_scenes(fb: Framebuffer, state: AppState) -> None:
 
 def draw_output(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "OUTPUT", state)
-    status_pair(fb, ROW * 2, "QLC", _qlc_word(state))
-    status_pair(fb, ROW * 3, "WIZ", "--")
-    status_pair(fb, ROW * 4, "DMX", "--")
+    status_pair(fb, ROW * 2, "QLC", qlc_output_label(state))
+    status_pair(fb, ROW * 3, "ENGINE", (state.qlc_engine or "--")[:9])
+    status_pair(fb, ROW * 4, "HOST", (state.qlc_host or "--")[:9])
 
 
 def draw_system(fb: Framebuffer, state: AppState) -> None:

@@ -48,6 +48,7 @@ class ControlsConfig:
 class QlcConfig:
     websocket: str = "ws://127.0.0.1:9999/qlcplusWS"
     reconnect_seconds: float = 2.0
+    engine_version: str = "5.2.2"
 
 
 @dataclass
@@ -135,6 +136,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         qlc=QlcConfig(
             websocket=str(qlc_raw.get("websocket", "ws://127.0.0.1:9999/qlcplusWS")),
             reconnect_seconds=float(qlc_raw.get("reconnect_seconds", 2.0)),
+            engine_version=str(qlc_raw.get("engine_version", "5.2.2")),
         ),
         network=NetworkConfig(
             wiz_interface=str(network_raw.get("wiz_interface", "wlan1")),

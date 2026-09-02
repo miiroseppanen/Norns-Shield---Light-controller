@@ -63,6 +63,8 @@ class Controller:
                 self.state.hostname = socket.gethostname()
             except OSError:
                 self.state.hostname = ""
+        self.state.qlc_engine = config.qlc.engine_version
+        self.state.qlc_host = qlc.host_label()
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now

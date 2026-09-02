@@ -1,4 +1,4 @@
-"""QLC+ 5 WebSocket client. Reconnects; never starts or restarts QLC+."""
+"""QLC+ 5.2.2 WebSocket client. Reconnects; never starts or restarts QLC+."""
 
 from __future__ import annotations
 
@@ -8,12 +8,16 @@ import logging
 import os
 import socket
 import struct
+from collections.abc import Callable
 from urllib.parse import urlparse
 
-from light_console.qlc.client import QLCClient
+from light_console.qlc.client import ConnectionState, QLCClient
+from light_console.qlc.fake import WsTransport
 from light_console.qlc.functions import QlcFunction
 
 LOG = logging.getLogger("light-console")
+
+BACKOFF_CAP = 16.0
 
 
 def _parse_ws_url(url: str) -> tuple[str, int, str]:
@@ -37,79 +41,14 @@ def _mask_payload(payload: bytes) -> bytes:
     return header + key + masked
 
 
-class QlcWebSocketClient(QLCClient):
-    def __init__(self, url: str = "ws://127.0.0.1:9999/qlcplusWS", reconnect_seconds: float = 2.0) -> None:
-        self.url = url
-        self.reconnect_seconds = reconnect_seconds
-        self.reconnect_attempts = 0
+class SocketTransport(WsTransport):
+    def __init__(self) -> None:
         self._sock: socket.socket | None = None
-        self._connected = False
-        self._project = False
-        self._next_retry = 0.0
-        self._functions: list[QlcFunction] = []
-        self.grand_master = 0
-        self.blackout = False
-        self.speed_bpm = 124
 
-    def connected(self) -> bool:
-        return self._connected
-
-    def project_loaded(self) -> bool:
-        return self._project
-
-    def list_functions(self) -> list[QlcFunction]:
-        return list(self._functions)
-
-    def function_by_name(self, name: str) -> QlcFunction | None:
-        for fn in self._functions:
-            if fn.name == name:
-                return fn
-        return None
-
-    def start_function_by_name(self, name: str) -> bool:
-        del name
-        return False
-
-    def stop_function_by_name(self, name: str) -> bool:
-        del name
-        return False
-
-    def toggle_function_by_name(self, name: str) -> bool:
-        del name
-        return False
-
-    def set_grand_master(self, value_0_255: int) -> None:
-        self.grand_master = max(0, min(255, value_0_255))
-        self._send(f"GM_VALUE|{self.grand_master}")
-
-    def set_blackout(self, on: bool) -> None:
-        self.blackout = on
-
-    def set_speed(self, bpm: int) -> None:
-        self.speed_bpm = bpm
-
-    def all_off(self) -> None:
-        return
-
-    def pump(self, now: float) -> None:
-        if self._connected:
-            self._drain()
-            return
-        if now < self._next_retry:
-            return
-        self.reconnect_attempts += 1
-        self._next_retry = now + self.reconnect_seconds
-        self._try_connect()
-
-    def close(self) -> None:
-        self._drop()
-
-    def _try_connect(self) -> None:
-        host, port, path = _parse_ws_url(self.url)
-        sock: socket.socket | None = None
+    def connect(self, host: str, port: int, path: str) -> None:
+        sock = socket.create_connection((host, port), timeout=0.4)
+        sock.settimeout(0.4)
         try:
-            sock = socket.create_connection((host, port), timeout=0.4)
-            sock.settimeout(0.4)
             key = base64.b64encode(os.urandom(16)).decode("ascii")
             req = (
                 f"GET {path} HTTP/1.1\r\n"
@@ -137,55 +76,195 @@ class QlcWebSocketClient(QLCClient):
                 raise OSError("websocket accept mismatch")
             sock.settimeout(0.05)
             self._sock = sock
-            self._connected = True
+        except OSError:
+            try:
+                sock.close()
+            except OSError:
+                pass
+            raise
+
+    def send_text(self, text: str) -> None:
+        sock = self._sock
+        if sock is None:
+            raise OSError("not connected")
+        sock.sendall(_mask_payload(text.encode("utf-8")))
+
+    def recv_text(self) -> str | None:
+        sock = self._sock
+        if sock is None:
+            raise OSError("not connected")
+        try:
+            msg = _read_text_frame(sock)
+        except TimeoutError:
+            return None
+        except socket.timeout:
+            return None
+        return msg
+
+    def close(self) -> None:
+        sock = self._sock
+        self._sock = None
+        if sock is None:
+            return
+        try:
+            sock.close()
+        except OSError:
+            pass
+
+
+class QlcWebSocketClient(QLCClient):
+    def __init__(
+        self,
+        url: str = "ws://127.0.0.1:9999/qlcplusWS",
+        reconnect_seconds: float = 2.0,
+        transport_factory: Callable[[], WsTransport] | None = None,
+    ) -> None:
+        self.url = url
+        self.reconnect_seconds = reconnect_seconds
+        self.reconnect_attempts = 0
+        self._factory = transport_factory or SocketTransport
+        self._transport: WsTransport | None = None
+        self._state = ConnectionState.DISCONNECTED
+        self._project = False
+        self._next_retry = 0.0
+        self._backoff = reconnect_seconds
+        self._functions: list[QlcFunction] = []
+        self.grand_master = 0
+        self.blackout = False
+        self.speed_bpm = 124
+        self._closed = False
+        self.gm_sends: list[int] = []
+
+    def connection_state(self) -> ConnectionState:
+        return self._state
+
+    def connected(self) -> bool:
+        return self._state is ConnectionState.CONNECTED
+
+    def project_loaded(self) -> bool:
+        return self._project
+
+    def host_label(self) -> str:
+        host, _, _ = _parse_ws_url(self.url)
+        if host in ("127.0.0.1", "::1"):
+            return "localhost"
+        return host
+
+    def list_functions(self) -> list[QlcFunction]:
+        return list(self._functions)
+
+    def function_by_name(self, name: str) -> QlcFunction | None:
+        for fn in self._functions:
+            if fn.name == name:
+                return fn
+        return None
+
+    def start_function_by_name(self, name: str) -> bool:
+        del name
+        return False
+
+    def stop_function_by_name(self, name: str) -> bool:
+        del name
+        return False
+
+    def toggle_function_by_name(self, name: str) -> bool:
+        del name
+        return False
+
+    def set_grand_master(self, value_0_255: int) -> None:
+        self.grand_master = max(0, min(255, value_0_255))
+        if self.connected():
+            self._send(f"GM_VALUE|{self.grand_master}")
+            self.gm_sends.append(self.grand_master)
+
+    def set_blackout(self, on: bool) -> None:
+        self.blackout = on
+
+    def set_speed(self, bpm: int) -> None:
+        self.speed_bpm = bpm
+
+    def all_off(self) -> None:
+        return
+
+    def pump(self, now: float) -> None:
+        if self._closed:
+            return
+        if self.connected():
+            self._drain()
+            return
+        if now < self._next_retry:
+            return
+        self.reconnect_attempts += 1
+        self._try_connect()
+        if not self.connected():
+            self._next_retry = now + self._backoff
+            self._backoff = min(self._backoff * 2.0, BACKOFF_CAP)
+
+    def close(self) -> None:
+        self._closed = True
+        self._drop(ConnectionState.DISCONNECTED)
+
+    def _try_connect(self) -> None:
+        host, port, path = _parse_ws_url(self.url)
+        self._state = ConnectionState.CONNECTING
+        transport = self._factory()
+        try:
+            transport.connect(host, port, path)
+            self._transport = transport
+            self._state = ConnectionState.CONNECTED
+            self._backoff = self.reconnect_seconds
             self._send("QLC+API|isProjectLoaded")
             LOG.info("QLC websocket connected")
         except OSError as exc:
             LOG.debug("QLC connect failed: %s", exc)
-            if sock is not None:
-                try:
-                    sock.close()
-                except OSError:
-                    pass
-            self._drop()
+            try:
+                transport.close()
+            except OSError:
+                pass
+            self._transport = None
+            self._state = ConnectionState.ERROR
+            self._project = False
 
     def _send(self, text: str) -> None:
-        sock = self._sock
-        if sock is None or not self._connected:
+        transport = self._transport
+        if transport is None or not self.connected():
             return
         try:
-            sock.sendall(_mask_payload(text.encode("utf-8")))
+            transport.send_text(text)
         except OSError:
-            self._drop()
+            self._drop(ConnectionState.ERROR)
 
     def _drain(self) -> None:
-        sock = self._sock
-        if sock is None:
+        transport = self._transport
+        if transport is None:
             return
         try:
             while True:
-                msg = _read_text_frame(sock)
+                msg = transport.recv_text()
                 if msg is None:
                     break
                 self._on_message(msg)
-        except TimeoutError:
-            return
         except OSError:
-            self._drop()
+            self._drop(ConnectionState.ERROR)
 
     def _on_message(self, msg: str) -> None:
         parts = msg.split("|")
         if len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "isProjectLoaded":
             self._project = parts[2].lower() in ("true", "1", "yes")
-
-    def _drop(self) -> None:
-        sock = self._sock
-        self._sock = None
-        self._connected = False
-        self._project = False
-        if sock is not None:
+        elif len(parts) >= 2 and parts[0] == "GM_VALUE":
             try:
-                sock.close()
+                self.grand_master = int(parts[1])
+            except ValueError:
+                return
+
+    def _drop(self, state: ConnectionState) -> None:
+        transport = self._transport
+        self._transport = None
+        self._state = state
+        self._project = False
+        if transport is not None:
+            try:
+                transport.close()
             except OSError:
                 pass
 

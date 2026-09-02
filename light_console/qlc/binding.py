@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from light_console.qlc.client import QLCClient
+from light_console.qlc.client import ConnectionState, QLCClient
 from light_console.state import AppState
 
 LOG = logging.getLogger("light-console")
@@ -20,12 +20,16 @@ class QlcBinding:
     def pull(self, state: AppState) -> None:
         was = state.qlc_connected
         try:
-            state.qlc_connected = bool(self.qlc.connected())
+            conn = self.qlc.connection_state()
+            state.qlc_state = conn.value
+            state.qlc_connected = conn is ConnectionState.CONNECTED
             state.qlc_project_loaded = bool(self.qlc.project_loaded())
+            state.qlc_host = self.qlc.host_label()
         except Exception:
             LOG.exception("QLC status read failed")
             state.qlc_connected = False
             state.qlc_project_loaded = False
+            state.qlc_state = ConnectionState.ERROR.value
         if was and not state.qlc_connected:
             LOG.warning("QLC connection lost")
             self._sent_gm = None
@@ -33,6 +37,9 @@ class QlcBinding:
             self._sent_speed = None
         if not was and state.qlc_connected:
             LOG.info("QLC connected")
+            self._sent_gm = None
+            self._sent_blackout = None
+            self._sent_speed = None
 
     def push(self, state: AppState) -> None:
         if not state.qlc_connected:

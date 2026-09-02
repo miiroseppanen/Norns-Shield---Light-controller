@@ -1,53 +1,64 @@
 # QLC+ integration
 
-Show engine: **QLC+ headless**. light-console is a WebSocket client.
+Show engine: **QLC+ 5.2.2** (`/usr/bin/qlcplus-qml`). light-console is a WebSocket client only. It never starts or restarts QLC+.
 
-## Endpoint (current lighting system)
+## Services (independent)
+
+| Unit | Role |
+|------|------|
+| `light-console.service` | OLED UI as user `light` |
+| `qlcplus.service` | Headless QLC+ 5.2.2, web on :9999 |
+
+Neither `Requires=` the other. If `qlcplus.service` is stopped, the UI stays up and OUTPUT shows `OFFLINE`.
+
+```
+QT_QPA_PLATFORM=offscreen
+/usr/bin/qlcplus-qml -w --open /home/light/light-console/qlc/projects/light-console-test.qxw
+```
+
+This 5.2.2 image needs Qt 6 QML modules for `--open` (otherwise SEGV): `qml6-module-qtquick-controls`, `qml6-module-qtquick-layouts`, `qml6-module-qtquick-dialogs`.
+
+Install QLC unit: `sudo bash packaging/install-qlc.sh`
+
+Test workspace: [`qlc/projects/light-console-test.qxw`](../qlc/projects/light-console-test.qxw). No WiZ, PKNight, Launchpad, or production Art-Net.
+
+## Endpoint
 
 ```
 ws://127.0.0.1:9999/qlcplusWS
 ```
 
-QLC+ must be started with `-w`. light-console does not spawn or restart QLC+.
+HTTP: `http://127.0.0.1:9999/` (QLC+ web UI).
 
-## Documented commands (QLC+ 5 web API)
+## Verified QLC+ 5.2.2 WebSocket messages (0.5)
 
-Source: https://docs.qlcplus.org/v5/advanced/web-interface/web-api
+Messages are `field|field|…` text. Proven against the Shield engine:
 
-Messages are `field|field|…` text.
+| Direction | Message | Meaning |
+|-----------|---------|---------|
+| send | `QLC+API\|isProjectLoaded` | Ask if a workspace is loaded |
+| recv | `QLC+API\|isProjectLoaded\|true` or `…\|false` | Workspace loaded |
+| send | `GM_VALUE\|<0-255>` | Set Grand Master |
+| recv | `GM_VALUE\|<value>\|<value>` | Echo / engine GM change (web UI: `msg[1]`, `msg[2]`) |
 
-| Need | API |
-|------|-----|
-| Connect | WebSocket to `/qlcplusWS` |
-| Project loaded | `QLC+API\|isProjectLoaded` |
-| List functions | `QLC+API\|getFunctionsList` → `id\|name\|…` |
-| Type | `QLC+API\|getFunctionType\|<id>` |
-| Status | `QLC+API\|getFunctionStatus\|<id>` → Running / Stopped |
-| Start/stop | `QLC+API\|setFunctionStatus\|<id>\|<0\|1>` |
-| Unsolicited | `FUNCTION\|<id>\|Running` / `Stopped` |
-| Widgets | `getWidgetsList`, `getWidgetStatus`, `<widgetId>\|<value>` |
-| Cue GO | `<cueListWidgetId>\|NEXT` |
-| Grand master | `GM_VALUE\|<0-255>` |
-| Keepalive | `POLL` (ignored by QLC) |
+`POLL` is documented as ignored keepalive; not required for 0.5.
 
-### Not assumed
+MASTER on PLAY/PARAMS is 0–100. Binding maps `int(master * 255 / 100)` to `GM_VALUE`. Offline, the parameter still changes AppState. On reconnect, the current master is sent once (duplicates suppressed).
 
-- A first-class “set chaser BPM” command. Use a Speed Dial / slider widget if the show file exposes one. Mark unreliable until tested on QLC+ **5.2.x** on the Pi.
-- Automatic project load. `/loadProject` exists but must not be fired from a reconnect loop.
+## Client
 
-## Disconnect policy
+`QLCClient` + `MockQLCClient` (tests/simulator) + `QlcWebSocketClient` (Shield). States: `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `ERROR`. Bounded exponential backoff. `pump()` from the UI tick; GPIO handlers do not block on the socket.
 
-1. OLED: `QLC LOST`
-2. Background reconnect with backoff
-3. **Never** restart the QLC systemd unit from light-console
+## OUTPUT
 
-## Show layout (do not copy production `.qxw` in 0.1)
+```
+QLC        CONNECTED | OFFLINE | ERROR
+ENGINE     5.2.2
+HOST       localhost
+```
 
-| QLC universe | Art-Net | Destination |
-|--------------|---------|-------------|
-| 0 | universe 0 → 127.0.0.1:6454 | wizbridge |
-| 1 | universe 1 | PKNight → DMX |
+## Forbidden
 
-WiZ fixture map (6 channels each): dimmer, R, G, B, white, CCT. Slot *n* uses DMX `(n-1)*6+1` … `n*6`. Expected lamp count is YAML `wiz.expected`.
-
-0.4: `MockQLCClient` on the Mac simulator; `QlcWebSocketClient` on the Shield (reconnect, never spawn QLC+).
+- Restart QLC from light-console on disconnect
+- Copy production `.qxw`
+- WiZ / PKNight / Launchpad in this workspace

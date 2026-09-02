@@ -8,7 +8,7 @@ After=local-fs.target
 # Rate-limit crash restarts (must live in [Unit], not [Service]).
 StartLimitIntervalSec=60
 StartLimitBurst=5
-# QLC+ is not started here. Do not add qlcplus.service until a later milestone.
+# Independent of qlcplus.service. Light Console stays usable if QLC is down.
 
 [Service]
 Type=simple

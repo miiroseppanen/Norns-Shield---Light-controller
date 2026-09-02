@@ -3,6 +3,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SUDOERS = ROOT / "packaging/sudoers.d/light-console-shutdown"
 UNIT = ROOT / "packaging/systemd/light-console.service"
+QLC = ROOT / "packaging/systemd/qlcplus.service"
+QXW = ROOT / "qlc/projects/light-console-test.qxw"
 
 
 def test_sudoers_allows_only_halt_now():
@@ -39,3 +41,29 @@ def test_unit_is_light_user_shield_only():
     assert "StartLimitBurst=5" in unit_section
     assert "StartLimitIntervalSec" not in service_section
     assert "StartLimitBurst" not in service_section
+
+
+def test_qlcplus_unit_is_independent():
+    text = QLC.read_text()
+    assert "User=light" in text
+    assert "QT_QPA_PLATFORM=offscreen" in text
+    assert "/usr/bin/qlcplus-qml" in text
+    assert "-w" in text
+    assert "--open /home/light/light-console/qlc/projects/light-console-test.qxw" in text
+    assert "light-console.service" not in [
+        ln for ln in text.splitlines() if ln.startswith(("After=", "Requires=", "Wants=", "BindsTo="))
+    ]
+    lc = UNIT.read_text()
+    assert "qlcplus.service" not in [
+        ln for ln in lc.splitlines() if ln.startswith(("After=", "Requires=", "Wants=", "BindsTo="))
+    ]
+
+
+def test_test_workspace_has_no_show_outputs():
+    text = QXW.read_text().lower()
+    assert "artnet" not in text
+    assert "art-net" not in text
+    assert "launchpad" not in text
+    assert "pknight" not in text
+    assert "wiz" not in text
+    assert "<!doctype workspace>" in text

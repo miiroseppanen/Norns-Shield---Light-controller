@@ -4,7 +4,7 @@ Deterministic, diagnosable, no restart loops that flash the show.
 
 ## Milestone 0.4c (now)
 
-`light-console.service` starts the OLED UI on boot. QLC+ is **not** started.
+`light-console.service` starts the OLED UI on boot. `qlcplus.service` is a **separate** unit (0.5). Light Console does not `Require=` QLC.
 
 ```
 packaging/systemd/light-console.service
@@ -30,8 +30,8 @@ Halt: `/etc/sudoers.d/light-console-shutdown` is NOPASSWD for **only** `/usr/sbi
 
 1. NetworkManager: WIZ-LIGHTS AP (wlan1) — not in 0.4c
 2. wizbridge.service — not in 0.4c
-3. qlcplus.service — not in 0.4c
-4. light-console.service — PLAY UI (this milestone)
+3. qlcplus.service — headless QLC+ 5.2.2, web :9999 (0.5)
+4. light-console.service — PLAY UI (independent of QLC)
 
 ## Forbidden
 

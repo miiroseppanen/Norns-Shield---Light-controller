@@ -1,0 +1,27 @@
+[Unit]
+Description=QLC+ 5.2.2 headless (Light Console test workspace)
+Documentation=file:///home/light/light-console/docs/qlc-integration.md
+After=local-fs.target
+# Rate-limit crash restarts (must live in [Unit], not [Service]).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+# Independent of light-console.service. Do not Require= or After= it.
+
+[Service]
+Type=simple
+User=light
+Group=light
+WorkingDirectory=/home/light/light-console
+Environment=QT_QPA_PLATFORM=offscreen
+Environment=QT_LOGGING_RULES=qt.qpa.*=false
+ExecStart=/usr/bin/qlcplus-qml -w --open /home/light/light-console/qlc/projects/light-console-test.qxw
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=qlcplus
+
+[Install]
+WantedBy=multi-user.target

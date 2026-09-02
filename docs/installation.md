@@ -47,5 +47,9 @@ sudo bash /home/light/light-console/packaging/install-appliance.sh
 
 Do not wrap that in another `ssh -t light@shieldxl-light.local …` from the Pi itself.
 
-Installs the shutdown sudoers drop-in and `light-console.service`. Does not start QLC+.
+Installs the shutdown sudoers drop-in and `light-console.service`. QLC+ is a separate unit:
+
+```bash
+sudo bash /home/light/light-console/packaging/install-qlc.sh
+```
 
