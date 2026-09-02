@@ -51,12 +51,12 @@ PLAY **E1** is MASTER. PARAMS shows the same value (E3 when Master is selected).
 
 `QLCClient` + `MockQLCClient` (tests/simulator) + `QlcWebSocketClient` (Shield). States: `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `ERROR`. Bounded exponential backoff (2s…16s). `pump()` from the UI tick; GPIO handlers do not block on the socket.
 
-Runtime snapshot: `/tmp/light-console.status` (`screen`, `master`, `qlc_state`, `qlc=CONNECTED|OFFLINE|ERROR`).
+Runtime snapshot: `/tmp/light-console.status` (`screen`, `master`, `qlc_state`, `qlc=CONNECTED|OFFLINE`). Engine unreachable uses `qlc_state=error` internally; OUTPUT still shows `OFFLINE`.
 
 ## OUTPUT
 
 ```
-QLC        CONNECTED | OFFLINE | ERROR
+QLC        CONNECTED | OFFLINE
 ENGINE     5.2.2
 HOST       localhost
 ```

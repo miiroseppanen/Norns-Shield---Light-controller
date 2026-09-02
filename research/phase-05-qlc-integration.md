@@ -1,62 +1,65 @@
-# Milestone 0.5 — QLC+ integration (PAUSED — sudo)
+# Milestone 0.5 — QLC+ integration
 
-Date: 2026-09-02 (resume + pause)  
+Date: 2026-09-02  
 Target: `light@shieldxl-light.local`  
-Checkpoint before this resume: `dfc5dc43d0401c493a2b8899a9f87d8d663aef15`  
-Baseline: `v0.4.0` = `d443537`
+Baseline: `v0.4.0` = `d443537`  
+WIP pauses: `dfc5dc4`, `47d4293`
 
-Shield is reachable. **sudo ticket expired** (`sudo -n` → password required). Operator cannot enter sudo now. No `qlcplus.service` start, no Light Console restart, no stray `qlcplus-qml`.
+## Result
 
-## 0.5 COMPLETE (local)
+**PASS.** Headless QLC+ 5.2.2 is a separate systemd unit (`-w` only). Light Console reconnects without restart. PLAY MASTER maps to `GM_VALUE`.
 
-- Client, OUTPUT, MASTER binding, fake transport, test workspace (unchanged).
-- **`qlcplus.service` ExecStart is now `-w` only** (no `--open`). Proven necessary: `--open` never binds `:9999`.
-- `install-qlc.sh` still copies that unit (needs root).
-- `/tmp/light-console.status` snapshot (`screen`, `master`, `qlc`).
-- SIGUSR1 on the running UI: PLAY + E1 +5 (same `EncoderEvent` as the knob; GPIO lines are exclusive). **Do not SIGUSR1 the pre-restart process** (old binary has no handler; default is terminate).
-- Local tests: **74 PASS**.
+## Runtime (verified)
 
-## 0.5 PARTIALLY COMPLETE
-
-- Repo + `~/light-console` on Shield have the `-w` unit file.
-- **`/etc/systemd/system/qlcplus.service` still has `--open`** (last root install). Unit enabled, **inactive**.
-- `light-console.service`: **active**, pid **1821**, **NRestarts=0** (old process; not restarted after this rsync).
-- Live `-w` HTTP/WS/`GM_VALUE` from the morning pause still stands; not re-proven this evening.
-
-## 0.5 NOT DONE
-
-- daemon-reload / start `qlcplus.service` with `-w`
-- HTTP :9999 as a **service**
-- Reconnect A–C without LC restart
-- Physical E1 MASTER + offline resync on Shield
-- Commit `Milestone 0.5: integrate QLC engine` / tag
-
-## Shield last known (2026-09-02 21:57 EEST)
-
-| Item | State |
-|------|--------|
-| Reachable | yes |
-| `light-console.service` | active, NRestarts=0, pid 1821 |
-| `qlcplus.service` | inactive/stopped, enabled, **ExecStart still `--open` in /etc** |
-| `:9999` | not listening |
-| `qlcplus-qml` process | none |
-| QLC+ | 5.2.2 `/usr/bin/qlcplus-qml` |
-| sudo | **password required** |
-
-Home copy: `grep ExecStart ~/light-console/packaging/systemd/qlcplus.service` → `ExecStart=/usr/bin/qlcplus-qml -w`
-
-## Exact next step
-
-On a terminal that can type the `light` sudo password:
-
-```bash
-ssh light@shieldxl-light.local 'sudo bash /home/light/light-console/packaging/install-qlc.sh && sudo systemctl restart light-console.service'
+```
+QT_QPA_PLATFORM=offscreen
+/usr/bin/qlcplus-qml -w
 ```
 
-Then continue 0.5: prove service HTTP/WS, reconnect A–C **without** another LC restart, MASTER (E1 / status / `GM_VALUE`), docs, commit `Milestone 0.5: integrate QLC engine`. **Do not tag.**
+**Do not `--open` or POST `/loadProject`.** Both block WebAccess on this 5.2.2 QML + offscreen image (2D view spin; `:9999` dies or never binds). Repo workspace `qlc/projects/light-console-test.qxw` is the future show file (no WiZ/PKNight/Launchpad/Art-Net); **not loaded**.
 
-Until LC is restarted, **do not `kill -USR1` pid 1821**.
+| Check | Result |
+|-------|--------|
+| `qlcplus.service` | active, `NRestarts=0`, ExecStart `-w` |
+| QLC+ | **5.2.2** |
+| HTTP `http://127.0.0.1:9999/` | **200**, title QLC+ |
+| `ws://127.0.0.1:9999/qlcplusWS` | connected |
+| `light-console.service` | active, `NRestarts=0` (pid 6137 through reconnect) |
+| Crash loop / traceback | none |
 
-## Forbidden (unchanged)
+## Verified WebSocket messages (live 5.2.2, empty project)
 
-No production Pi, no WiZ/WIZ-LIGHTS, no PKNight, no Launchpad, no production `.qxw`, no `--open` start, no reboot/shutdown.
+| Direction | Message | Observed |
+|-----------|---------|----------|
+| send | `QLC+API\|isProjectLoaded` | on connect |
+| recv | `QLC+API\|isProjectLoaded\|false` | no workspace |
+| send | `GM_VALUE\|<0-255>` | set Grand Master |
+| — | `GM_VALUE\|204` | master 80% |
+| — | `GM_VALUE\|216` | master 85% after offline E1 |
+| — | `GM_VALUE\|229` | master 90% online |
+
+`int(master * 255 / 100)`: 80→204, 85→216, 90→229.
+
+## Reconnect (no Light Console restart)
+
+A. OUTPUT / status `qlc=CONNECTED`  
+B. `systemctl stop qlcplus` only → LC stays **active**, same pid, `qlc=OFFLINE`, UI still accepts PLAY E1 (80→85)  
+C. `systemctl start qlcplus` → auto `QLC connected`, `GM_VALUE|216 master=85%`, `qlc=CONNECTED`
+
+Internal `qlc_state` may be `error` while the engine is down; OLED word is **OFFLINE**.
+
+## MASTER path
+
+GPIO / PLAY E1 → `EncoderEvent` → shared Parameter `master` (PLAY and PARAMS) → `QlcBinding` → `GM_VALUE`. Pi proof used `SIGUSR1` → same `EncoderEvent(E1, +5)` because the running UI holds the encoder GPIOs. Physical knob is the operator check.
+
+Offline change is kept in AppState; reconnect sends current master once.
+
+## Services / packages on Shield (this milestone)
+
+- `qml6-module-qtquick-controls`, `layouts`, `dialogs`, `qt6-svg-plugins` (keep; no `apt autoremove`)
+- Units independent: neither `Requires=` the other
+- sudoers unchanged (halt-only NOPASSWD)
+
+## Forbidden (held)
+
+No production Pi, WiZ/WIZ-LIGHTS, PKNight, Launchpad, production `.qxw`, reboot, shutdown.

@@ -84,6 +84,15 @@ def test_qlc_successful_connection_and_loss():
     assert qlc_output_label(c.state) == "OFFLINE"
 
 
+def test_qlc_connection_error_shows_offline():
+    c = make_controller()
+    c.tick(now=0.1)
+    c.qlc.simulate_error()
+    c.binding.pull(c.state)
+    assert c.state.qlc_connected is False
+    assert qlc_output_label(c.state) == "OFFLINE"
+
+
 def test_parameter_change_offline_then_reconnect_syncs_master():
     c = make_controller(master_dimmer=80)
     c.qlc.simulate_link(False)

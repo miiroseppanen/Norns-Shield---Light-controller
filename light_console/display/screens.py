@@ -11,10 +11,9 @@ def _qlc_word(state: AppState) -> str:
 
 
 def qlc_output_label(state: AppState) -> str:
+    """OLED word. Engine down or socket error is OFFLINE, not a distinct ERROR glyph."""
     if state.qlc_connected:
         return "CONNECTED"
-    if state.qlc_state == "error":
-        return "ERROR"
     return "OFFLINE"
 
 
