@@ -81,7 +81,7 @@ Chaser speed: QLC documents Speed Dial widget messages (`SPEED_TIME`, etc.). Tre
 
 ## Networking (later)
 
-wlan1 = WIZ-LIGHTS AP, NetworkManager shared, 10.42.0.1/24. wlan0 = optional upstream. WiZ must not depend on wlan0. No custom dnsmasq/NAT stack. No automatic AP restart.
+wlan1 = WIZ-LIGHTS AP (later, 0.6+). See [`output-architecture.md`](output-architecture.md). No automatic AP restart.
 
 ## Version plan
 
