@@ -13,3 +13,10 @@ config/light-console.yaml
 .env
 *.log
 *firstboot.env
+# OS / QLC package artifacts (never commit)
+*.deb
+*.img
+*.img.xz
+*.iso
+*.7z
+*.dmg
