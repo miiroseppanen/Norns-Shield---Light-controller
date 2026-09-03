@@ -204,8 +204,34 @@ IMPORTANT
 - Real lighting outputs are currently disabled/not configured
   during Milestone 0.6 unless later milestones explicitly change this.
 
+
+------------------------------------------------------------
+LAUNCHPAD
 ------------------------------------------------------------
 
+Expected device:
+  USB 1235:0036
+  ALSA name: Launchpad Mini MIDI 1
+
+STATUS:
+  lsusb
+  aconnect -l
+
+QLC 5.2.2 does not hotplug-rescan MIDI devices.
+Connect the Launchpad before QLC starts. qlcplus.service waits a
+short bounded time for it, then starts anyway if it is missing.
+
+If the Launchpad was attached after QLC was already running:
+
+  sudo systemctl restart qlcplus
+
+That restart needs the light user password (sudoers does not
+allow passwordless systemctl). It does not restart light-console.
+
+Do not match the pad by ALSA client number; that number changes.
+
+
+------------------------------------------------------------
 Show this help anytime:
 
   light-help

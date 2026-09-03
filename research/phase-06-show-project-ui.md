@@ -85,8 +85,8 @@ Linux-side reception (aseqdump on the Launchpad port only, not subscribed to QLC
 | Preference | Mechanism | Status |
 |------------|-----------|--------|
 | A | QLC InputOutputMap Name/UID match | Requires pad listed **and** XML that is not `None`/`None`/`0` |
-| B | `prepare_for_shield` MIDI rewrite | Implemented: Name=`Launchpad Mini MIDI 1`, UID empty, Profile preserved. Art-Net Name/UID/Line/outputIP already forced to loopback |
-| C | Startup order helper | Documented, not installed: `qlcplus.service` after USB MIDI; do not hardcode client 28 |
+| B | `prepare_for_shield` MIDI rewrite | Name=`Launchpad Mini MIDI 1`, UID=`1-1.2:0` from `config/machine-profile.yaml`. Profile preserved. Art-Net forced to loopback |
+| C | Bounded `ExecStartPre` `python3 -m light_console.midi_wait` (12s, then start anyway). Late plug: `sudo systemctl restart qlcplus`. No USB auto-restart |
 
 Do not adopt `aconnect` as architecture.
 

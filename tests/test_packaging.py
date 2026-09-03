@@ -50,6 +50,9 @@ def test_qlcplus_unit_is_independent():
     assert "-w" in text
     exec_start = next(ln for ln in text.splitlines() if ln.startswith("ExecStart="))
     assert exec_start == "ExecStart=/usr/bin/qlcplus-qml -w"
+    assert "ExecStartPre=/usr/bin/python3 -m light_console.midi_wait" in text
+    assert "PYTHONPATH=/home/light/light-console" in text
+    assert "TimeoutStartSec=30" in text
     assert "--open" not in exec_start
     assert "qlc-launch" not in exec_start
     assert "/usr/bin/systemctl" not in SUDOERS.read_text()

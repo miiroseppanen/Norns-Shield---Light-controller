@@ -43,6 +43,9 @@ def test_light_help_prints_operator_guide():
         "Automatic selected-show -> QLC load is not implemented",
         "scripts/restore-qlc.sh",
         "sudo systemctl start qlcplus",
+        "Launchpad Mini MIDI 1",
+        "1235:0036",
+        "QLC 5.2.2 does not hotplug-rescan MIDI devices",
         "light-help",
     ):
         assert needle in out

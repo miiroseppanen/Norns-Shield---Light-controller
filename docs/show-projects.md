@@ -53,16 +53,18 @@ There is no WebSocket command that selects a MIDI device **by name**. Line index
 
 ## Shield MIDI binding
 
-Import writes:
+Import writes Name and UID from `config/machine-profile.yaml` (not ALSA client numbers):
 
 ```xml
-<Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="" … Profile="(unchanged)"/>
-<Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="" …/>
+<Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1" Profile="Novation Launchpad Mini"/>
+<Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1"/>
 ```
 
-Empty UID skips step 1 so resolution uses the ALSA **port name**. `Line` is left alone as a last-resort fallback; it is not a client number.
+UID + Name are the identity QLC matches. `Line` is fallback only and may not stay `1` if QLC re-enumerates.
 
-This is not enough if the MIDI plugin never listed the Launchpad. The 5.2.2 ALSA plugin snapshots devices at **qlcplus process start** and does not rescan USB hotplug. `qlcplus.service` must start **after** the pad is already on USB, or `/config` will only offer `MIDI|0` = Midi Through Port-0.
+Only bindings intended for this Launchpad are rewritten (`Profile="Novation Launchpad Mini"`, or Feedback `Name="None"` next to that Input). Other MIDI devices are left alone.
+
+`qlcplus.service` runs `python3 -m light_console.midi_wait` for up to 12s before `qlcplus-qml -w`. If the pad is still missing it starts QLC anyway. Late plug-in still needs `sudo systemctl restart qlcplus` (password required). There is no USB-triggered automatic restart.
 
 ## Loaded production example (do not copy)
 

@@ -1,10 +1,9 @@
 """QLC+ workspace (.qxw) validation and Shield-safe patching.
 
 Never writes the operator's source file. Art-Net destinations are forced to
-loopback (127.0.0.1, Line 0). MIDI Input/Feedback Name is set to the Shield
-Launchpad ALSA port name (not a client number). A workspace that still
-contains a forbidden address after patching is rejected so it cannot replace
-a working show.
+loopback (127.0.0.1, Line 0). Launchpad-intended MIDI Input/Feedback is rewritten
+from the Shield machine profile (name + UID). A workspace that still contains a
+forbidden address after patching is rejected so it cannot replace a working show.
 """
 
 from __future__ import annotations
@@ -15,11 +14,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from light_console.artnet.destinations import FORBIDDEN_HOSTS
+from light_console.machine import (
+    LaunchpadBinding,
+    MachineProfileError,
+    ShieldMachineProfile,
+    load_machine_profile,
+)
 
 # Shield STA on LIGHT-CONTROL. Art-Net Line 1 bound this address in 0.6B.
 SHIELD_LAN_HOST = "192.168.88.246"
-# ALSA sequencer port name on this Shield (amidi -l / aconnect). Not a client number.
-SHIELD_MIDI_PORT_NAME = "Launchpad Mini MIDI 1"
 
 _ARTNET_OUTPUT_BLOCK = re.compile(
     r"<Output\b[^>]*\bPlugin=\"ArtNet\"[^>]*>.*?</Output>",
@@ -35,6 +38,8 @@ _FUNCTION_BLOCK = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ATTR = re.compile(r'\b(ID|Type|Name)="([^"]*)"', re.IGNORECASE)
+_TAG_ATTR = re.compile(r'\b([A-Za-z]+)="([^"]*)"')
+_UNSET = frozenset({"", "none"})
 
 
 @dataclass(frozen=True)
@@ -42,6 +47,25 @@ class QxwFunction:
     function_id: int
     name: str
     type_name: str
+
+
+@dataclass(frozen=True)
+class MidiBindingChange:
+    kind: str
+    old_name: str
+    old_uid: str
+    old_line: str
+    new_name: str
+    new_uid: str
+    new_line: str
+
+    def report_lines(self) -> tuple[str, str, str]:
+        label = "MIDI INPUT" if self.kind.lower() == "input" else "MIDI FEEDBACK"
+        return (
+            f"{label}:",
+            f"  old: {self.old_name} / {self.old_uid} / Line {self.old_line}",
+            f"  new: {self.new_name} / {self.new_uid}",
+        )
 
 
 class QxwError(ValueError):
@@ -105,27 +129,109 @@ def _set_attr(attrs: str, name: str, value: str) -> str:
     return attrs.rstrip() + f' {name}="{value}"'
 
 
-def _patch_midi_tag(match: re.Match[str]) -> str:
-    kind, attrs, slash = match.group(1), match.group(2), match.group(3)
-    attrs = _set_attr(attrs, "Name", SHIELD_MIDI_PORT_NAME)
-    attrs = _set_attr(attrs, "UID", "")
-    return f"<{kind}{attrs}{slash}>"
+def _tag_attrs(attrs: str) -> dict[str, str]:
+    return {k.lower(): v for k, v in _TAG_ATTR.findall(attrs)}
 
 
-def prepare_for_shield(text: str) -> str:
-    """Return a Shield-safe workspace string. Does not load QLC+."""
+def _is_unset(value: str) -> bool:
+    return value.strip().lower() in _UNSET
+
+
+def _is_launchpad_input(attrs: dict[str, str], lp: LaunchpadBinding) -> bool:
+    if attrs.get("profile") == lp.profile:
+        return True
+    if attrs.get("name") == lp.name:
+        return True
+    return False
+
+
+def _is_launchpad_feedback(
+    attrs: dict[str, str], lp: LaunchpadBinding, has_launchpad_input: bool
+) -> bool:
+    if attrs.get("profile") == lp.profile:
+        return True
+    if attrs.get("name") == lp.name:
+        return True
+    if has_launchpad_input and _is_unset(attrs.get("name", "")):
+        return True
+    return False
+
+
+def format_midi_report(changes: tuple[MidiBindingChange, ...]) -> str:
+    if not changes:
+        return "MIDI: no Launchpad bindings rewritten"
+    lines: list[str] = []
+    for change in changes:
+        lines.extend(change.report_lines())
+    return "\n".join(lines)
+
+
+def prepare_for_shield(
+    text: str, *, profile: ShieldMachineProfile | None = None
+) -> str:
+    patched, _changes = prepare_for_shield_report(text, profile=profile)
+    return patched
+
+
+def prepare_for_shield_report(
+    text: str, *, profile: ShieldMachineProfile | None = None
+) -> tuple[str, tuple[MidiBindingChange, ...]]:
+    """Return a Shield-safe workspace string and MIDI rewrite notes. Does not load QLC+."""
     if not text or not text.strip():
         raise QxwError("empty workspace")
     _parse_workspace(text)
+    try:
+        machine = profile if profile is not None else load_machine_profile()
+    except MachineProfileError as exc:
+        raise QxwError(str(exc)) from exc
+    lp = machine.launchpad
     patched = _ARTNET_OUTPUT_BLOCK.sub(lambda m: _patch_artnet_block(m.group(0)), text)
-    patched = _MIDI_IO_TAG.sub(_patch_midi_tag, patched)
+    has_lp_input = False
+    for match in _MIDI_IO_TAG.finditer(patched):
+        if match.group(1).lower() == "input" and _is_launchpad_input(
+            _tag_attrs(match.group(2)), lp
+        ):
+            has_lp_input = True
+            break
+    changes: list[MidiBindingChange] = []
+
+    def replace(match: re.Match[str]) -> str:
+        kind, attrs, slash = match.group(1), match.group(2), match.group(3)
+        parsed = _tag_attrs(attrs)
+        if kind.lower() == "input":
+            if not _is_launchpad_input(parsed, lp):
+                return match.group(0)
+        elif not _is_launchpad_feedback(parsed, lp, has_lp_input):
+            return match.group(0)
+        old_name = parsed.get("name") or "None"
+        old_uid = parsed.get("uid") or "None"
+        old_line = parsed.get("line") or "0"
+        attrs = _set_attr(attrs, "Name", lp.name)
+        attrs = _set_attr(attrs, "UID", lp.uid)
+        attrs = _set_attr(attrs, "Line", lp.line_fallback)
+        if kind.lower() == "input":
+            attrs = _set_attr(attrs, "Profile", parsed.get("profile") or lp.profile)
+        changes.append(
+            MidiBindingChange(
+                kind=kind.upper(),
+                old_name=old_name,
+                old_uid=old_uid,
+                old_line=old_line,
+                new_name=lp.name,
+                new_uid=lp.uid,
+                new_line=lp.line_fallback,
+            )
+        )
+        return f"<{kind}{attrs}{slash}>"
+
+    patched = _MIDI_IO_TAG.sub(replace, patched)
     _parse_workspace(patched)
     leftover = _forbidden_leftovers(patched)
     if leftover:
         raise QxwError(
             "forbidden address remains after Shield patch: " + ", ".join(leftover)
         )
-    return patched
+    return patched, tuple(changes)
 
 
 def parse_functions(text: str) -> tuple[QxwFunction, ...]:
@@ -150,14 +256,36 @@ def parse_functions_file(path: Path) -> tuple[QxwFunction, ...]:
     return parse_functions(path.read_text(encoding="utf-8"))
 
 
-def prepare_file(src: Path, dest: Path) -> str:
+def prepare_file(
+    src: Path,
+    dest: Path,
+    *,
+    profile: ShieldMachineProfile | None = None,
+) -> str:
     """Read src, patch, write dest. Never writes src."""
     src = src.resolve()
     dest = dest.resolve()
     if src == dest:
         raise QxwError("refusing to overwrite the source file")
     text = src.read_text(encoding="utf-8")
-    patched = prepare_for_shield(text)
+    patched, _changes = prepare_for_shield_report(text, profile=profile)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(patched, encoding="utf-8")
     return patched
+
+
+def prepare_file_report(
+    src: Path,
+    dest: Path,
+    *,
+    profile: ShieldMachineProfile | None = None,
+) -> tuple[str, tuple[MidiBindingChange, ...]]:
+    src = src.resolve()
+    dest = dest.resolve()
+    if src == dest:
+        raise QxwError("refusing to overwrite the source file")
+    text = src.read_text(encoding="utf-8")
+    patched, changes = prepare_for_shield_report(text, profile=profile)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(patched, encoding="utf-8")
+    return patched, changes

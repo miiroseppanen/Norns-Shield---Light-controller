@@ -12,11 +12,14 @@ Type=simple
 User=light
 Group=light
 WorkingDirectory=/home/light/light-console
+Environment=PYTHONPATH=/home/light/light-console
 Environment=QT_QPA_PLATFORM=offscreen
 Environment=QT_LOGGING_RULES=qt.qpa.*=false
 # -w only. --open and POST /loadProject block WebAccess on this 5.2.2 QML
 # offscreen build (Refresh 2D view, :9999 never/no-longer binds).
+ExecStartPre=/usr/bin/python3 -m light_console.midi_wait
 ExecStart=/usr/bin/qlcplus-qml -w
+TimeoutStartSec=30
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=15

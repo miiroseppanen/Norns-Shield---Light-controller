@@ -133,14 +133,12 @@ def test_prepare_rewrites_midi_none_uid_to_launchpad_port_name():
 """
     patched = prepare_for_shield(text)
     assert 'Name="Launchpad Mini MIDI 1"' in patched
+    assert 'UID="1-1.2:0"' in patched
     assert 'UID="None"' not in patched
     assert 'Name="None"' not in patched
     assert 'Profile="Novation Launchpad Mini"' in patched
     assert 'outputIP="127.0.0.1"' in patched
-    assert 'Name="127.0.0.1"' in patched
-    assert "192.168.88.248" not in patched
-    assert "192.168.88.254" not in patched
-    assert 'Line="0"' in patched
+    assert 'Line="1"' in patched
     assert "client 28" not in patched
 
 

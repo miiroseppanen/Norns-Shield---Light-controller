@@ -65,7 +65,12 @@ trap cleanup EXIT
 
 NAME="$(python3 -c 'import sys; from pathlib import Path; from light_console.qxw import safe_show_name; print(safe_show_name(Path(sys.argv[1])))' "$FILE")"
 PATCHED="$TMPDIR/$NAME"
-python3 -c 'import sys; from pathlib import Path; from light_console.qxw import prepare_file; prepare_file(Path(sys.argv[1]), Path(sys.argv[2]))' "$FILE" "$PATCHED"
+python3 -c 'import sys
+from pathlib import Path
+from light_console.qxw import format_midi_report, prepare_file_report
+patched, changes = prepare_file_report(Path(sys.argv[1]), Path(sys.argv[2]))
+print(format_midi_report(changes))
+' "$FILE" "$PATCHED"
 
 echo "source (unchanged): $FILE"
 echo "remote name:        $NAME"

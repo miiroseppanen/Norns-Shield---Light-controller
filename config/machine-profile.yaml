@@ -1,0 +1,6 @@
+launchpad:
+  name: "Launchpad Mini MIDI 1"
+  uid: "1-1.2:0"
+  profile: "Novation Launchpad Mini"
+  usb_id: "1235:0036"
+  line_fallback: "1"
