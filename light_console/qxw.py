@@ -1,8 +1,10 @@
 """QLC+ workspace (.qxw) validation and Shield-safe patching.
 
 Never writes the operator's source file. Art-Net destinations are forced to
-loopback (127.0.0.1, Line 0). A workspace that still contains a forbidden
-address after patching is rejected so it cannot replace a working show.
+loopback (127.0.0.1, Line 0). MIDI Input/Feedback Name is set to the Shield
+Launchpad ALSA port name (not a client number). A workspace that still
+contains a forbidden address after patching is rejected so it cannot replace
+a working show.
 """
 
 from __future__ import annotations
@@ -16,10 +18,16 @@ from light_console.artnet.destinations import FORBIDDEN_HOSTS
 
 # Shield STA on LIGHT-CONTROL. Art-Net Line 1 bound this address in 0.6B.
 SHIELD_LAN_HOST = "192.168.88.246"
+# ALSA sequencer port name on this Shield (amidi -l / aconnect). Not a client number.
+SHIELD_MIDI_PORT_NAME = "Launchpad Mini MIDI 1"
 
 _ARTNET_OUTPUT_BLOCK = re.compile(
     r"<Output\b[^>]*\bPlugin=\"ArtNet\"[^>]*>.*?</Output>",
     re.IGNORECASE | re.DOTALL,
+)
+_MIDI_IO_TAG = re.compile(
+    r"<(Input|Feedback)\b([^>]*\bPlugin=\"MIDI\"[^>]*)(/?)>",
+    re.IGNORECASE,
 )
 _DOCTYPE = re.compile(r"<!DOCTYPE[^>]*>", re.IGNORECASE)
 _FUNCTION_BLOCK = re.compile(
@@ -80,6 +88,8 @@ def _patch_artnet_block(block: str) -> str:
         opening = re.sub(r'\bUID="[^"]*"', 'UID="127.0.0.1"', opening, count=1)
     else:
         opening = opening[:-1] + ' UID="127.0.0.1">'
+    if re.search(r"\bName=", opening, re.IGNORECASE):
+        opening = re.sub(r'\bName="[^"]*"', 'Name="127.0.0.1"', opening, count=1)
     if re.search(r"\bLine=", opening, re.IGNORECASE):
         opening = re.sub(r'\bLine="[^"]*"', 'Line="0"', opening, count=1)
     else:
@@ -88,12 +98,27 @@ def _patch_artnet_block(block: str) -> str:
     return opening + rest
 
 
+def _set_attr(attrs: str, name: str, value: str) -> str:
+    pattern = rf'\b{name}="[^"]*"'
+    if re.search(pattern, attrs, re.IGNORECASE):
+        return re.sub(pattern, f'{name}="{value}"', attrs, count=1, flags=re.IGNORECASE)
+    return attrs.rstrip() + f' {name}="{value}"'
+
+
+def _patch_midi_tag(match: re.Match[str]) -> str:
+    kind, attrs, slash = match.group(1), match.group(2), match.group(3)
+    attrs = _set_attr(attrs, "Name", SHIELD_MIDI_PORT_NAME)
+    attrs = _set_attr(attrs, "UID", "")
+    return f"<{kind}{attrs}{slash}>"
+
+
 def prepare_for_shield(text: str) -> str:
     """Return a Shield-safe workspace string. Does not load QLC+."""
     if not text or not text.strip():
         raise QxwError("empty workspace")
     _parse_workspace(text)
     patched = _ARTNET_OUTPUT_BLOCK.sub(lambda m: _patch_artnet_block(m.group(0)), text)
+    patched = _MIDI_IO_TAG.sub(_patch_midi_tag, patched)
     _parse_workspace(patched)
     leftover = _forbidden_leftovers(patched)
     if leftover:

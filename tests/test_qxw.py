@@ -113,6 +113,37 @@ def test_show_a_and_b_have_distinct_safe_metadata():
         prepare_for_shield(path.read_text())
 
 
+def test_prepare_rewrites_midi_none_uid_to_launchpad_port_name():
+    text = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace">
+ <Engine>
+  <InputOutputMap>
+   <Universe Name="Universe 1" ID="0">
+    <Input Plugin="MIDI" Name="None" UID="None" Line="0" Profile="Novation Launchpad Mini"/>
+    <Output Plugin="ArtNet" Name="192.168.88.254" UID="" Line="1">
+     <PluginParameters UniverseChannels="42" outputIP="192.168.88.248"/>
+    </Output>
+    <Feedback Plugin="MIDI" Name="None" UID="None" Line="0"/>
+   </Universe>
+  </InputOutputMap>
+ </Engine>
+</Workspace>
+"""
+    patched = prepare_for_shield(text)
+    assert 'Name="Launchpad Mini MIDI 1"' in patched
+    assert 'UID="None"' not in patched
+    assert 'Name="None"' not in patched
+    assert 'Profile="Novation Launchpad Mini"' in patched
+    assert 'outputIP="127.0.0.1"' in patched
+    assert 'Name="127.0.0.1"' in patched
+    assert "192.168.88.248" not in patched
+    assert "192.168.88.254" not in patched
+    assert 'Line="0"' in patched
+    assert "client 28" not in patched
+
+
 def test_parse_functions_rejects_non_workspace():
     with pytest.raises(QxwError):
         parse_functions("<nope/>")
