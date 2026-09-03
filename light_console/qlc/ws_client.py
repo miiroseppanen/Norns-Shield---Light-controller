@@ -134,6 +134,8 @@ class QlcWebSocketClient(QLCClient):
         self.speed_bpm = 124
         self._closed = False
         self.gm_sends: list[int] = []
+        self.function_sends: list[tuple[int, int]] = []
+        self.functions_number = 0
 
     def connection_state(self) -> ConnectionState:
         return self._state
@@ -160,16 +162,33 @@ class QlcWebSocketClient(QLCClient):
         return None
 
     def start_function_by_name(self, name: str) -> bool:
-        del name
-        return False
+        fn = self.function_by_name(name)
+        if fn is None:
+            return False
+        return self.set_function_status(fn.function_id, True)
 
     def stop_function_by_name(self, name: str) -> bool:
-        del name
-        return False
+        fn = self.function_by_name(name)
+        if fn is None:
+            return False
+        return self.set_function_status(fn.function_id, False)
 
     def toggle_function_by_name(self, name: str) -> bool:
-        del name
-        return False
+        fn = self.function_by_name(name)
+        if fn is None:
+            return False
+        return self.set_function_status(fn.function_id, not fn.running)
+
+    def set_function_status(self, function_id: int, running: bool) -> bool:
+        if not self.connected():
+            return False
+        bit = 1 if running else 0
+        self.function_sends.append((int(function_id), bit))
+        self._send(f"QLC+API|setFunctionStatus|{int(function_id)}|{bit}")
+        for fn in self._functions:
+            if fn.function_id == function_id:
+                fn.running = running
+        return True
 
     def set_grand_master(self, value_0_255: int) -> None:
         self.grand_master = max(0, min(255, value_0_255))
@@ -225,6 +244,8 @@ class QlcWebSocketClient(QLCClient):
             self._state = ConnectionState.CONNECTED
             self._backoff = self.reconnect_seconds
             self._send("QLC+API|isProjectLoaded")
+            self._send("QLC+API|getFunctionsNumber")
+            self._send("QLC+API|getFunctionsList")
             LOG.info("QLC websocket connected")
         except OSError as exc:
             LOG.debug("QLC connect failed: %s", exc)
@@ -262,6 +283,34 @@ class QlcWebSocketClient(QLCClient):
         parts = msg.split("|")
         if len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "isProjectLoaded":
             self._project = parts[2].lower() in ("true", "1", "yes")
+        elif len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "getFunctionsNumber":
+            try:
+                self.functions_number = int(parts[2])
+            except ValueError:
+                return
+            if self.functions_number > 0:
+                self._project = True
+        elif len(parts) >= 2 and parts[0] == "QLC+API" and parts[1] == "getFunctionsList":
+            funcs: list[QlcFunction] = []
+            rest = parts[2:]
+            for i in range(0, len(rest) - 1, 2):
+                try:
+                    fid = int(rest[i])
+                except ValueError:
+                    continue
+                funcs.append(QlcFunction(fid, rest[i + 1], "Unknown"))
+            self._functions = funcs
+            if funcs:
+                self._project = True
+        elif len(parts) >= 4 and parts[0] == "QLC+API" and parts[1] == "getFunctionType":
+            try:
+                fid = int(parts[2])
+            except ValueError:
+                return
+            type_name = parts[3]
+            for fn in self._functions:
+                if fn.function_id == fid:
+                    fn.type = type_name
         elif len(parts) >= 2 and parts[0] == "GM_VALUE":
             try:
                 self.grand_master = int(parts[1])

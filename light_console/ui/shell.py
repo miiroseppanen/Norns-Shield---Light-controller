@@ -25,11 +25,13 @@ class NornsUIShell:
         nav: Navigation | None = None,
         params: Params | None = None,
         power: PowerService | None = None,
+        actions=None,
     ) -> None:
         self.state = state
         self.nav = nav or Navigation()
         self.params = params or bind_console_params(state)
         self.power = power or MockPowerService()
+        self.actions = actions
         self.screens = build_screens()
         state.menu_count = len(self.nav.current_items())
         state.param_count = len(self.params)
@@ -37,7 +39,13 @@ class NornsUIShell:
         self.params.sync_index_to_state(state)
 
     def ctx(self) -> ScreenContext:
-        return ScreenContext(state=self.state, nav=self.nav, params=self.params, power=self.power)
+        return ScreenContext(
+            state=self.state,
+            nav=self.nav,
+            params=self.params,
+            power=self.power,
+            actions=self.actions,
+        )
 
     def active_screen(self) -> Screen:
         return self.screens[self.state.screen]

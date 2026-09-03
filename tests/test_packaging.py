@@ -47,11 +47,15 @@ def test_qlcplus_unit_is_independent():
     text = QLC.read_text()
     assert "User=light" in text
     assert "QT_QPA_PLATFORM=offscreen" in text
-    assert "/usr/bin/qlcplus-qml" in text
     assert "-w" in text
     exec_start = next(ln for ln in text.splitlines() if ln.startswith("ExecStart="))
     assert exec_start == "ExecStart=/usr/bin/qlcplus-qml -w"
     assert "--open" not in exec_start
+    assert "qlc-launch" not in exec_start
+    assert "/usr/bin/systemctl" not in SUDOERS.read_text()
+    sudoers = SUDOERS.read_text()
+    assert "qlcplus" not in sudoers
+    assert "NOPASSWD: ALL" not in sudoers
     assert "light-console.service" not in [
         ln for ln in text.splitlines() if ln.startswith(("After=", "Requires=", "Wants=", "BindsTo="))
     ]

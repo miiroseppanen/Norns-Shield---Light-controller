@@ -14,6 +14,8 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEve
 from light_console.power import MockPowerService, PowerService
 from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
+from light_console.qlc.functions import QlcFunction
+from light_console.shows import ShowCatalog, ShowLoad
 from light_console.state import AppState
 from light_console.status.dmx import apply_dmx
 from light_console.status.midi import apply_launchpad
@@ -45,6 +47,7 @@ class Controller:
         hardware: HardwareBackend,
         qlc: QLCClient,
         power: PowerService | None = None,
+        shows_dir: Path | None = None,
     ) -> None:
         self.config = config
         self.state = state
@@ -53,10 +56,15 @@ class Controller:
         self.power = power or MockPowerService()
         self.nav = Navigation()
         self.params = bind_console_params(state)
-        self.shell = NornsUIShell(state, nav=self.nav, params=self.params, power=self.power)
+        self.binding = QlcBinding(qlc)
+        self.catalog = ShowCatalog(shows_dir) if shows_dir is not None else None
+        self.show_load = ShowLoad(self.catalog) if self.catalog is not None else None
+        self._applied_show: str | None = None
+        self.shell = NornsUIShell(
+            state, nav=self.nav, params=self.params, power=self.power, actions=self
+        )
         self.buttons = ButtonTracker(long_press_s=config.controls.long_press_ms / 1000.0)
         self.renderer = Renderer(config.display.width, config.display.height)
-        self.binding = QlcBinding(qlc)
         self._t0 = time.monotonic()
         self._last_draw = 0.0
         self.running = True
@@ -68,6 +76,7 @@ class Controller:
                 self.state.hostname = ""
         self.state.qlc_engine = config.qlc.engine_version
         self.state.qlc_host = qlc.host_label()
+        self._refresh_show_state(force=True)
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now
@@ -167,10 +176,59 @@ class Controller:
         elif cmd == "screen_boot":
             self.nav.go_play(self.state)
 
+    def go_scene(self, state: AppState) -> None:
+        self.binding.go_scene(state)
+
+    def go_chaser(self, state: AppState) -> None:
+        self.binding.go_chaser(state)
+
+    def confirm_load(self, state: AppState) -> None:
+        """Select OLED metadata from an installed .qxw. Does not load QLC+."""
+        if self.catalog is None or not state.show_files:
+            return
+        filename = state.show_files[state.show_index % len(state.show_files)]
+        try:
+            self.catalog.select(filename)
+        except Exception as exc:
+            LOG.warning("show select rejected: %s", exc)
+            state.show_status = "FAIL"
+            return
+        self._applied_show = None
+        self._refresh_show_state(force=True)
+        state.show_status = "WEB LOAD"
+        self.nav.back(state)
+
+    def _refresh_show_state(self, force: bool = False) -> None:
+        if self.catalog is None:
+            return
+        self.state.show_files = self.catalog.list_files()
+        current = self.catalog.current_name() or ""
+        self.state.show_name = current
+        info = self.catalog.current_info()
+        if info is None:
+            return
+        if not force and info.filename == self._applied_show:
+            return
+        self._applied_show = info.filename
+        self.state.scenes = info.scenes
+        self.state.chasers = info.chasers
+        self.state.scene_function_ids = tuple(
+            fn.function_id for fn in info.functions if fn.type_name.lower() == "scene"
+        )
+        self.state.chaser_function_ids = tuple(
+            fn.function_id for fn in info.functions if fn.type_name.lower() == "chaser"
+        )
+        self.state.functions = self.state.scenes
+        self.state.scene_index = 0
+        self.state.chaser_index = 0
+        self.state.clamp_indices()
+
     def _finish(self) -> None:
         self.state.clamp_indices()
         self.params.store_index(self.state)
         self._sync_qlc()
+        if self.catalog is not None:
+            self._refresh_show_state()
         self.state.rebuild_warnings()
         self._write_status()
 

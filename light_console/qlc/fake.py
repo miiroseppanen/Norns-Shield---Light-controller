@@ -37,6 +37,8 @@ class FakeTransport(WsTransport):
         self.gm: int | None = None
         self.desk: list[tuple[int, int]] = []
         self.io: list[str] = []
+        self.functions: list[tuple[int, str]] = [(0, "Warm"), (1, "Blue")]
+        self.function_sends: list[tuple[int, int]] = []
 
     def connect(self, host: str, port: int, path: str) -> None:
         del host, port, path
@@ -52,6 +54,17 @@ class FakeTransport(WsTransport):
         if text == "QLC+API|isProjectLoaded":
             flag = "true" if self.project_loaded else "false"
             self.inbox.append(f"QLC+API|isProjectLoaded|{flag}")
+        elif text == "QLC+API|getFunctionsNumber":
+            self.inbox.append(f"QLC+API|getFunctionsNumber|{len(self.functions)}")
+        elif text == "QLC+API|getFunctionsList":
+            parts = ["QLC+API", "getFunctionsList"]
+            for fid, name in self.functions:
+                parts.extend([str(fid), name])
+            self.inbox.append("|".join(parts))
+        elif text.startswith("QLC+API|setFunctionStatus|"):
+            bits = text.split("|")
+            if len(bits) >= 4:
+                self.function_sends.append((int(bits[2]), int(bits[3])))
         elif text.startswith("GM_VALUE|"):
             value = int(text.split("|", 1)[1])
             self.gm = value

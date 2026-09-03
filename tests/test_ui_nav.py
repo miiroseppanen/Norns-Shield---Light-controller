@@ -1,6 +1,6 @@
 from light_console.hardware.events import ButtonEvent, EncoderEvent, K1, K2, K3, E1, E2, E3
 from light_console.state import ScreenId
-from light_console.ui.menu import MENU_ITEMS
+from light_console.ui.menu import MENU_ITEMS, menu_index_of
 
 from tests.conftest import make_controller
 
@@ -26,7 +26,7 @@ def test_menu_e1_changes_selection():
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.menu_index == 1
-    assert MENU_ITEMS[c.state.menu_index].label == "PARAMS"
+    assert MENU_ITEMS[c.state.menu_index].label == "SHOWS"
     c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == 0
     c.inject_cooked(EncoderEvent(E1, -1))
@@ -56,15 +56,15 @@ def test_menu_k3_enters_selected_item():
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.inject_cooked(EncoderEvent(E1, 1))
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.PARAMS
+    assert c.state.screen == ScreenId.SHOWS
 
 
 def test_menu_k3_forward_k2_back():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = menu_index_of("SHOWS")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.PARAMS
+    assert c.state.screen == ScreenId.SHOWS
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     c.inject_cooked(ButtonEvent(K2, "press"))
@@ -84,8 +84,10 @@ def test_menu_home_item_returns_play():
 def test_visit_all_menu_pages():
     c = make_controller()
     expected = (
-        ScreenId.PARAMS,
+        ScreenId.SHOWS,
         ScreenId.SCENES,
+        ScreenId.CHASERS,
+        ScreenId.PARAMS,
         ScreenId.OUTPUT,
         ScreenId.SYSTEM,
     )
@@ -104,7 +106,7 @@ def test_visit_all_menu_pages():
 def test_k1_from_params_returns_play():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = menu_index_of("PARAMS")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.PARAMS
     c.inject_cooked(ButtonEvent(K1, "press"))
@@ -126,7 +128,7 @@ def test_play_and_params_share_master():
     c.inject_cooked(EncoderEvent(1, -5))
     assert c.state.master == 75
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = menu_index_of("PARAMS")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.PARAMS
     c.state.param_index = 0

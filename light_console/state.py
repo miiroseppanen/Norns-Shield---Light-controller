@@ -15,7 +15,10 @@ class ScreenId(str, Enum):
     PLAY = "play"
     MENU = "menu"
     PARAMS = "params"
+    SHOWS = "shows"
     SCENES = "scenes"
+    CHASERS = "chasers"
+    LOAD_SHOW = "load_show"
     OUTPUT = "output"
     SYSTEM = "system"
     SHUTDOWN = "shutdown"
@@ -26,6 +29,11 @@ PLACEHOLDER_SCENES = (
     "SPOT",
     "AMBER",
     "CHASE",
+)
+
+PLACEHOLDER_CHASERS = (
+    "SLOW",
+    "FAST",
 )
 
 DEFAULT_FUNCTIONS = PLACEHOLDER_SCENES
@@ -49,9 +57,20 @@ class AppState:
     dmx_node_reachable: bool = False
     functions: tuple[str, ...] = PLACEHOLDER_SCENES
     scenes: tuple[str, ...] = PLACEHOLDER_SCENES
+    scene_function_ids: tuple[int, ...] = ()
+    chasers: tuple[str, ...] = PLACEHOLDER_CHASERS
+    chaser_function_ids: tuple[int, ...] = ()
     selected_index: int = 0
     scene_index: int = 0
+    chaser_index: int = 0
+    show_index: int = 0
+    show_count: int = 0
+    show_files: tuple[str, ...] = ()
+    show_name: str = ""
+    show_status: str = ""
+    go_status: str = ""
     current_scene: str = "WASH"
+    current_chaser: str = "SLOW"
     active_function: str | None = None
     master_dimmer: int = 80
     bpm: int = 124
@@ -114,6 +133,13 @@ class AppState:
     def clamp_indices(self) -> None:
         if self.scenes:
             self.scene_index %= len(self.scenes)
+            self.current_scene = self.scenes[self.scene_index]
+        if self.chasers:
+            self.chaser_index %= len(self.chasers)
+            self.current_chaser = self.chasers[self.chaser_index]
+        if self.show_files:
+            self.show_index %= len(self.show_files)
+            self.show_count = len(self.show_files)
         if self.functions:
             self.selected_index %= len(self.functions)
         self.menu_index %= max(1, self.menu_count)
@@ -163,7 +189,9 @@ def demo_live_state(wiz_expected: int = 6) -> AppState:
         dmx_node_reachable=False,
         selected_index=0,
         scene_index=0,
+        chaser_index=0,
         current_scene="WASH",
+        current_chaser="SLOW",
         active_function="WASH",
         master_dimmer=80,
         bpm=124,

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from light_console.config import load_config
 from light_console.hardware.headless import HeadlessBackend
 from light_console.qlc.client import MockQLCClient
+from light_console.qlc.functions import QlcFunction
 from light_console.state import AppState, ScreenId
 from light_console.ui.controller import Controller
 
 
-def make_controller(**state_kw) -> Controller:
+def make_controller(shows_dir: Path | None = None, **state_kw) -> Controller:
     config = load_config()
     config.display.fps = 1000
     defaults = dict(
@@ -22,7 +25,18 @@ def make_controller(**state_kw) -> Controller:
     )
     defaults.update(state_kw)
     state = AppState(**defaults)
+    funcs = [
+        QlcFunction(i, name, "Scene") for i, name in enumerate(state.scenes)
+    ]
+    ch_base = 100
+    funcs.extend(
+        QlcFunction(ch_base + i, name, "Chaser")
+        for i, name in enumerate(state.chasers)
+    )
+    state.scene_function_ids = tuple(range(len(state.scenes)))
+    state.chaser_function_ids = tuple(ch_base + i for i in range(len(state.chasers)))
     qlc = MockQLCClient(state.functions)
+    qlc.replace_functions(funcs)
     qlc.simulate_link(True)
     hw = HeadlessBackend()
-    return Controller(config, state, hw, qlc)
+    return Controller(config, state, hw, qlc, shows_dir=shows_dir)

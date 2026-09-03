@@ -5,6 +5,8 @@ from light_console.status.midi import apply_launchpad
 from light_console.status.network import apply_upstream
 from light_console.status.wiz import apply_wiz_online
 
+from light_console.ui.menu import menu_index_of
+
 from tests.conftest import make_controller
 
 
@@ -70,7 +72,7 @@ def test_menu_enter_opens_scenes():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
     assert c.state.screen == ScreenId.MENU
-    c.state.menu_index = 2
+    c.state.menu_index = menu_index_of("SCENES")
     c.inject_cooked(ButtonEvent(3, "press"))
     assert c.state.screen == ScreenId.SCENES
 
@@ -78,7 +80,7 @@ def test_menu_enter_opens_scenes():
 def test_blackout_is_local_state_not_a_stuck_output_loop():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = menu_index_of("PARAMS")
     c.inject_cooked(ButtonEvent(3, "press"))
     c.state.param_index = 2
     c.params.index = 2

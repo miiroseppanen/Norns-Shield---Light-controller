@@ -243,7 +243,6 @@ def bind_console_params(state: AppState) -> Params:
         if name in state.scenes:
             state.scene_index = state.scenes.index(name)
             state.selected_index = state.scene_index
-        state.active_function = name
 
     return Params(
         (

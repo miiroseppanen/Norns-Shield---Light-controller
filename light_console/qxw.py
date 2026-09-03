@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 
 from light_console.artnet.destinations import FORBIDDEN_HOSTS
@@ -21,6 +22,18 @@ _ARTNET_OUTPUT_BLOCK = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _DOCTYPE = re.compile(r"<!DOCTYPE[^>]*>", re.IGNORECASE)
+_FUNCTION_BLOCK = re.compile(
+    r"<Function\b([^>]*)>.*?</Function>",
+    re.IGNORECASE | re.DOTALL,
+)
+_ATTR = re.compile(r'\b(ID|Type|Name)="([^"]*)"', re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class QxwFunction:
+    function_id: int
+    name: str
+    type_name: str
 
 
 class QxwError(ValueError):
@@ -88,6 +101,28 @@ def prepare_for_shield(text: str) -> str:
             "forbidden address remains after Shield patch: " + ", ".join(leftover)
         )
     return patched
+
+
+def parse_functions(text: str) -> tuple[QxwFunction, ...]:
+    """Read Scene/Chaser (and other) Function rows from workspace XML."""
+    _parse_workspace(text)
+    found: list[QxwFunction] = []
+    for block in _FUNCTION_BLOCK.finditer(text):
+        attrs = {k.lower(): v for k, v in _ATTR.findall(block.group(1))}
+        try:
+            fid = int(attrs["id"])
+        except (KeyError, ValueError):
+            continue
+        name = (attrs.get("name") or "").strip()
+        type_name = (attrs.get("type") or "Scene").strip() or "Scene"
+        if not name:
+            continue
+        found.append(QxwFunction(fid, name, type_name))
+    return tuple(found)
+
+
+def parse_functions_file(path: Path) -> tuple[QxwFunction, ...]:
+    return parse_functions(path.read_text(encoding="utf-8"))
 
 
 def prepare_file(src: Path, dest: Path) -> str:

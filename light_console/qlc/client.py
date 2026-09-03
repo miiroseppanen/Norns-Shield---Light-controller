@@ -65,6 +65,11 @@ class QLCClient(ABC):
     def all_off(self) -> None:
         ...
 
+    def set_function_status(self, function_id: int, running: bool) -> bool:
+        """QLC+API|setFunctionStatus|<id>|<0|1>. Returns False if offline."""
+        del function_id, running
+        return False
+
     def patch_output(self, universe: int, spec: str) -> None:
         """QLC+IO|OUTPUT|<uni>|<Plugin>|<line> as used by the 5.2.2 /config page."""
         del universe, spec
@@ -102,6 +107,7 @@ class MockQLCClient(QLCClient):
         self.reconnect_seconds = 2.0
         self.reconnect_attempts = 0
         self.gm_sends: list[int] = []
+        self.function_sends: list[tuple[int, int]] = []
         self._closed = False
 
     def connection_state(self) -> ConnectionState:
@@ -148,17 +154,32 @@ class MockQLCClient(QLCClient):
         fn = self.function_by_name(name)
         if not fn or not self.connected():
             return False
-        for other in self._functions:
-            other.running = False
-        fn.running = True
-        return True
+        return self.set_function_status(fn.function_id, True)
 
     def stop_function_by_name(self, name: str) -> bool:
         fn = self.function_by_name(name)
         if not fn or not self.connected():
             return False
-        fn.running = False
+        return self.set_function_status(fn.function_id, False)
+
+    def set_function_status(self, function_id: int, running: bool) -> bool:
+        if not self.connected():
+            return False
+        fn = next((f for f in self._functions if f.function_id == function_id), None)
+        if fn is None:
+            return False
+        if running:
+            for other in self._functions:
+                other.running = False
+            fn.running = True
+        else:
+            fn.running = False
+        self.function_sends.append((function_id, 1 if running else 0))
         return True
+
+    def replace_functions(self, functions: list[QlcFunction]) -> None:
+        self._functions = list(functions)
+        self._project = True
 
     def toggle_function_by_name(self, name: str) -> bool:
         fn = self.function_by_name(name)

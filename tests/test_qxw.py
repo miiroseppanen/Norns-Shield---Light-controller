@@ -1,10 +1,19 @@
 from pathlib import Path
 
-from light_console.qxw import QxwError, prepare_file, prepare_for_shield, safe_show_name
+from light_console.qxw import (
+    QxwError,
+    parse_functions,
+    parse_functions_file,
+    prepare_file,
+    prepare_for_shield,
+    safe_show_name,
+)
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 QXW = ROOT / "qlc/projects/light-console-test.qxw"
+SHOW_A = ROOT / "qlc/projects/show-a.qxw"
+SHOW_B = ROOT / "qlc/projects/show-b.qxw"
 
 UNSAFE = """\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -86,3 +95,25 @@ def test_prepare_file_refuses_overwrite_source(tmp_path):
     src.write_text(QXW.read_text())
     with pytest.raises(QxwError, match="overwrite"):
         prepare_file(src, src)
+
+
+def test_show_a_and_b_have_distinct_safe_metadata():
+    a = parse_functions_file(SHOW_A)
+    b = parse_functions_file(SHOW_B)
+    assert [fn.name for fn in a if fn.type_name == "Scene"] == ["Warm", "Blue", "Red"]
+    assert [fn.name for fn in a if fn.type_name == "Chaser"] == ["Slow Pulse", "Color Sweep"]
+    assert [fn.name for fn in b if fn.type_name == "Scene"] == ["Full", "Dim", "Blackout"]
+    assert [fn.name for fn in b if fn.type_name == "Chaser"] == ["Fast Pulse", "Alternate"]
+    for path in (SHOW_A, SHOW_B):
+        text = path.read_text().lower()
+        assert "192.168.88.201" not in text
+        assert "pknight" not in text
+        assert "launchpad" not in text
+        assert 'outputip="127.0.0.1"' in text
+        prepare_for_shield(path.read_text())
+
+
+def test_parse_functions_rejects_non_workspace():
+    with pytest.raises(QxwError):
+        parse_functions("<nope/>")
+

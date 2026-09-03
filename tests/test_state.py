@@ -38,11 +38,11 @@ def test_k2_on_play_is_contextual():
     assert c.state.blackout is False
 
 
-def test_k3_on_play_is_go():
-    c = make_controller(current_scene="SPOT")
+def test_k3_on_play_is_chaser_go():
+    c = make_controller()
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.PLAY
-    assert c.state.active_function == "SPOT"
+    assert c.state.active_function == c.state.current_chaser
 
 
 def test_hardware_hold_k1_opens_menu():

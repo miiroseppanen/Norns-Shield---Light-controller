@@ -58,9 +58,15 @@ class Navigation:
     def open_shutdown_confirm(self, state: AppState) -> None:
         state.screen = ScreenId.SHUTDOWN
 
+    def open_load_show_confirm(self, state: AppState) -> None:
+        state.screen = ScreenId.LOAD_SHOW
+
     def back(self, state: AppState) -> None:
         if state.screen == ScreenId.SHUTDOWN:
             state.screen = ScreenId.SYSTEM
+            return
+        if state.screen == ScreenId.LOAD_SHOW:
+            state.screen = ScreenId.SHOWS
             return
         if state.screen != ScreenId.MENU:
             if self.stack:

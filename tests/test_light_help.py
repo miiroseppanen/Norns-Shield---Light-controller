@@ -37,6 +37,12 @@ def test_light_help_prints_operator_guide():
         "SYSTEM -> SHUTDOWN -> CONFIRM",
         "sudo /usr/sbin/shutdown -h now",
         "valot@192.168.88.248",
+        "MENU -> SHOWS -> E1 select -> K3 -> LOAD SHOW?",
+        "last-good.qxw",
+        "/usr/bin/qlcplus-qml -w",
+        "Automatic selected-show -> QLC load is not implemented",
+        "scripts/restore-qlc.sh",
+        "sudo systemctl start qlcplus",
         "light-help",
     ):
         assert needle in out

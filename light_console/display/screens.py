@@ -49,12 +49,15 @@ def draw_list(fb: Framebuffer, labels: list[str], selected: int, y0: int = ROW *
 def draw_play(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "LIGHT CONSOLE", state)
     scene = state.current_scene or "--"
+    chaser = state.current_chaser or "--"
     if state.blackout:
         text(fb, 0, ROW * 2, "BLACKOUT")
     else:
-        status_pair(fb, ROW * 2, "SCENE", scene)
-    status_pair(fb, ROW * 3, "MASTER", f"{state.master}%")
-    status_pair(fb, ROW * 4, "SPEED", str(state.speed))
+        status_pair(fb, ROW * 2, "SCENE", scene[:9])
+    status_pair(fb, ROW * 3, "CHASER", chaser[:9])
+    status_pair(fb, ROW * 4, "MASTER", f"{state.master}%")
+    if state.go_status:
+        text(fb, 0, ROW * 5, state.go_status[:21])
 
 
 def draw_menu(fb: Framebuffer, state: AppState, items: tuple[MenuItem, ...] | None = None) -> None:
@@ -91,6 +94,44 @@ def draw_scenes(fb: Framebuffer, state: AppState) -> None:
     draw_list(fb, labels, state.scene_index)
 
 
+def draw_chasers(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "CHASERS", state)
+    if not state.chasers:
+        text(fb, 0, ROW * 2, "NO CHASERS")
+        return
+    draw_list(fb, list(state.chasers), state.chaser_index)
+
+
+def draw_shows(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "SHOWS", state)
+    if not state.show_files:
+        text(fb, 0, ROW * 2, "NO SHOWS")
+        return
+    labels = []
+    current = state.show_name
+    for name in state.show_files:
+        stem = name[:-4] if name.lower().endswith(".qxw") else name
+        mark = "*" if name == current or stem == current else " "
+        labels.append(f"{mark}{stem}"[:21])
+    draw_list(fb, labels, state.show_index)
+
+
+def draw_load_show(fb: Framebuffer, state: AppState) -> None:
+    _header(fb, "LOAD SHOW?", state)
+    name = "--"
+    if state.show_files:
+        name = state.show_files[state.show_index % len(state.show_files)]
+        if name.lower().endswith(".qxw"):
+            name = name[:-4]
+    text(fb, 0, ROW * 2, name[:21])
+    if state.show_status == "FAIL":
+        text(fb, 0, ROW * 3, "LIST FAIL"[:21])
+        return
+    text(fb, 0, ROW * 3, "AUTO LOAD NYI")
+    text(fb, 0, ROW * 4, "LOAD IN QLC WEB")
+    text(fb, 0, ROW * 5, "K3 LIST  K2 BACK")
+
+
 def draw_output(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "OUTPUT", state)
     status_pair(fb, ROW * 2, "QLC", qlc_output_label(state))
@@ -124,7 +165,10 @@ DRAWERS = {
     ScreenId.PLAY: draw_play,
     ScreenId.MENU: draw_menu,
     ScreenId.PARAMS: draw_params,
+    ScreenId.SHOWS: draw_shows,
     ScreenId.SCENES: draw_scenes,
+    ScreenId.CHASERS: draw_chasers,
+    ScreenId.LOAD_SHOW: draw_load_show,
     ScreenId.OUTPUT: draw_output,
     ScreenId.SYSTEM: draw_system,
     ScreenId.SHUTDOWN: draw_shutdown,

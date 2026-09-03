@@ -12,8 +12,11 @@ K1 is the shell PLAY ↔ MENU toggle. Show functions are not wired in the hardwa
 
 ### PLAY
 
-- **E1 / E2 / E3** — active play screen (prototype: master, scene, speed)
-- **K2 / K3** — play-screen actions (K3 = GO)
+- **E1** — MASTER
+- **E2** — selected scene (shared with SCENES)
+- **K2** — SCENE GO
+- **E3** — selected chaser (shared with CHASERS)
+- **K3** — CHASER GO
 - **K1** — MENU
 
 ### MENU
@@ -30,13 +33,17 @@ Root:
 
 ```
 HOME
-PARAMS
+SHOWS
 SCENES
+CHASERS
+PARAMS
 OUTPUT
 SYSTEM
 ```
 
-HOME enters PLAY. PARAMS / SCENES / OUTPUT / SYSTEM are screens.
+HOME enters PLAY. SHOWS / SCENES / CHASERS / PARAMS / OUTPUT / SYSTEM are screens.
+
+SHOWS K3 opens `LOAD SHOW?`. That marks OLED metadata (`current.qxw`) and shows `AUTO LOAD NYI` / `LOAD IN QLC WEB`. It does not load QLC.
 
 SYSTEM list: QLC STATUS, HOSTNAME, VERSION, UPTIME, SHUTDOWN.
 

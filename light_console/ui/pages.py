@@ -8,15 +8,19 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
+from typing import Any
 
 from light_console.controls.encoders import wrap_index
 from light_console.display.framebuffer import Framebuffer
 from light_console.display.screens import (
+    draw_chasers,
+    draw_load_show,
     draw_menu,
     draw_output,
     draw_params,
     draw_play,
     draw_scenes,
+    draw_shows,
     draw_shutdown,
     draw_system,
 )
@@ -36,6 +40,7 @@ class ScreenContext:
     nav: Navigation
     params: Params
     power: PowerService
+    actions: Any = None
 
 
 class Screen(ABC):
@@ -52,6 +57,18 @@ class Screen(ABC):
         del fb, ctx
 
 
+def _go_scene(ctx: ScreenContext) -> None:
+    actions = ctx.actions
+    if actions is not None:
+        actions.go_scene(ctx.state)
+
+
+def _go_chaser(ctx: ScreenContext) -> None:
+    actions = ctx.actions
+    if actions is not None:
+        actions.go_chaser(ctx.state)
+
+
 class PlayScreen(Screen):
     id = ScreenId.PLAY
     title = "PLAY"
@@ -59,18 +76,22 @@ class PlayScreen(Screen):
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
         if n == E1:
             ctx.params["master"].delta(delta)
-        elif n == E2:
-            ctx.params["scene"].delta(delta)
-        elif n == E3:
-            ctx.params["speed"].delta(delta)
+        elif n == E2 and ctx.state.scenes:
+            ctx.state.scene_index = wrap_index(
+                ctx.state.scene_index, delta, len(ctx.state.scenes)
+            )
+        elif n == E3 and ctx.state.chasers:
+            ctx.state.chaser_index = wrap_index(
+                ctx.state.chaser_index, delta, len(ctx.state.chasers)
+            )
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1:
             return
         if n == K2:
-            return
-        if n == K3:
-            ctx.state.active_function = ctx.state.current_scene
+            _go_scene(ctx)
+        elif n == K3:
+            _go_chaser(ctx)
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_play(fb, ctx.state)
@@ -108,12 +129,50 @@ class ParamsScreen(Screen):
         draw_params(fb, ctx.state, ctx.params)
 
 
+class ShowsScreen(Screen):
+    id = ScreenId.SHOWS
+    title = "SHOWS"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        if n == E1 and ctx.state.show_files:
+            ctx.state.show_index = wrap_index(
+                ctx.state.show_index, delta, len(ctx.state.show_files)
+            )
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1 or n != K3:
+            return
+        if ctx.state.show_files:
+            ctx.nav.open_load_show_confirm(ctx.state)
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_shows(fb, ctx.state)
+
+
+class LoadShowScreen(Screen):
+    id = ScreenId.LOAD_SHOW
+    title = "LOAD SHOW"
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1:
+            return
+        if n == K3:
+            actions = ctx.actions
+            if actions is not None:
+                actions.confirm_load(ctx.state)
+        elif n == K2:
+            ctx.nav.back(ctx.state)
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_load_show(fb, ctx.state)
+
+
 class ScenesScreen(Screen):
     id = ScreenId.SCENES
     title = "SCENES"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n == E2 and ctx.state.scenes:
+        if n == E1 and ctx.state.scenes:
             ctx.state.scene_index = wrap_index(
                 ctx.state.scene_index, delta, len(ctx.state.scenes)
             )
@@ -121,11 +180,29 @@ class ScenesScreen(Screen):
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1 or n != K3:
             return
-        if ctx.state.scenes:
-            ctx.params["scene"].set(ctx.state.scenes[ctx.state.scene_index])
+        _go_scene(ctx)
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_scenes(fb, ctx.state)
+
+
+class ChasersScreen(Screen):
+    id = ScreenId.CHASERS
+    title = "CHASERS"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        if n == E1 and ctx.state.chasers:
+            ctx.state.chaser_index = wrap_index(
+                ctx.state.chaser_index, delta, len(ctx.state.chasers)
+            )
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1 or n != K3:
+            return
+        _go_chaser(ctx)
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_chasers(fb, ctx.state)
 
 
 class OutputScreen(Screen):
@@ -184,7 +261,10 @@ def build_screens() -> dict[ScreenId, Screen]:
         PlayScreen(),
         MenuScreen(),
         ParamsScreen(),
+        ShowsScreen(),
+        LoadShowScreen(),
         ScenesScreen(),
+        ChasersScreen(),
         OutputScreen(),
         SystemScreen(),
         ShutdownScreen(),

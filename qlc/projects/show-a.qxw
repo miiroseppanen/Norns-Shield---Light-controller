@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="VirtualConsole">
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>5.2.2</Version>
+  <Author>light-console-show-a</Author>
+ </Creator>
+ <Engine>
+  <InputOutputMap>
+   <Universe Name="Loopback" ID="0">
+    <Output Plugin="ArtNet" UID="127.0.0.1" Line="0">
+     <PluginParameters outputIP="127.0.0.1" outputUni="0"/>
+    </Output>
+   </Universe>
+  </InputOutputMap>
+  <Fixture>
+   <Manufacturer>Generic</Manufacturer>
+   <Model>Generic Smoke</Model>
+   <Mode>Amount</Mode>
+   <ID>0</ID>
+   <Name>TEST-CH1</Name>
+   <Universe>0</Universe>
+   <Address>0</Address>
+   <Channels>1</Channels>
+  </Fixture>
+  <Function ID="0" Type="Scene" Name="Warm">
+   <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+   <FixtureVal ID="0">0,60</FixtureVal>
+  </Function>
+  <Function ID="1" Type="Scene" Name="Blue">
+   <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+   <FixtureVal ID="0">0,120</FixtureVal>
+  </Function>
+  <Function ID="2" Type="Scene" Name="Red">
+   <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+   <FixtureVal ID="0">0,180</FixtureVal>
+  </Function>
+  <Function ID="3" Type="Chaser" Name="Slow Pulse">
+   <Speed FadeIn="0" FadeOut="0" Duration="1200"/>
+   <Direction>Forward</Direction>
+   <RunOrder>Loop</RunOrder>
+   <SpeedModes FadeIn="Default" FadeOut="Default" Duration="Common"/>
+   <Step Number="0" FadeIn="0" Hold="1200" FadeOut="0">0</Step>
+   <Step Number="1" FadeIn="0" Hold="1200" FadeOut="0">1</Step>
+  </Function>
+  <Function ID="4" Type="Chaser" Name="Color Sweep">
+   <Speed FadeIn="0" FadeOut="0" Duration="800"/>
+   <Direction>Forward</Direction>
+   <RunOrder>Loop</RunOrder>
+   <SpeedModes FadeIn="Default" FadeOut="Default" Duration="Common"/>
+   <Step Number="0" FadeIn="0" Hold="800" FadeOut="0">0</Step>
+   <Step Number="1" FadeIn="0" Hold="800" FadeOut="0">1</Step>
+   <Step Number="2" FadeIn="0" Hold="800" FadeOut="0">2</Step>
+  </Function>
+ </Engine>
+ <VirtualConsole>
+ </VirtualConsole>
+</Workspace>

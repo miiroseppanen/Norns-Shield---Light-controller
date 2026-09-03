@@ -54,9 +54,28 @@ LOG:
 WEB:
   http://shieldxl-light.local:9999
 
-Runtime is qlcplus.service with -w only. Do not --open a workspace
-and do not POST /loadProject on this 5.2.2 QML/offscreen image;
-both block WebAccess on :9999.
+Runtime is qlcplus.service:
+
+  /usr/bin/qlcplus-qml -w
+
+QLC starts in WebAccess with no workspace loaded.
+Load a safe imported project through the QLC browser at :9999.
+Automatic selected-show -> QLC load is not implemented.
+
+Light Console reads OLED metadata from /home/light/shows/*.qxw
+independently of whatever QLC currently has open.
+
+Do not use --open <path> (valueless flag on this build).
+Do not POST /loadProject (blocks WebAccess on this image).
+Do not match qlcplus by command line.
+
+If qlcplus.service is stopped:
+
+  sudo bash /home/light/light-console/scripts/restore-qlc.sh
+
+or:
+
+  sudo systemctl start qlcplus
 
 
 ------------------------------------------------------------
@@ -67,11 +86,15 @@ Shield show directory:
 
   /home/light/shows/
 
-Current/active show (symlink; QLC does not open it in Milestone 0.6):
+OLED selected show (symlink; metadata only, does not load QLC):
 
   /home/light/shows/current.qxw
 
   readlink /home/light/shows/current.qxw
+
+Last-known-good:
+
+  readlink /home/light/shows/last-good.qxw
 
 List shows:
 
@@ -80,6 +103,13 @@ List shows:
 From the Mac:
 
   ./scripts/upload-show.sh --list
+
+OLED show list:
+
+  MENU -> SHOWS -> E1 select -> K3 -> LOAD SHOW?
+
+K3 there marks the list selection (WEB LOAD). It does not load QLC.
+Load the same file in the QLC WebAccess browser.
 
 
 ------------------------------------------------------------

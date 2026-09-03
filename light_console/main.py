@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import socket
 import sys
 from pathlib import Path
@@ -100,6 +101,16 @@ def run_loop(controller: Controller, hardware: HardwareBackend) -> int:
     return 0
 
 
+def _shows_dir() -> Path | None:
+    env = os.environ.get("LIGHT_CONSOLE_SHOWS")
+    if env:
+        return Path(env)
+    pi = Path("/home/light/shows")
+    if pi.is_dir():
+        return pi
+    return None
+
+
 def _load_config(path: Path | None) -> AppConfig:
     if path is not None:
         return load_config(path)
@@ -165,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
 
             hardware = SimulatorBackend(scale=config.display.scale)
 
-    controller = Controller(config, state, hardware, qlc, power=power)
+    controller = Controller(config, state, hardware, qlc, power=power, shows_dir=_shows_dir())
     LOG.info("light-console %s", VERSION)
     try:
         return run_loop(controller, hardware)

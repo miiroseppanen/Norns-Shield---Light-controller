@@ -1,6 +1,7 @@
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
 from light_console.power import LinuxPowerService, MockPowerService
 from light_console.state import ScreenId
+from light_console.ui.menu import menu_index_of
 from light_console.ui.pages import SYSTEM_SHUTDOWN_ROW
 
 from tests.conftest import make_controller
@@ -8,7 +9,7 @@ from tests.conftest import make_controller
 
 def _open_system(c):
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = 4
+    c.state.menu_index = menu_index_of("SYSTEM")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.SYSTEM
 

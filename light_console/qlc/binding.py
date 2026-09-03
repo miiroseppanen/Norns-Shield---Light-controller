@@ -17,6 +17,45 @@ class QlcBinding:
         self._sent_blackout: bool | None = None
         self._sent_speed: int | None = None
 
+    def go_scene(self, state: AppState) -> None:
+        self._go(state, scene=True)
+
+    def go_chaser(self, state: AppState) -> None:
+        self._go(state, scene=False)
+
+    def _go(self, state: AppState, scene: bool) -> None:
+        if not state.qlc_connected:
+            state.go_status = "QLC OFFLINE"
+            return
+        if scene:
+            names, ids, index = state.scenes, state.scene_function_ids, state.scene_index
+        else:
+            names, ids, index = state.chasers, state.chaser_function_ids, state.chaser_index
+        if not names:
+            state.go_status = "NO FUNCTION"
+            return
+        name = names[index % len(names)]
+        fid: int | None = None
+        if ids and index < len(ids):
+            fid = ids[index]
+        if fid is None:
+            state.go_status = "NO FUNCTION"
+            return
+        live = {fn.function_id: fn.name for fn in self.qlc.list_functions()}
+        if not live:
+            state.go_status = "NO ENGINE FN"
+            return
+        if live.get(fid) != name:
+            state.go_status = "ID MISMATCH"
+            LOG.warning("refusing GO id=%s name=%s live=%s", fid, name, live)
+            return
+        ok = self.qlc.set_function_status(fid, True)
+        if not ok:
+            state.go_status = "QLC OFFLINE"
+            return
+        state.active_function = name
+        state.go_status = "GO"
+
     def pull(self, state: AppState) -> None:
         was = state.qlc_connected
         try:

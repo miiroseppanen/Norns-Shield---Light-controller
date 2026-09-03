@@ -23,14 +23,13 @@ def test_e2_scene_select_on_play():
     assert c.state.current_scene == names[-1]
 
 
-def test_e3_speed_clamped():
-    c = make_controller(bpm=124)
-    c.inject_cooked(EncoderEvent(E3, 5))
-    assert c.state.bpm == 129
-    c.inject_cooked(EncoderEvent(E3, 1000))
-    assert c.state.bpm == 240
-    c.inject_cooked(EncoderEvent(E3, -1000))
-    assert c.state.bpm == 20
+def test_e3_chaser_select_on_play():
+    c = make_controller(chaser_index=0, current_chaser="SLOW")
+    names = list(c.state.chasers)
+    c.inject_cooked(EncoderEvent(E3, 1))
+    assert c.state.current_chaser == names[1]
+    c.inject_cooked(EncoderEvent(E3, -2))
+    assert c.state.current_chaser == names[-1]
 
 
 def test_menu_e1_navigates_menu_not_scenes():
