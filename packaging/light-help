@@ -1,0 +1,184 @@
+#!/bin/sh
+# Operator cheat sheet. Static text only — no probes, no service calls.
+cat <<'EOF'
+============================================================
+                 SHIELD XL LIGHT CONSOLE
+============================================================
+
+CONNECTIONS
+
+SSH:
+  ssh light@shieldxl-light.local
+
+Known LIGHT-CONTROL address:
+  192.168.88.246
+
+QLC WEB:
+  http://shieldxl-light.local:9999
+  http://192.168.88.246:9999
+
+
+------------------------------------------------------------
+LIGHT CONSOLE
+------------------------------------------------------------
+
+STATUS:
+  systemctl status light-console --no-pager
+
+RESTART:
+  sudo systemctl restart light-console
+
+LOG:
+  journalctl -u light-console -n 100 --no-pager
+
+
+------------------------------------------------------------
+QLC+
+------------------------------------------------------------
+
+STATUS:
+  systemctl status qlcplus --no-pager
+
+STOP:
+  sudo systemctl stop qlcplus
+
+START:
+  sudo systemctl start qlcplus
+
+RESTART:
+  sudo systemctl restart qlcplus
+
+LOG:
+  journalctl -u qlcplus -n 100 --no-pager
+
+WEB:
+  http://shieldxl-light.local:9999
+
+Runtime is qlcplus.service with -w only. Do not --open a workspace
+and do not POST /loadProject on this 5.2.2 QML/offscreen image;
+both block WebAccess on :9999.
+
+
+------------------------------------------------------------
+SHOW PROJECTS
+------------------------------------------------------------
+
+Shield show directory:
+
+  /home/light/shows/
+
+Current/active show (symlink; QLC does not open it in Milestone 0.6):
+
+  /home/light/shows/current.qxw
+
+  readlink /home/light/shows/current.qxw
+
+List shows:
+
+  ls -l /home/light/shows/
+
+From the Mac:
+
+  ./scripts/upload-show.sh --list
+
+
+------------------------------------------------------------
+UPLOAD SHOW FROM MAC
+------------------------------------------------------------
+
+Run on the Mac, not inside Shield SSH:
+
+  cd /Users/miiroseppanen/shieldxl-light-console
+
+  ./scripts/upload-show.sh "/path/to/show.qxw"
+
+  ./scripts/upload-show.sh --dry-run "/path/to/show.qxw"
+  ./scripts/upload-show.sh --replace "/path/to/show.qxw"
+  ./scripts/upload-show.sh --list
+
+The helper validates the .qxw, writes a Shield-safe patched copy
+(Art-Net forced to 127.0.0.1 Line 0), and copies that copy only.
+The original/source file on the Mac is not modified.
+An invalid project is rejected and does not replace a working
+project. Without --replace, current.qxw is left unchanged.
+
+
+------------------------------------------------------------
+MANUAL FILE COPY
+------------------------------------------------------------
+
+These scp commands are run from the Mac terminal.
+
+FROM MAC TO SHIELD:
+
+  scp "/path/to/file.qxw" \
+    light@shieldxl-light.local:/home/light/
+
+For show projects, prefer ./scripts/upload-show.sh instead of
+copying directly into /home/light/shows/ or onto current.qxw.
+
+FROM SHIELD TO MAC:
+
+  scp light@shieldxl-light.local:/home/light/<file> .
+
+
+------------------------------------------------------------
+PROJECT / REPOSITORY
+------------------------------------------------------------
+
+Runtime/deploy path:
+  /home/light/light-console
+
+The deployed tree is an rsync copy, not a Git checkout.
+
+  cd /home/light/light-console
+  python3 -c "from light_console import VERSION; print(VERSION)"
+
+Mac repository:
+  /Users/miiroseppanen/shieldxl-light-console
+
+  cd /Users/miiroseppanen/shieldxl-light-console
+  git describe --tags --always
+  git rev-parse --short HEAD
+
+
+------------------------------------------------------------
+POWER
+------------------------------------------------------------
+
+Preferred shutdown:
+use the OLED:
+  SYSTEM -> SHUTDOWN -> CONFIRM
+
+Terminal fallback:
+
+  sudo /usr/sbin/shutdown -h now
+
+The sudoers rule intentionally allows only this shutdown
+command passwordlessly, not general sudo.
+
+
+------------------------------------------------------------
+IMPORTANT
+------------------------------------------------------------
+
+- Production Pi is a separate machine:
+  valot@192.168.88.248
+
+- Do not copy production .qxw directly over active Shield files.
+  Use the Shield upload/import workflow.
+
+- Do not run multiple Shield light-console instances.
+  systemd owns the runtime instance.
+
+- Real lighting outputs are currently disabled/not configured
+  during Milestone 0.6 unless later milestones explicitly change this.
+
+------------------------------------------------------------
+
+Show this help anytime:
+
+  light-help
+
+============================================================
+EOF

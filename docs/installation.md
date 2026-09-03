@@ -53,3 +53,11 @@ Installs the shutdown sudoers drop-in and `light-console.service`. QLC+ is a sep
 sudo bash /home/light/light-console/packaging/install-qlc.sh
 ```
 
+Operator cheat sheet (`light-help` on SSH login). Does not restart services:
+
+```bash
+sudo bash /home/light/light-console/packaging/install-light-help.sh
+```
+
+Show files live in `/home/light/shows/` (`current.qxw` symlink). Upload from the Mac with `./scripts/upload-show.sh`. QLC+ still starts `-w` and does not open that symlink.
+

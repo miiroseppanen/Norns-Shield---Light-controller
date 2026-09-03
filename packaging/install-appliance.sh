@@ -14,6 +14,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
+bash "$ROOT/packaging/install-light-help.sh"
+
 /usr/sbin/visudo -cf "$SUDOERS_SRC"
 install -m 440 -o root -g root "$SUDOERS_SRC" "$SUDOERS_DST"
 /usr/sbin/visudo -cf "$SUDOERS_DST"
