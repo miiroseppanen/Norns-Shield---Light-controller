@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="FunctionManager">
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>5.2.2</Version>
+  <Author>light-console-master</Author>
+ </Creator>
+ <Engine>
+  <InputOutputMap>
+   <Universe Name="Loopback" ID="0">
+    <Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1" Profile="Novation Launchpad Mini"/>
+    <Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1"/>
+    <Output Plugin="ArtNet" UID="127.0.0.1" Line="0">
+     <PluginParameters outputIP="127.0.0.1" outputUni="0"/>
+    </Output>
+   </Universe>
+  </InputOutputMap>
+ </Engine>
+ <VirtualConsole>
+ </VirtualConsole>
+</Workspace>

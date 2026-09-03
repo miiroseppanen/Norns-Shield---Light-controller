@@ -2,7 +2,7 @@
 
 Show engine: **QLC+ 5.2.2** (`/usr/bin/qlcplus-qml`). light-console is a WebSocket client. It never starts QLC+ itself.
 
-**Milestone 0.6 temporary:** `qlcplus.service` is `-w` only. QLC starts with WebAccess and **no workspace**. Load a safe imported project through the QLC browser. Light Console reads `/home/light/shows/*.qxw` for OLED metadata. Automatic selected-show → QLC load is **not implemented**. Do not present OLED K3 as a successful QLC load.
+**Milestone 0.7:** `qlcplus.service` is `-w` only. QLC starts with WebAccess and **no workspace**. Canonical show content is `master.qxw`; Light Console SHOWS are logical YAML groups. Automatic cold-boot load of master is **UNRESOLVED**. Do not POST `/loadProject`, pass a positional workspace, or use `-9`. Switching SHOWS does not load QLC.
 
 ## Services (independent)
 
@@ -62,7 +62,7 @@ Messages are `field|field|…` text. Do not invent additional protocol.
 | send | `GM_VALUE\|<0-255>` | Grand Master |
 | recv | `GM_VALUE\|<value>` or `GM_VALUE\|<value>\|<value>` | |
 
-OLED scene/chaser **names** come from parsed `/home/light/shows/current.qxw`, not from scraping the QLC browser. GO sends `setFunctionStatus` only when the live `getFunctionsList` id+name pair matches that file. Mismatch → no command (`ID MISMATCH`).
+OLED scene/chaser **names** come from logical show metadata (`/home/light/shows/*.yaml`), not from scraping the QLC browser. GO sends `setFunctionStatus` only when the live `getFunctionsList` id+name pair matches that metadata. Mismatch → no command (`ID MISMATCH`). If QLC has no project loaded, GO is `NO PROJECT`.
 
 `POLL` is documented as ignored keepalive; not required.
 

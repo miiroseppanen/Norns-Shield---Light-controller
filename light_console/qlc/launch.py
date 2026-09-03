@@ -1,16 +1,4 @@
-"""Resolve current.qxw and build the QLC+ 5.2.2 argv.
-
-Verified on Shield `qlcplus-qml --help` (5.2.2):
-
-  Usage: qlcplus-qml [options] [file]
-  -w, --web     Enable remote web access
-  file          File to open.
-
-`--open` is a valueless flag and is not used by qmlui/main.cpp to take a
-path. The workspace is the positional [file] argument. Do not pass
-`--open /path`. Do not automate POST /loadProject from Light Console
-(offscreen QML can ingest XML then wedge WebAccess).
-"""
+"""QLC+ 5.2.2 argv. Positional workspace + WebAccess is unsupported on this image."""
 
 from __future__ import annotations
 
@@ -18,20 +6,20 @@ from pathlib import Path
 
 QLCPLUS_QML = "/usr/bin/qlcplus-qml"
 SHOWS_DIR = Path("/home/light/shows")
-CURRENT_NAME = "current.qxw"
+MASTER_NAME = "master.qxw"
 
 
 class LaunchError(ValueError):
-    """current.qxw missing, broken, or outside the shows directory."""
+    """master.qxw missing, broken, or outside the shows directory."""
 
 
-def resolve_workspace(current: Path, shows_dir: Path) -> Path:
-    if not current.is_symlink() and not current.exists():
-        raise LaunchError(f"missing {current}")
+def resolve_workspace(master: Path, shows_dir: Path) -> Path:
+    if not master.is_symlink() and not master.exists():
+        raise LaunchError(f"missing {master}")
     try:
-        target = current.resolve(strict=True)
+        target = master.resolve(strict=True)
     except OSError as exc:
-        raise LaunchError(f"broken {current}") from exc
+        raise LaunchError(f"broken {master}") from exc
     shows = shows_dir.resolve()
     if target.parent != shows:
         raise LaunchError(f"{target} is outside {shows}")
@@ -40,6 +28,7 @@ def resolve_workspace(current: Path, shows_dir: Path) -> Path:
     return target
 
 
-def qml_argv(workspace: Path) -> list[str]:
-    """WebAccess + positional workspace. No shell joining."""
-    return [QLCPLUS_QML, "-w", str(workspace)]
+def qml_argv(workspace: Path | None = None) -> list[str]:
+    """WebAccess only. Do not pass a workspace path, --open, or -9."""
+    del workspace
+    return [QLCPLUS_QML, "-w"]

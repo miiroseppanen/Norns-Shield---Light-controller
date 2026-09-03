@@ -27,6 +27,9 @@ class QlcBinding:
         if not state.qlc_connected:
             state.go_status = "QLC OFFLINE"
             return
+        if not state.qlc_project_loaded:
+            state.go_status = "NO PROJECT"
+            return
         if scene:
             names, ids, index = state.scenes, state.scene_function_ids, state.scene_index
         else:

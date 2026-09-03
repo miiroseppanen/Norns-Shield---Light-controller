@@ -138,7 +138,9 @@ SIGTERM of 608 as user `light` stopped QLC. `Restart=on-failure` did **not** sta
 
 ### Conclusion
 
-Protocol exists and is automatable **as HTTP**. It is **not safe** on this offscreen QML image for `show-a.qxw`: WebAccess dies during Virtual Console refresh. Light Console does not POST `/loadProject`. SHOWS remains `AUTO LOAD NYI` / `LOAD IN QLC WEB`. GO identity check unchanged.
+Protocol exists and is automatable **as HTTP**. It is **not safe** on this offscreen QML image for `show-a.qxw`: WebAccess dies during Virtual Console refresh. Light Console does not POST `/loadProject`.
+
+**SUPERSEDED:** SHOWS as `.qxw` load (`AUTO LOAD NYI` / `LOAD IN QLC WEB` / `current.qxw`). Milestone 0.7: SHOWS are logical groups inside one master workspace. GO identity check unchanged.
 
 Operator later restored `qlcplus.service` (`qlcplus-qml -w`, MainPID 2207, `:9999` owned by that PID).
 
@@ -154,4 +156,13 @@ Terminated PID 2306 only. Restored QSettings. Started `qlcplus.service`. Restore
 
 **Startup workspace autoload is UNSUPPORTED** on this appliance.
 
-**Recommendation: one master QLC workspace.** Do not implement restart-based `.qxw` switching. Light Console should later treat SHOWS as groups inside a single continuously running project.
+**Recommendation: one master QLC workspace.** Do not implement restart-based `.qxw` switching. Light Console treats SHOWS as groups inside a single continuously running project.
+
+## 10. Milestone 0.7 — single master workspace
+
+Date: 2026-09-03. Multi-workspace runtime model **SUPERSEDED**.
+
+- Canonical content file: `qlc/projects/master.qxw` (runtime `/home/light/shows/master.qxw`)
+- Import merges Scene/Chaser functions with ID remap; master owns Launchpad + loopback Art-Net
+- OLED SHOWS K3 activates a logical show; QLC is not reloaded
+- Cold-boot autoload of master + WebAccess remains **UNRESOLVED** (positional / `-9` / `/loadProject` all unsupported here)

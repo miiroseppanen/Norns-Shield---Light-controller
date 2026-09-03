@@ -134,15 +134,19 @@ class ShowsScreen(Screen):
     title = "SHOWS"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n == E1 and ctx.state.show_files:
+        items = ctx.state.show_ids or ctx.state.show_files
+        if n == E1 and items:
             ctx.state.show_index = wrap_index(
-                ctx.state.show_index, delta, len(ctx.state.show_files)
+                ctx.state.show_index, delta, len(items)
             )
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1 or n != K3:
             return
-        if ctx.state.show_files:
+        actions = ctx.actions
+        if actions is not None:
+            actions.activate_show(ctx.state)
+        if ctx.state.show_status == "ACTIVE":
             ctx.nav.open_load_show_confirm(ctx.state)
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
@@ -151,7 +155,7 @@ class ShowsScreen(Screen):
 
 class LoadShowScreen(Screen):
     id = ScreenId.LOAD_SHOW
-    title = "LOAD SHOW"
+    title = "SHOW"
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1:
@@ -159,7 +163,8 @@ class LoadShowScreen(Screen):
         if n == K3:
             actions = ctx.actions
             if actions is not None:
-                actions.confirm_load(ctx.state)
+                actions.activate_show(ctx.state)
+            ctx.nav.back(ctx.state)
         elif n == K2:
             ctx.nav.back(ctx.state)
 

@@ -59,15 +59,13 @@ Runtime is qlcplus.service:
   /usr/bin/qlcplus-qml -w
 
 QLC starts in WebAccess with no workspace loaded.
-Load a safe imported project through the QLC browser at :9999.
 Automatic selected-show -> QLC load is not implemented.
 
-Light Console reads OLED metadata from /home/light/shows/*.qxw
-independently of whatever QLC currently has open.
+SHOWS are logical groups inside one master workspace.
+K3 activates a show; QLC is not reloaded.
 
 Do not use --open <path> (valueless flag on this build).
 Do not POST /loadProject from scripts (offscreen QML can wedge :9999).
-Load a safe show in the QLC WebAccess browser instead.
 Do not match qlcplus by command line.
 
 If qlcplus.service is stopped:
@@ -83,55 +81,32 @@ or:
 SHOW PROJECTS
 ------------------------------------------------------------
 
-Shield show directory:
+Canonical master workspace (content), not loaded automatically:
 
-  /home/light/shows/
+  /home/light/shows/master.qxw
 
-OLED selected show (symlink; metadata only, does not load QLC):
+Logical show metadata:
 
-  /home/light/shows/current.qxw
+  ls -l /home/light/shows/*.yaml
 
-  readlink /home/light/shows/current.qxw
+OLED:
 
-Last-known-good:
+  MENU -> SHOWS -> E1 select -> K3
 
-  readlink /home/light/shows/last-good.qxw
-
-List shows:
-
-  ls -l /home/light/shows/
-
-From the Mac:
-
-  ./scripts/upload-show.sh --list
-
-OLED show list:
-
-  MENU -> SHOWS -> E1 select -> K3 -> LOAD SHOW?
-
-K3 there marks the list selection (WEB LOAD). It does not load QLC.
-Load the same file in the QLC WebAccess browser.
+K3 activates that logical show. It does not load QLC.
 
 
 ------------------------------------------------------------
-UPLOAD SHOW FROM MAC
+IMPORT SHOW FROM MAC
 ------------------------------------------------------------
 
 Run on the Mac, not inside Shield SSH:
 
   cd /Users/miiroseppanen/shieldxl-light-console
 
-  ./scripts/upload-show.sh "/path/to/show.qxw"
+  ./scripts/import-show.sh --name "SHOW A" --dry-run "/path/to/show.qxw"
 
-  ./scripts/upload-show.sh --dry-run "/path/to/show.qxw"
-  ./scripts/upload-show.sh --replace "/path/to/show.qxw"
-  ./scripts/upload-show.sh --list
-
-The helper validates the .qxw, writes a Shield-safe patched copy
-(Art-Net forced to 127.0.0.1 Line 0), and copies that copy only.
-The original/source file on the Mac is not modified.
-An invalid project is rejected and does not replace a working
-project. Without --replace, current.qxw is left unchanged.
+Dry-run prints SOURCE -> MASTER ID mapping and does not write master.qxw.
 
 
 ------------------------------------------------------------
@@ -145,7 +120,7 @@ FROM MAC TO SHIELD:
   scp "/path/to/file.qxw" \
     light@shieldxl-light.local:/home/light/
 
-For show projects, prefer ./scripts/upload-show.sh instead of
+For show projects, prefer ./scripts/import-show.sh --dry-run instead of
 copying directly into /home/light/shows/ or onto current.qxw.
 
 FROM SHIELD TO MAC:

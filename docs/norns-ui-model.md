@@ -43,7 +43,15 @@ SYSTEM
 
 HOME enters PLAY. SHOWS / SCENES / CHASERS / PARAMS / OUTPUT / SYSTEM are screens.
 
-SHOWS K3 opens `LOAD SHOW?`. That marks OLED metadata (`current.qxw`) and shows `AUTO LOAD NYI` / `LOAD IN QLC WEB`. It does not load QLC. `current.qxw` is the intended show; ACTIVE would be a live QLC identity match. They are not the same. See [`docs/show-ui.md`](show-ui.md).
+SHOWS K3 activates the selected logical show (metadata inside the master workspace). QLC is not loaded or restarted. OLED:
+
+```
+SHOW
+SIIRTYMA
+ACTIVE
+```
+
+SCENES / CHASERS / PLAY then list that show's functions. GO still requires live QLC id+name match. See [`docs/show-ui.md`](show-ui.md).
 
 SYSTEM list: QLC STATUS, HOSTNAME, VERSION, UPTIME, SHUTDOWN.
 

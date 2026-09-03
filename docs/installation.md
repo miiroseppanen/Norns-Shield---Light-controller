@@ -59,5 +59,5 @@ Operator cheat sheet (`light-help` on SSH login). Does not restart services:
 sudo bash /home/light/light-console/packaging/install-light-help.sh
 ```
 
-Show files live in `/home/light/shows/` (`current.qxw` symlink). Upload from the Mac with `./scripts/upload-show.sh`. QLC+ still starts `-w` and does not open that symlink.
+Canonical master workspace is `/home/light/shows/master.qxw`. Import from the Mac with `./scripts/import-show.sh --dry-run`. QLC+ still starts `-w` and does not autoload that file.
 

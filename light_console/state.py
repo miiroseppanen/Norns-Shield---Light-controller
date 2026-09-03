@@ -66,6 +66,7 @@ class AppState:
     show_index: int = 0
     show_count: int = 0
     show_files: tuple[str, ...] = ()
+    show_ids: tuple[str, ...] = ()
     show_name: str = ""
     show_status: str = ""
     go_status: str = ""
@@ -137,7 +138,10 @@ class AppState:
         if self.chasers:
             self.chaser_index %= len(self.chasers)
             self.current_chaser = self.chasers[self.chaser_index]
-        if self.show_files:
+        if self.show_ids:
+            self.show_index %= len(self.show_ids)
+            self.show_count = len(self.show_ids)
+        elif self.show_files:
             self.show_index %= len(self.show_files)
             self.show_count = len(self.show_files)
         if self.functions:

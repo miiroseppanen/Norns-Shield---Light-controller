@@ -15,7 +15,8 @@ from light_console.power import MockPowerService, PowerService
 from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
 from light_console.qlc.functions import QlcFunction
-from light_console.shows import ShowCatalog, ShowLoad
+from light_console.shows import ShowCatalog
+from light_console.showdef import ShowDefinition
 from light_console.state import AppState
 from light_console.status.dmx import apply_dmx
 from light_console.status.midi import apply_launchpad
@@ -58,7 +59,7 @@ class Controller:
         self.params = bind_console_params(state)
         self.binding = QlcBinding(qlc)
         self.catalog = ShowCatalog(shows_dir) if shows_dir is not None else None
-        self.show_load = ShowLoad(self.catalog) if self.catalog is not None else None
+        self.show_load = None
         self._applied_show: str | None = None
         self.shell = NornsUIShell(
             state, nav=self.nav, params=self.params, power=self.power, actions=self
@@ -183,45 +184,47 @@ class Controller:
         self.binding.go_chaser(state)
 
     def confirm_load(self, state: AppState) -> None:
-        """Select OLED metadata from an installed .qxw. Does not load QLC+."""
-        if self.catalog is None or not state.show_files:
+        self.activate_show(state)
+
+    def activate_show(self, state: AppState) -> None:
+        """Select the active logical show. Does not load or restart QLC."""
+        if self.catalog is None or not state.show_ids:
             return
-        filename = state.show_files[state.show_index % len(state.show_files)]
+        show_id = state.show_ids[state.show_index % len(state.show_ids)]
         try:
-            self.catalog.select(filename)
+            show = self.catalog.activate(show_id)
         except Exception as exc:
-            LOG.warning("show select rejected: %s", exc)
+            LOG.warning("show activate rejected: %s", exc)
             state.show_status = "FAIL"
             return
-        self._applied_show = None
-        self._refresh_show_state(force=True)
-        state.show_status = "WEB LOAD"
-        self.nav.back(state)
+        self._apply_show(show)
+        state.show_status = "ACTIVE"
 
-    def _refresh_show_state(self, force: bool = False) -> None:
-        if self.catalog is None:
-            return
-        self.state.show_files = self.catalog.list_files()
-        current = self.catalog.current_name() or ""
-        self.state.show_name = current
-        info = self.catalog.current_info()
-        if info is None:
-            return
-        if not force and info.filename == self._applied_show:
-            return
-        self._applied_show = info.filename
-        self.state.scenes = info.scenes
-        self.state.chasers = info.chasers
-        self.state.scene_function_ids = tuple(
-            fn.function_id for fn in info.functions if fn.type_name.lower() == "scene"
-        )
-        self.state.chaser_function_ids = tuple(
-            fn.function_id for fn in info.functions if fn.type_name.lower() == "chaser"
-        )
+    def _apply_show(self, show: ShowDefinition) -> None:
+        self._applied_show = show.show_id
+        self.state.show_name = show.name
+        self.state.scenes = tuple(ref.name for ref in show.scenes)
+        self.state.chasers = tuple(ref.name for ref in show.chasers)
+        self.state.scene_function_ids = tuple(ref.function_id for ref in show.scenes)
+        self.state.chaser_function_ids = tuple(ref.function_id for ref in show.chasers)
         self.state.functions = self.state.scenes
         self.state.scene_index = 0
         self.state.chaser_index = 0
         self.state.clamp_indices()
+
+    def _refresh_show_state(self, force: bool = False) -> None:
+        if self.catalog is None:
+            return
+        shows = self.catalog.list_shows()
+        self.state.show_ids = tuple(show.show_id for show in shows)
+        self.state.show_files = tuple(show.name for show in shows)
+        current = self.catalog.current_show()
+        if current is None:
+            return
+        self.state.show_name = current.name
+        if not force and current.show_id == self._applied_show:
+            return
+        self._apply_show(current)
 
     def _finish(self) -> None:
         self.state.clamp_indices()

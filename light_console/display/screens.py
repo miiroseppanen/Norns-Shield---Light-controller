@@ -104,32 +104,25 @@ def draw_chasers(fb: Framebuffer, state: AppState) -> None:
 
 def draw_shows(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "SHOWS", state)
-    if not state.show_files:
+    labels_src = state.show_files
+    if not labels_src:
         text(fb, 0, ROW * 2, "NO SHOWS")
         return
     labels = []
     current = state.show_name
-    for name in state.show_files:
-        stem = name[:-4] if name.lower().endswith(".qxw") else name
-        mark = "*" if name == current or stem == current else " "
-        labels.append(f"{mark}{stem}"[:21])
+    for name in labels_src:
+        mark = "*" if name == current else " "
+        labels.append(f"{mark}{name}"[:21])
     draw_list(fb, labels, state.show_index)
+    if state.show_status == "ACTIVE" and current:
+        text(fb, 0, ROW * 6, "ACTIVE"[:21])
 
 
 def draw_load_show(fb: Framebuffer, state: AppState) -> None:
-    _header(fb, "LOAD SHOW?", state)
-    name = "--"
-    if state.show_files:
-        name = state.show_files[state.show_index % len(state.show_files)]
-        if name.lower().endswith(".qxw"):
-            name = name[:-4]
-    text(fb, 0, ROW * 2, name[:21])
-    if state.show_status == "FAIL":
-        text(fb, 0, ROW * 3, "LIST FAIL"[:21])
-        return
-    text(fb, 0, ROW * 3, "AUTO LOAD NYI")
-    text(fb, 0, ROW * 4, "LOAD IN QLC WEB")
-    text(fb, 0, ROW * 5, "K3 LIST  K2 BACK")
+    _header(fb, "SHOW", state)
+    name = (state.show_name or "--")[:21]
+    text(fb, 0, ROW * 2, name)
+    text(fb, 0, ROW * 3, (state.show_status or "ACTIVE")[:21])
 
 
 def draw_output(fb: Framebuffer, state: AppState) -> None:
