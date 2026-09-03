@@ -113,28 +113,24 @@ One bounded trial (2026-09-03): wrote `[workspace] recent0=/home/light/shows/sho
 
 QLC 5.2.2 `main.cpp` loads the workspace **before** starting WebAccess. `-9` is the same `loadWorkspace()` class as a positional file. Startup autoload is **UNSUPPORTED** here.
 
-## Architecture (Milestone 0.7)
+## Architecture (Milestone 0.8)
 
-**SUPERSEDED:** multiple runtime workspaces (`current.qxw` swap, `/loadProject`, `-9`, positional file).
+**DEFERRED:** interactive multi-workspace SHOWS UI as the appliance path.
 
-**Current:** one master QLC workspace. Imports merge Scene/Chaser content into `master.qxw`. Light Console SHOWS are logical groups in YAML metadata. Switching a show does not load or restart QLC.
+**Current appliance:** Shield-safe copy of production `siirtyma-startup.qxw` as `/home/light/shows/master.qxw`. QLC starts `-w -o` that file. See [`docs/production-parity.md`](production-parity.md) and [`docs/boot-sequence.md`](boot-sequence.md).
 
 ```
 SOURCE .qxw
      |
      v
- IMPORT / MERGE
-     |
-     +---- logical show metadata
+ IMPORT / PATCH  (MIDI + loopback Art-Net)
      |
      v
  MASTER QLC WORKSPACE
      |
      v
- QLC ENGINE
+ QLC ENGINE  (qlcplus-qml -w -o master.qxw)
      |
      v
- Light Console runtime control
+ startup helper + Light Console status
 ```
-
-Cold-boot autoload of `master.qxw` with WebAccess is still **UNRESOLVED**. See [`docs/master-workspace.md`](master-workspace.md) and [`docs/show-import.md`](show-import.md).

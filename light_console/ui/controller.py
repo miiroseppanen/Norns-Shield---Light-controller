@@ -28,6 +28,7 @@ from light_console.ui.shell import NornsUIShell
 
 LOG = logging.getLogger("light-console")
 STATUS_PATH = Path("/tmp/light-console.status")
+STARTUP_STATUS_PATH = Path("/tmp/qlc-startup.status")
 
 
 def _read_cpu_temp() -> float | None:
@@ -230,10 +231,29 @@ class Controller:
         self.state.clamp_indices()
         self.params.store_index(self.state)
         self._sync_qlc()
+        self._read_startup_status()
         if self.catalog is not None:
             self._refresh_show_state()
         self.state.rebuild_warnings()
         self._write_status()
+
+    def _read_startup_status(self) -> None:
+        try:
+            text = STARTUP_STATUS_PATH.read_text(encoding="utf-8")
+        except OSError:
+            if not self.state.startup_status:
+                self.state.startup_status = "WAIT" if self.state.qlc_connected else "--"
+            return
+        status = ""
+        for line in text.splitlines():
+            if line.startswith("status="):
+                status = line.split("=", 1)[1].strip()
+                break
+        if status:
+            self.state.startup_status = status
+            self.state.startup_running = status.upper() == "RUNNING"
+            if not self.state.show_name:
+                self.state.show_name = "SIIRTYMA"
 
     def _write_status(self) -> None:
         screen = self.state.screen.value if hasattr(self.state.screen, "value") else str(self.state.screen)

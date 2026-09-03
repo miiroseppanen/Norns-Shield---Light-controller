@@ -26,12 +26,9 @@ A flock on `/tmp/light-console.instance.lock` prevents a second `--shield` from 
 
 Halt: `/etc/sudoers.d/light-console-shutdown` is NOPASSWD for **only** `/usr/sbin/shutdown -h now`. Raspberry Pi OS still has password-required `(ALL) ALL`. After a reboot (or `sudo -k`), `sudo -n true` must fail; `sudo -n -l /usr/sbin/shutdown -h now` must list that command. Never prove sudo by executing `reboot` or `shutdown`. The UI still requires SYSTEM → SHUTDOWN → K3 confirm.
 
-## Intended order (later)
+## Milestone 0.8
 
-1. NetworkManager: WIZ-LIGHTS AP (wlan1) — not in 0.4c
-2. wizbridge.service — not in 0.4c
-3. qlcplus.service — headless QLC+ 5.2.2, web :9999 (0.5)
-4. light-console.service — PLAY UI (independent of QLC)
+See [`docs/boot-sequence.md`](boot-sequence.md). QLC starts `-w -o /home/light/shows/master.qxw`. Light Console stays independent.
 
 ## Forbidden
 

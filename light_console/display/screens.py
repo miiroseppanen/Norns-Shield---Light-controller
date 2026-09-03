@@ -48,16 +48,17 @@ def draw_list(fb: Framebuffer, labels: list[str], selected: int, y0: int = ROW *
 
 def draw_play(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "LIGHT CONSOLE", state)
-    scene = state.current_scene or "--"
-    chaser = state.current_chaser or "--"
-    if state.blackout:
-        text(fb, 0, ROW * 2, "BLACKOUT")
-    else:
-        status_pair(fb, ROW * 2, "SCENE", scene[:9])
-    status_pair(fb, ROW * 3, "CHASER", chaser[:9])
-    status_pair(fb, ROW * 4, "MASTER", f"{state.master}%")
-    if state.go_status:
-        text(fb, 0, ROW * 5, state.go_status[:21])
+    qlc = "OK" if state.qlc_connected else "OFF"
+    show = (state.show_name or "--")[:9]
+    startup = (state.startup_status or ("WAIT" if state.qlc_connected else "--"))[:9]
+    midi = "LAUNCHPAD" if state.launchpad_connected else "--"
+    output = (state.output_mode or "SAFE")[:9]
+    status_pair(fb, ROW * 1, "QLC", qlc)
+    status_pair(fb, ROW * 2, "SHOW", show)
+    status_pair(fb, ROW * 3, "STARTUP", startup)
+    status_pair(fb, ROW * 4, "MIDI", midi)
+    status_pair(fb, ROW * 5, "OUTPUT", output)
+    status_pair(fb, ROW * 6, "MASTER", f"{state.master}%")
 
 
 def draw_menu(fb: Framebuffer, state: AppState, items: tuple[MenuItem, ...] | None = None) -> None:

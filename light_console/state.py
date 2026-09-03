@@ -70,6 +70,8 @@ class AppState:
     show_name: str = ""
     show_status: str = ""
     go_status: str = ""
+    startup_status: str = ""
+    output_mode: str = "SAFE"
     current_scene: str = "WASH"
     current_chaser: str = "SLOW"
     active_function: str | None = None

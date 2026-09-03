@@ -2,7 +2,7 @@
 
 Show engine: **QLC+ 5.2.2** (`/usr/bin/qlcplus-qml`). light-console is a WebSocket client. It never starts QLC+ itself.
 
-**Milestone 0.7:** `qlcplus.service` is `-w` only. QLC starts with WebAccess and **no workspace**. Canonical show content is `master.qxw`; Light Console SHOWS are logical YAML groups. Automatic cold-boot load of master is **UNRESOLVED**. Do not POST `/loadProject`, pass a positional workspace, or use `-9`. Switching SHOWS does not load QLC.
+**Milestone 0.8:** `qlcplus.service` is `qlcplus-qml -w -o /home/light/shows/master.qxw` (production argv). Workspace is the Shield-safe production copy. WebAccess may take minutes. `isProjectLoaded` is false after CLI load; use the function list. Do not POST `/loadProject` or use `-9`.
 
 ## Services (independent)
 
@@ -23,11 +23,11 @@ Usage: qlcplus-qml [options] [file]
   file          File to open.
 ```
 
-`--open` is a valueless flag on this build and is **not** how a path is passed. Live `ExecStart` is:
+`--open` is a valueless flag on this build and is **not** how a path is passed. Live `ExecStart` (0.8, production pattern):
 
 ```
 QT_QPA_PLATFORM=offscreen
-/usr/bin/qlcplus-qml -w
+/usr/bin/qlcplus-qml -w -o /home/light/shows/master.qxw
 ```
 
 The WebAccess browser loads a workspace with `POST /loadProject` (multipart field `qlcprj`, **file contents**, not a server path). Do **not** automate that POST from Light Console on this 5.2.2 QML + offscreen image: `show-a.qxw` ingested then wedged HTTP `:9999`. See [`docs/show-ui.md`](show-ui.md).
@@ -86,9 +86,8 @@ HOST       localhost
 
 ## Forbidden
 
-- Restart QLC from light-console on disconnect (show load uses `.reload-qlc` + systemd path, not UI sudo)
+- Restart QLC from light-console on disconnect
 - `Requires=` / `After=` coupling so Light Console cannot start if QLC is down
-- Copy production `.qxw`
-- WiZ / PKNight / Launchpad in test workspaces
-- `--open <path>` / `/loadProject` until QML offscreen can load a project without blocking web
+- Unpatched production Art-Net to PKNight / `.248`
+- `-9` / POST `/loadProject`
 - `NOPASSWD: ALL` or generic `systemctl` sudo for user `light`

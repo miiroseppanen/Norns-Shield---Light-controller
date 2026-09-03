@@ -1,0 +1,18 @@
+[Unit]
+Description=Art-Net to WiZ bridge (Shield)
+# Do not enable until WIZ-LIGHTS is intentionally brought up on wlan1.
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+User=light
+WorkingDirectory=/home/light/light-console/services/wiz
+Environment=WIZBRIDGE_FIXTURES=/home/light/.config/wizbridge/fixtures.json
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do ip -4 -o addr show dev wlan1 2>/dev/null | grep -q inet && exit 0; sleep 1; done; echo "wlan1 has no IPv4; not starting WiZ TX"; exit 1'
+ExecStart=/usr/bin/python3 -u /home/light/light-console/services/wiz/wiz_artnet_bridge.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

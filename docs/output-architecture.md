@@ -29,7 +29,7 @@ Desired end state: **production Pi OFF + Shield ON = full rig.** That is **B**, 
 | Fact | Implication |
 |------|-------------|
 | One onboard Wi-Fi (`wlan0` / `brcmfmac`), STA on LIGHT-CONTROL | Cannot add a second SSID without another radio **or** giving up LIGHT-CONTROL on that radio |
-| No USB Wi-Fi | Second concurrent **Wi-Fi** network: **HARDWARE REQUIRED** |
+| No USB Wi-Fi historically | **0.8 inspect:** `wlan1` exists (Realtek `0bda:c811`) and is DOWN. Hardware is present; WIZ-LIGHTS AP is **not** started. |
 | `eth0` present, no carrier | Copper LIGHT-CONTROL + `wlan0` as WIZ-LIGHTS AP is possible **later** without USB Wi-Fi |
 | NM 1.52.1, AP property yes | AP is possible; **STA+AP concurrent on one phy is unproven** — do not enable in 0.6A |
 | `iw` not installed | Interface combinations not listed |
@@ -94,7 +94,7 @@ Three number spaces. Write all three in every patch note.
 
 QLC default: UI universe N → Art-Net universe N−1. Set `outputUni` explicitly so a future UI reordering cannot swap WiZ and DMX.
 
-**Disarmed / 0.6B:** both outputs **127.0.0.1** (or plugin unpatched). Never broadcast `192.168.88.255` while the production Pi may also be sending.
+**Disarmed / 0.8:** both outputs **127.0.0.1**. Never unicast `192.168.88.201` while production Pi `.248` is also sending.
 
 WiZ channel order (unchanged): Dimmer, Red, Green, Blue, White, CCT.
 
