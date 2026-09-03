@@ -4,6 +4,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SUDOERS = ROOT / "packaging/sudoers.d/light-console-shutdown"
 UNIT = ROOT / "packaging/systemd/light-console.service"
 QLC = ROOT / "packaging/systemd/qlcplus.service"
+STARTUP = ROOT / "packaging/systemd/qlc-startup-chaser.service"
+APPLIANCE = ROOT / "packaging/install-appliance.sh"
 QXW = ROOT / "qlc/projects/light-console-test.qxw"
 
 
@@ -49,11 +51,13 @@ def test_qlcplus_unit_is_independent():
     assert "QT_QPA_PLATFORM=offscreen" in text
     assert "-w" in text
     exec_start = next(ln for ln in text.splitlines() if ln.startswith("ExecStart="))
-    assert exec_start == "ExecStart=/usr/bin/qlcplus-qml -w"
+    assert exec_start == "ExecStart=/usr/bin/qlcplus-qml -w -o /home/light/shows/master.qxw"
     assert "ExecStartPre=/usr/bin/python3 -m light_console.midi_wait" in text
     assert "PYTHONPATH=/home/light/light-console" in text
     assert "TimeoutStartSec=30" in text
+    assert "qlc-startup-chaser.service" in text
     assert "--open" not in exec_start
+    assert "-9" not in exec_start
     assert "qlc-launch" not in exec_start
     assert "/usr/bin/systemctl" not in SUDOERS.read_text()
     sudoers = SUDOERS.read_text()
@@ -76,3 +80,18 @@ def test_test_workspace_has_no_show_outputs():
     assert "<!doctype workspace>" in text
     assert "outputip=\"127.0.0.1\"" in text
     assert "plugin=\"artnet\"" in text
+
+
+def test_startup_unit_waits_for_webaccess():
+    text = STARTUP.read_text()
+    assert "TimeoutStartSec=360" in text
+    assert "python3 -m light_console.startup_chaser" in text
+    assert "Requires=qlcplus.service" in text
+
+
+def test_appliance_install_does_not_enable_wiz():
+    text = APPLIANCE.read_text()
+    assert "siirtyma-shield.qxw" in text
+    assert "qlc-startup-chaser.service" in text
+    assert "systemctl enable wizbridge" not in text
+    assert "systemctl start wizbridge" not in text

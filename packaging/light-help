@@ -56,17 +56,14 @@ WEB:
 
 Runtime is qlcplus.service:
 
-  /usr/bin/qlcplus-qml -w
+  /usr/bin/qlcplus-qml -w -o /home/light/shows/master.qxw
 
-QLC starts in WebAccess with no workspace loaded.
-Automatic selected-show -> QLC load is not implemented.
+That is the production Pi pattern. -o is a flag; the path is positional.
+WebAccess can take several minutes after a large workspace loads.
+Do not SIGTERM during Refresh 2D view.
+Do not use -9 or POST /loadProject.
 
-SHOWS are logical groups inside one master workspace.
-K3 activates a show; QLC is not reloaded.
-
-Do not use --open <path> (valueless flag on this build).
-Do not POST /loadProject from scripts (offscreen QML can wedge :9999).
-Do not match qlcplus by command line.
+SHOWS remain logical groups. Interactive show control is deferred.
 
 If qlcplus.service is stopped:
 

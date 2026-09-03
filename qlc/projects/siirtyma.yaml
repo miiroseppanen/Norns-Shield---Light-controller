@@ -1,0 +1,7 @@
+id: siirtyma
+name: SIIRTYMA
+source: siirtyma-startup.qxw
+scenes: []
+chasers:
+  - id: 0
+    name: startup

@@ -26,11 +26,11 @@ MASTER = ROOT / "qlc/projects/master.qxw"
 IMPORT = ROOT / "scripts/import-show.sh"
 
 
-def test_qml_argv_is_web_only():
+def test_qml_argv_matches_production():
     argv = qml_argv(MASTER)
-    assert argv == ["/usr/bin/qlcplus-qml", "-w"]
+    assert argv == ["/usr/bin/qlcplus-qml", "-w", "-o", str(MASTER)]
     assert "-9" not in argv
-    assert "--open" not in argv
+    assert "--openlast" not in argv
 
 
 def test_resolve_master_workspace(tmp_path):

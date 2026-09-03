@@ -142,6 +142,35 @@ def test_prepare_rewrites_midi_none_uid_to_launchpad_port_name():
     assert "client 28" not in patched
 
 
+def test_prepare_sanitizes_caption_hosts_and_patches_io():
+    text = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace">
+ <Engine>
+  <InputOutputMap>
+   <Universe Name="Universe 1" ID="0">
+    <Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" Line="1" Profile="Novation Launchpad Mini"/>
+    <Output Plugin="ArtNet" Name="192.168.88.245" UID="" Line="1">
+     <PluginParameters outputIP="192.168.88.201"/>
+    </Output>
+    <Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" Line="1"/>
+   </Universe>
+  </InputOutputMap>
+ </Engine>
+ <VirtualConsole>
+  <Label Caption="ssh valot@192.168.88.248"/>
+ </VirtualConsole>
+</Workspace>
+"""
+    patched = prepare_for_shield(text)
+    assert "192.168.88.201" not in patched
+    assert "192.168.88.248" not in patched
+    assert 'Caption="ssh valot@HOST"' in patched
+    assert 'UID="1-1.2:0"' in patched
+    assert 'outputIP="127.0.0.1"' in patched
+
+
 def test_parse_functions_rejects_non_workspace():
     with pytest.raises(QxwError):
         parse_functions("<nope/>")

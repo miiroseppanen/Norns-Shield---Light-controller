@@ -1,8 +1,9 @@
 [Unit]
 Description=QLC+ 5.2.2 headless web (Light Console)
 Documentation=file:///home/light/light-console/docs/qlc-integration.md
-After=local-fs.target
-# Rate-limit crash restarts (must live in [Unit], not [Service]).
+After=network-online.target sound.target local-fs.target
+Wants=network-online.target
+Wants=qlc-startup-chaser.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
 # Independent of light-console.service. Do not Require= or After= it.
@@ -12,16 +13,19 @@ Type=simple
 User=light
 Group=light
 WorkingDirectory=/home/light/light-console
+Environment=HOME=/home/light
 Environment=PYTHONPATH=/home/light/light-console
 Environment=QT_QPA_PLATFORM=offscreen
 Environment=QT_LOGGING_RULES=qt.qpa.*=false
-# -w only. --open and POST /loadProject block WebAccess on this 5.2.2 QML
-# offscreen build (Refresh 2D view, :9999 never/no-longer binds).
+# Production Pi uses: qlcplus-qml -w -o /home/valot/siirtyma-startup.qxw
+# -o is a valueless flag; the path is the positional workspace.
+# WebAccess may take minutes after a large Virtual Console refresh. Do not
+# SIGTERM during Refresh 2D view. Do not use -9 or POST /loadProject.
 ExecStartPre=/usr/bin/python3 -m light_console.midi_wait
-ExecStart=/usr/bin/qlcplus-qml -w
+ExecStart=/usr/bin/qlcplus-qml -w -o /home/light/shows/master.qxw
 TimeoutStartSec=30
 Restart=on-failure
-RestartSec=3
+RestartSec=5
 TimeoutStopSec=15
 KillMode=mixed
 StandardOutput=journal

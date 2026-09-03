@@ -282,7 +282,11 @@ class QlcWebSocketClient(QLCClient):
     def _on_message(self, msg: str) -> None:
         parts = msg.split("|")
         if len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "isProjectLoaded":
-            self._project = parts[2].lower() in ("true", "1", "yes")
+            loaded = parts[2].lower() in ("true", "1", "yes")
+            if loaded:
+                self._project = True
+            elif not self._functions and self.functions_number == 0:
+                self._project = False
         elif len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "getFunctionsNumber":
             try:
                 self.functions_number = int(parts[2])

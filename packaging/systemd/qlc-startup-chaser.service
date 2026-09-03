@@ -1,0 +1,24 @@
+[Unit]
+Description=Start QLC startup chaser
+Documentation=file:///home/light/light-console/docs/boot-sequence.md
+Requires=qlcplus.service
+After=qlcplus.service
+PartOf=qlcplus.service
+
+[Service]
+Type=oneshot
+User=light
+Group=light
+WorkingDirectory=/home/light/light-console
+Environment=HOME=/home/light
+Environment=PYTHONPATH=/home/light/light-console
+# Production helper waited ~4 minutes for WebAccess after workspace load.
+TimeoutStartSec=360
+ExecStart=/usr/bin/python3 -m light_console.startup_chaser
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=qlc-startup
+
+[Install]
+WantedBy=multi-user.target

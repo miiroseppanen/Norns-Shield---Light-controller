@@ -130,6 +130,17 @@ def test_clean_shutdown_stops_reconnect():
     assert c.qlc.connection_state() is ConnectionState.DISCONNECTED
 
 
+def test_cli_loaded_workspace_ignores_false_isProjectLoaded():
+    fake = FakeTransport()
+    fake.project_loaded = False
+    qlc = QlcWebSocketClient(transport_factory=lambda: fake, reconnect_seconds=0.01)
+    qlc.pump(0.0)
+    qlc.pump(0.1)
+    assert qlc.project_loaded() is True
+    assert qlc.functions_number == 2
+    qlc.close()
+
+
 def test_fake_transport_connect_and_gm():
     fake = FakeTransport()
     qlc = QlcWebSocketClient(transport_factory=lambda: fake, reconnect_seconds=0.01)

@@ -40,6 +40,7 @@ _FUNCTION_BLOCK = re.compile(
 _ATTR = re.compile(r'\b(ID|Type|Name)="([^"]*)"', re.IGNORECASE)
 _TAG_ATTR = re.compile(r'\b([A-Za-z]+)="([^"]*)"')
 _UNSET = frozenset({"", "none"})
+_CAPTION = re.compile(r'(Caption=")([^"]*)(")', re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,19 @@ def _parse_workspace(text: str) -> ET.Element:
     if local != "Workspace":
         raise QxwError(f"root is <{local}>, not Workspace")
     return root
+
+
+def _sanitize_caption_hosts(text: str) -> str:
+    """Rewrite operator Label captions that mention machine IPs. IO is patched separately."""
+
+    def repl(match: re.Match[str]) -> str:
+        caption = match.group(2)
+        for host in sorted(FORBIDDEN_HOSTS | {SHIELD_LAN_HOST}, key=len, reverse=True):
+            caption = caption.replace(host, "HOST")
+        caption = re.sub(r"10\.42\.\d+\.\d+", "HOST", caption)
+        return f"{match.group(1)}{caption}{match.group(3)}"
+
+    return _CAPTION.sub(repl, text)
 
 
 def _forbidden_leftovers(text: str) -> list[str]:
@@ -185,7 +199,8 @@ def prepare_for_shield_report(
     except MachineProfileError as exc:
         raise QxwError(str(exc)) from exc
     lp = machine.launchpad
-    patched = _ARTNET_OUTPUT_BLOCK.sub(lambda m: _patch_artnet_block(m.group(0)), text)
+    patched = _sanitize_caption_hosts(text)
+    patched = _ARTNET_OUTPUT_BLOCK.sub(lambda m: _patch_artnet_block(m.group(0)), patched)
     has_lp_input = False
     for match in _MIDI_IO_TAG.finditer(patched):
         if match.group(1).lower() == "input" and _is_launchpad_input(
@@ -197,6 +212,9 @@ def prepare_for_shield_report(
 
     def replace(match: re.Match[str]) -> str:
         kind, attrs, slash = match.group(1), match.group(2), match.group(3)
+        if attrs.rstrip().endswith("/"):
+            attrs = attrs.rstrip()[:-1]
+            slash = "/"
         parsed = _tag_attrs(attrs)
         if kind.lower() == "input":
             if not _is_launchpad_input(parsed, lp):
