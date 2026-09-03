@@ -139,3 +139,19 @@ SIGTERM of 608 as user `light` stopped QLC. `Restart=on-failure` did **not** sta
 ### Conclusion
 
 Protocol exists and is automatable **as HTTP**. It is **not safe** on this offscreen QML image for `show-a.qxw`: WebAccess dies during Virtual Console refresh. Light Console does not POST `/loadProject`. SHOWS remains `AUTO LOAD NYI` / `LOAD IN QLC WEB`. GO identity check unchanged.
+
+Operator later restored `qlcplus.service` (`qlcplus-qml -w`, MainPID 2207, `:9999` owned by that PID).
+
+## 9. `-9` / `--openlast` trial (show-a only)
+
+Date: 2026-09-03. Baseline: systemd MainPID **2207**, `argv[]=/usr/bin/qlcplus-qml -w`, HTTP 200. QSettings had no `workspace/recent*` keys.
+
+Configured `recent0=/home/light/shows/show-a.qxw` (loopback Art-Net only; no production addresses). Stopped `qlcplus.service`. `:9999` free. Launched **only** `/usr/bin/qlcplus-qml -w -9` (offscreen, 20s bound). Trial PID **2306**.
+
+Result: HTTP never bound. Process still running at timeout. Log: `Refresh 2D view...`, then Art-Net `127.0.0.1`, Generic Smoke. Same offscreen QML stall as `/loadProject` / positional workspace; web starts **after** `loadWorkspace()` in 5.2.2 `main.cpp`.
+
+Terminated PID 2306 only. Restored QSettings. Started `qlcplus.service`. Restored MainPID **2332**, `qlcplus-qml -w`, HTTP 200, `isProjectLoaded=false`, 0 functions. Unit argv still `-w` only.
+
+**Startup workspace autoload is UNSUPPORTED** on this appliance.
+
+**Recommendation: one master QLC workspace.** Do not implement restart-based `.qxw` switching. Light Console should later treat SHOWS as groups inside a single continuously running project.

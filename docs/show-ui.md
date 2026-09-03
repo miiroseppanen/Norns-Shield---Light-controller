@@ -13,7 +13,9 @@ They are not the same during startup, a load attempt, a failed load, or a QLC re
 
 ## Automatic QLC load
 
-**Not implemented.** Milestone 0.6C found the WebAccess browser protocol (HTTP POST `/loadProject`, multipart field `qlcprj`, **file contents**). Programmatic POST of `show-a.qxw` ingested the XML then wedged offscreen QML WebAccess (`VC_PAGE|-1` …). Light Console must not POST `/loadProject` until a workspace is proven to leave HTTP :9999 and the WebSocket usable.
+**Unsupported** on this offscreen 5.2.2 appliance. `/loadProject` and `-w -9` (`--openlast` via QSettings `workspace/recent0`) both ingest `show-a.qxw` then fail to serve HTTP/WebSocket (`Refresh 2D view`). Do not add `-9` to `qlcplus.service`.
+
+**Recommendation: one master QLC workspace**, loaded once, left running. SHOWS should later filter function groups inside that file rather than swapping `.qxw` at runtime.
 
 SHOWS still shows:
 

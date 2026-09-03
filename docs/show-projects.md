@@ -93,15 +93,28 @@ Verified from `/usr/share/qlcplus/web/webaccess-v5.html` + `webaccess-v5.js` and
 4. QLC `extractMultipartFilePayload()` takes the first MIME part as workspace XML
 5. HTTP 200 HTML `Loading project...` which polls `QLC+API|isProjectLoaded` then navigates to `/`
 
-The `.qxw` file stays in the browser. **Contents** are uploaded. QLC does not read `/home/light/shows/current.qxw`.
+## Why `/loadProject` is not used
 
-Shield journal for a POST of `show-a.qxw` (2057 bytes):
+QLC+ 5.2.2 WebAccess **Load project** is `POST /loadProject` with multipart field `qlcprj` carrying the `.qxw` **bytes**. That is the real browser protocol.
 
-```
-HTTP_POST /loadProject
-Workspace XML received. Content-Length: "2267" 2057
-```
+On this appliance (`qlcplus-qml -w`, `QT_QPA_PLATFORM=offscreen`) that ingest is **unsafe for Light Console**:
 
-Engine then opened Art-Net `127.0.0.1` and loaded Generic Smoke. Offscreen QML then emitted `VC_PAGE|-1` … and HTTP `:9999` stopped answering. Light Console must **not** automate `/loadProject` until a workspace is proven to leave WebAccess and the WebSocket usable. A prior browser upload of a full Virtual Console production show (111450 byte XML) did return WebAccess; that file must not be used as a live engine here.
+- workspace XML is accepted
+- offscreen QML then runs Virtual Console / `Refresh 2D view`
+- HTTP `:9999` and `/qlcplusWS` stop serving
+
+Light Console must not call `/loadProject`. There is no retry around it.
+
+## Startup autoload (`-9` / `--openlast`)
+
+QSettings file `/home/light/.config/qlcplus/Q Light Controller Plus.conf` had **no** `workspace/recent*` keys under a normal `-w` run.
+
+One bounded trial (2026-09-03): wrote `[workspace] recent0=/home/light/shows/show-a.qxw`, stopped `qlcplus.service`, launched `/usr/bin/qlcplus-qml -w -9` offscreen for 20s. `show-a.qxw` is loopback-only (2057 bytes). The process stayed up, ingested Art-Net `127.0.0.1` / Generic Smoke, logged `Refresh 2D view...`, and **never bound `:9999`**. Trial PID was SIGTERM'd. systemd was restored to `qlcplus-qml -w` only. `-9` was not added to the unit.
+
+QLC 5.2.2 `main.cpp` loads the workspace **before** starting WebAccess. `-9` is the same `loadWorkspace()` class as a positional file. Startup autoload is **UNSUPPORTED** here.
+
+## Recommended architecture
+
+**One master QLC workspace**, loaded once (manually / prepared), left running. Light Console SHOWS should later filter Collections / function groups inside that file. Do not swap `.qxw` files at runtime.
 
 `current.qxw` remains the OLED **intended** show. ACTIVE is a live QLC identity match. They are not the same. See [`docs/show-ui.md`](show-ui.md).
