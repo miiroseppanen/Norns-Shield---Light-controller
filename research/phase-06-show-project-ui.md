@@ -93,3 +93,49 @@ Do not adopt `aconnect` as architecture.
 ## 7. Show vs machine XML
 
 See [`docs/show-projects.md`](../docs/show-projects.md).
+
+## 8. Milestone 0.6C — WebAccess project load
+
+Date: 2026-09-03. QLC PID **608** (`qlcplus-qml -w`) until the show-a POST. No CLI workspace flags. No production `.qxw`. No `install-qlc.sh`.
+
+### Browser implementation (installed files)
+
+`GET /` serves `webaccess-v5.html`:
+
+```html
+<form id="loadForm" action="/loadProject" method="POST" enctype="multipart/form-data">
+  <input id="loadTrigger" type="file" accept=".qxw" name="qlcprj">
+  <input id="submitTrigger" type="submit">
+</form>
+```
+
+`webaccess-v5.js` only clicks that file input and submits the form. No `FileReader`, no WebSocket load command, no path string.
+
+QLC 5.2.2 `WebAccessBase::handleCommonHTTPRequest` `/loadProject` → `extractProjectXml` → `handleProjectLoad` → `emit loadProject(xml)`. `isProjectLoaded` is `m_pendingProjectLoaded`, set true in `WebAccessQml::slotDocLoaded`.
+
+### Programmatic show-a POST
+
+Before: HTTP 200, `isProjectLoaded=false`, functions=0. File `/home/light/shows/show-a.qxw` 2057 bytes, Art-Net `127.0.0.1` only.
+
+POST multipart `qlcprj` with the encoder now in `light_console/qlc/webaccess.py`.
+
+Journal:
+
+```
+HTTP_POST QUrl("/loadProject")
+Workspace XML received. Content-Length: "2267" 2057
+HttpResponse end
+[ArtNet] Open output on address : "127.0.0.1"
+Loading fixture definition now... Generic-Generic-Smoke.qxf
+VC_PAGE|-1
+VC_PAGE|-2
+VC_PAGE|-3
+```
+
+Then process 608 stayed `Rsl` ~6% CPU. HTTP `:9999` = fail. WebSocket unusable. Client POST timed out at 15s (response not flushed before QML blocked the event loop). No live `getFunctionsList` proof.
+
+SIGTERM of 608 as user `light` stopped QLC. `Restart=on-failure` did **not** start it (clean exit). `qlcplus.service` inactive. A replacement `/usr/bin/qlcplus-qml -w` was started as `light` (no sudo) to restore HTTP 200 / empty project. Unit start still needs operator `sudo systemctl start qlcplus` after stopping that leftover process.
+
+### Conclusion
+
+Protocol exists and is automatable **as HTTP**. It is **not safe** on this offscreen QML image for `show-a.qxw`: WebAccess dies during Virtual Console refresh. Light Console does not POST `/loadProject`. SHOWS remains `AUTO LOAD NYI` / `LOAD IN QLC WEB`. GO identity check unchanged.

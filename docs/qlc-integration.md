@@ -30,7 +30,7 @@ QT_QPA_PLATFORM=offscreen
 /usr/bin/qlcplus-qml -w
 ```
 
-Do **not** POST `/loadProject` on this 5.2.2 QML + offscreen image (blocks WebAccess).
+The WebAccess browser loads a workspace with `POST /loadProject` (multipart field `qlcprj`, **file contents**, not a server path). Do **not** automate that POST from Light Console on this 5.2.2 QML + offscreen image: `show-a.qxw` ingested then wedged HTTP `:9999`. See [`docs/show-ui.md`](show-ui.md).
 
 Install: `sudo bash packaging/install-qlc.sh`
 

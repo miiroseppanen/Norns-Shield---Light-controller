@@ -80,3 +80,28 @@ That is why a project with Launchpad VC mappings still opened Midi Through. The 
 Art-Net in the same file is machine routing (`outputIP` production Pi / PKNight) and is rewritten to `127.0.0.1` Line 0 on import. Do not load the unpatched source as the live engine if real outputs must stay off.
 
 `prepare_for_shield` scans the **entire** workspace string for forbidden addresses. Virtual Console label captions that contain `192.168.88.248` still reject import after IO rewrite. That is separate from MIDI patching.
+
+## WebAccess project load protocol (5.2.2)
+
+The browser **Load project** button is not a WebSocket API and does not open a server path.
+
+Verified from `/usr/share/qlcplus/web/webaccess-v5.html` + `webaccess-v5.js` and QLC `webaccessbase.cpp`:
+
+1. Hidden form `POST /loadProject` `enctype=multipart/form-data`
+2. File input `name="qlcprj"` `accept=".qxw"`
+3. Button click → file picker → native form submit
+4. QLC `extractMultipartFilePayload()` takes the first MIME part as workspace XML
+5. HTTP 200 HTML `Loading project...` which polls `QLC+API|isProjectLoaded` then navigates to `/`
+
+The `.qxw` file stays in the browser. **Contents** are uploaded. QLC does not read `/home/light/shows/current.qxw`.
+
+Shield journal for a POST of `show-a.qxw` (2057 bytes):
+
+```
+HTTP_POST /loadProject
+Workspace XML received. Content-Length: "2267" 2057
+```
+
+Engine then opened Art-Net `127.0.0.1` and loaded Generic Smoke. Offscreen QML then emitted `VC_PAGE|-1` … and HTTP `:9999` stopped answering. Light Console must **not** automate `/loadProject` until a workspace is proven to leave WebAccess and the WebSocket usable. A prior browser upload of a full Virtual Console production show (111450 byte XML) did return WebAccess; that file must not be used as a live engine here.
+
+`current.qxw` remains the OLED **intended** show. ACTIVE is a live QLC identity match. They are not the same. See [`docs/show-ui.md`](show-ui.md).

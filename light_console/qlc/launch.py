@@ -8,7 +8,8 @@ Verified on Shield `qlcplus-qml --help` (5.2.2):
 
 `--open` is a valueless flag and is not used by qmlui/main.cpp to take a
 path. The workspace is the positional [file] argument. Do not pass
-`--open /path`. Do not POST /loadProject (blocks WebAccess on this image).
+`--open /path`. Do not automate POST /loadProject from Light Console
+(offscreen QML can ingest XML then wedge WebAccess).
 """
 
 from __future__ import annotations
