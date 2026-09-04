@@ -1,0 +1,12 @@
+#!/bin/sh
+# Read-only Shield appliance diagnostic. Does not start, stop, or restart services.
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+if [ -f "$HERE/../light_console/appliance_check.py" ]; then
+  ROOT="$(CDPATH= cd -- "$HERE/.." && pwd)"
+else
+  ROOT="${LIGHT_CONSOLE_ROOT:-/home/light/light-console}"
+fi
+export PYTHONPATH="$ROOT"
+cd "$ROOT"
+exec python3 -m light_console.appliance_check "$@"

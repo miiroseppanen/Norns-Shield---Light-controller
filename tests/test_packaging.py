@@ -89,6 +89,14 @@ def test_startup_unit_waits_for_webaccess():
     assert "Requires=qlcplus.service" in text
 
 
+def test_appliance_check_wrapper_is_read_only():
+    text = (ROOT / "packaging/light-appliance-check").read_text()
+    assert "python3 -m light_console.appliance_check" in text
+    assert "systemctl start" not in text
+    assert "systemctl restart" not in text
+    assert "reboot" not in text
+
+
 def test_appliance_install_does_not_enable_wiz():
     text = APPLIANCE.read_text()
     assert "siirtyma-shield.qxw" in text

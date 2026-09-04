@@ -47,3 +47,17 @@ Shield trials that SIGTERM'd at 20s during `Refresh 2D view` were too short. Tha
 | `wizbridge.service` | **not enabled** |
 
 Install: `sudo bash packaging/install-appliance.sh`
+
+## Cold-boot time budget
+
+See [`docs/cold-boot.md`](cold-boot.md). Do not fail a boot because WebAccess is still refreshing.
+
+- `midi_wait`: ≤12s, then QLC starts whether or not the pad appeared
+- QLC process start: seconds after midi_wait
+- Virtual Console / WebAccess: **up to ~360s** (production Pi ~4 min after process start)
+- `qlc-startup-chaser.service`: `TimeoutStartSec=360`
+- Light Console / OLED: independent; may be healthy before QLC HTTP 200
+
+Warm QLC restart after SIGKILL recovered in ~6s. That is not the cold-boot budget.
+
+Read-only probe: `python3 -m light_console.appliance_check`

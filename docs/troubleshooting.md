@@ -19,6 +19,15 @@
 | Keys inverted | Active low; overlay flags |
 | Show dead when UI dies | QLC/wizbridge still running? If not, that is a systemd issue, not OLED |
 
+## Appliance (read-only)
+
+```
+cd /home/light/light-console
+python3 -m light_console.appliance_check
+```
+
+Does not start, stop, or restart services. Cold-boot sequence: [`docs/cold-boot.md`](cold-boot.md).
+
 ## QLC
 
 `QLC LOST` = WebSocket down. Do not restart QLC from the UI. Check `qlcplus.service` separately.

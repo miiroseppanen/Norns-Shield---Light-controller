@@ -75,6 +75,20 @@ or:
 
 
 ------------------------------------------------------------
+APPLIANCE CHECK
+------------------------------------------------------------
+
+Read-only. Does not start, stop, or restart services.
+
+  cd /home/light/light-console
+  python3 -m light_console.appliance_check
+
+or:
+
+  /home/light/light-console/packaging/light-appliance-check
+
+
+------------------------------------------------------------
 SHOW PROJECTS
 ------------------------------------------------------------
 

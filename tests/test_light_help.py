@@ -41,6 +41,9 @@ def test_light_help_prints_operator_guide():
         "1235:0036",
         "QLC 5.2.2 does not hotplug-rescan MIDI devices",
         "light-help",
+        "python3 -m light_console.appliance_check",
+        "light-appliance-check",
+        "Does not start, stop, or restart services.",
     ):
         assert needle in out
     assert "git rev-parse --short HEAD" in out
@@ -65,6 +68,7 @@ def test_installer_is_reproducible_and_side_effect_free():
     text = INSTALL.read_text()
     assert 'HELP_DST="/usr/local/bin/light-help"' in text
     assert 'PROFILE_DST="/etc/profile.d/light-help.sh"' in text
+    assert 'CHECK_DST="/usr/local/bin/light-appliance-check"' in text
     assert 'SHOWS_DIR="/home/light/shows"' in text
     assert "current.qxw" in text
     assert "systemctl" not in text
