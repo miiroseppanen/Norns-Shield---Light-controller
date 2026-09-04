@@ -165,7 +165,10 @@ POWER
 
 Preferred shutdown:
 use the OLED:
-  SYSTEM -> SHUTDOWN -> CONFIRM
+  SYSTEM -> SHUTDOWN -> K3
+
+That begins halt immediately. OLED shows SHUTTING DOWN.
+When the green LED stops blinking, power can be removed.
 
 Terminal fallback:
 

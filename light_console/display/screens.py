@@ -146,13 +146,20 @@ def draw_system(fb: Framebuffer, state: AppState) -> None:
     draw_list(fb, labels, state.system_index, y0=ROW)
 
 
-def draw_shutdown(fb: Framebuffer, state: AppState) -> None:
-    _header(fb, "SHUTDOWN?", state)
-    if state.shutdown_requested:
-        text(fb, 0, ROW * 3, "SHUTDOWN REQUESTED"[:21])
-        return
-    text(fb, 0, ROW * 3, "K2  CANCEL")
-    text(fb, 0, ROW * 4, "K3  CONFIRM")
+SHUTTING_DOWN_LINES = (
+    "SHUTTING DOWN",
+    "WAIT",
+    "GREEN LED STOPS",
+    "SAFE TO UNPLUG",
+)
+
+
+def draw_shutting_down(fb: Framebuffer, state: AppState) -> None:
+    del state
+    text(fb, 0, 0, SHUTTING_DOWN_LINES[0])
+    text(fb, 0, ROW * 2, SHUTTING_DOWN_LINES[1])
+    text(fb, 0, ROW * 3, SHUTTING_DOWN_LINES[2])
+    text(fb, 0, ROW * 4, SHUTTING_DOWN_LINES[3])
 
 
 DRAWERS = {
@@ -165,7 +172,7 @@ DRAWERS = {
     ScreenId.LOAD_SHOW: draw_load_show,
     ScreenId.OUTPUT: draw_output,
     ScreenId.SYSTEM: draw_system,
-    ScreenId.SHUTDOWN: draw_shutdown,
+    ScreenId.SHUTTING_DOWN: draw_shutting_down,
 }
 
 

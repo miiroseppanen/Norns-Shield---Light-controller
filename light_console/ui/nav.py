@@ -11,11 +11,15 @@ class Navigation:
         self.stack: list[str] = []
 
     def go_play(self, state: AppState) -> None:
+        if state.shutdown_requested or state.screen == ScreenId.SHUTTING_DOWN:
+            return
         state.mode = UiMode.PLAY
         state.screen = ScreenId.PLAY
         self.stack = []
 
     def enter_menu(self, state: AppState) -> None:
+        if state.shutdown_requested or state.screen == ScreenId.SHUTTING_DOWN:
+            return
         state.mode = UiMode.MENU
         state.screen = ScreenId.MENU
         self.stack = [ROOT.id]
@@ -55,15 +59,15 @@ class Navigation:
             self.stack.append(item.id)
             state.screen = ScreenId(item.page_id)
 
-    def open_shutdown_confirm(self, state: AppState) -> None:
-        state.screen = ScreenId.SHUTDOWN
+    def begin_shutdown(self, state: AppState) -> None:
+        state.screen = ScreenId.SHUTTING_DOWN
+        state.shutdown_requested = True
 
     def open_load_show_confirm(self, state: AppState) -> None:
         state.screen = ScreenId.LOAD_SHOW
 
     def back(self, state: AppState) -> None:
-        if state.screen == ScreenId.SHUTDOWN:
-            state.screen = ScreenId.SYSTEM
+        if state.screen == ScreenId.SHUTTING_DOWN or state.shutdown_requested:
             return
         if state.screen == ScreenId.LOAD_SHOW:
             state.screen = ScreenId.SHOWS

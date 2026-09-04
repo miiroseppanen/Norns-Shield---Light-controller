@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from light_console.display.renderer import Renderer
+from light_console.display.screens import SHUTTING_DOWN_LINES
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
 from light_console.power import LinuxPowerService, MockPowerService
 from light_console.state import ScreenId
@@ -5,6 +9,9 @@ from light_console.ui.menu import menu_index_of
 from light_console.ui.pages import SYSTEM_SHUTDOWN_ROW
 
 from tests.conftest import make_controller
+
+ROOT = Path(__file__).resolve().parents[1]
+SCREENS = ROOT / "light_console/display/screens.py"
 
 
 def _open_system(c):
@@ -14,81 +21,108 @@ def _open_system(c):
     assert c.state.screen == ScreenId.SYSTEM
 
 
-def test_system_shutdown_navigation():
-    c = make_controller()
+def _start_shutdown(c):
     _open_system(c)
     c.state.system_index = SYSTEM_SHUTDOWN_ROW
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.SHUTDOWN
-    assert c.power.request_count == 0
 
 
-def test_k3_opens_confirmation_not_shutdown():
+def test_system_k3_starts_shutdown_immediately():
     c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.SHUTDOWN
-    assert c.power.shutdown_requested is False
-    assert c.state.shutdown_requested is False
-
-
-def test_k2_cancels_confirmation():
-    c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
-    c.inject_cooked(ButtonEvent(K2, "press"))
-    assert c.state.screen == ScreenId.SYSTEM
-    assert c.power.shutdown_requested is False
-
-
-def test_k1_cancels_to_play():
-    c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
-    c.inject_cooked(ButtonEvent(K1, "press"))
-    assert c.state.screen == ScreenId.PLAY
-    assert c.power.shutdown_requested is False
-
-
-def test_k3_confirm_calls_power_once():
-    c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _start_shutdown(c)
+    assert c.state.screen == ScreenId.SHUTTING_DOWN
+    assert c.state.shutdown_requested is True
     assert c.power.shutdown_requested is True
     assert c.power.request_count == 1
-    assert c.state.shutdown_requested is True
     assert isinstance(c.power, MockPowerService)
     assert c.power.spawn_count == 0
 
 
-def test_encoder_does_not_confirm_shutdown():
-    c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
-    c.inject_cooked(EncoderEvent(E1, 1))
-    c.inject_cooked(EncoderEvent(E2, 1))
-    c.inject_cooked(EncoderEvent(E3, 1))
-    assert c.state.screen == ScreenId.SHUTDOWN
-    assert c.power.request_count == 0
-    assert c.power.shutdown_requested is False
+def test_no_shutdown_confirmation_state():
+    assert not hasattr(ScreenId, "SHUTDOWN")
+    text = SCREENS.read_text(encoding="utf-8")
+    assert "SHUTDOWN?" not in text
+    assert "K2  CANCEL" not in text
+    assert "K3  CONFIRM" not in text
+    for line in SHUTTING_DOWN_LINES:
+        assert line in text
 
 
-def test_double_confirm_does_not_request_twice():
+def test_k2_does_not_cancel_shutdown():
     c = make_controller()
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _start_shutdown(c)
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.SHUTTING_DOWN
+    assert c.power.request_count == 1
+    assert c.power.shutdown_requested is True
+
+
+def test_k1_does_not_leave_shutdown():
+    c = make_controller()
+    _start_shutdown(c)
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    assert c.state.screen == ScreenId.SHUTTING_DOWN
+    assert c.power.request_count == 1
+
+
+def test_keys_and_encoders_ignored_after_shutdown():
+    c = make_controller()
+    _start_shutdown(c)
+    master = c.state.master
+    system_index = c.state.system_index
+    for ev in (
+        ButtonEvent(K1, "press"),
+        ButtonEvent(K2, "press"),
+        ButtonEvent(K3, "press"),
+        EncoderEvent(E1, 5),
+        EncoderEvent(E2, 1),
+        EncoderEvent(E3, -1),
+    ):
+        c.inject_cooked(ev)
+    assert c.state.screen == ScreenId.SHUTTING_DOWN
+    assert c.power.request_count == 1
+    assert c.power.shutdown_requested is True
+    assert c.state.master == master
+    assert c.state.system_index == system_index
+
+
+def test_shutdown_backend_called_exactly_once():
+    c = make_controller()
+    _start_shutdown(c)
     c.inject_cooked(ButtonEvent(K3, "press"))
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.power.request_count == 1
     assert c.power.shutdown_requested is True
     assert c.power.spawn_count == 0
+
+
+def test_renderer_shutdown_guidance():
+    c = make_controller()
+    _start_shutdown(c)
+    r = Renderer()
+    r.force_dirty()
+    fb = r.render(c.state)
+    assert fb.width == 128
+    assert fb.height == 64
+    assert fb.digest() != b"\x00" * (128 * 64)
+    assert SHUTTING_DOWN_LINES == (
+        "SHUTTING DOWN",
+        "WAIT",
+        "GREEN LED STOPS",
+        "SAFE TO UNPLUG",
+    )
+
+
+def test_play_status_unaffected_without_shutdown():
+    c = make_controller()
+    assert c.state.screen == ScreenId.PLAY
+    assert c.state.qlc_connected is True
+    c.inject_cooked(EncoderEvent(E1, 2))
+    assert c.state.screen == ScreenId.PLAY
+    assert c.power.request_count == 0
+    r = Renderer()
+    r.render(c.state)
+    assert r.fb.digest() != b"\x00" * (128 * 64)
 
 
 def test_mock_does_not_spawn_host_shutdown():

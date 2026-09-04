@@ -30,7 +30,7 @@ def test_light_help_prints_operator_guide():
         "from light_console import VERSION",
         "git describe --tags --always",
         "git rev-parse --short HEAD",
-        "SYSTEM -> SHUTDOWN -> CONFIRM",
+        "SYSTEM -> SHUTDOWN -> K3",
         "sudo /usr/sbin/shutdown -h now",
         "valot@192.168.88.248",
         "MENU -> SHOWS -> E1 select -> K3",

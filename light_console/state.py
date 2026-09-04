@@ -21,7 +21,7 @@ class ScreenId(str, Enum):
     LOAD_SHOW = "load_show"
     OUTPUT = "output"
     SYSTEM = "system"
-    SHUTDOWN = "shutdown"
+    SHUTTING_DOWN = "shutting_down"
 
 
 PLACEHOLDER_SCENES = (

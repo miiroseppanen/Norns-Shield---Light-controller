@@ -55,7 +55,7 @@ SCENES / CHASERS / PLAY then list that show's functions. GO still requires live 
 
 SYSTEM list: QLC STATUS, HOSTNAME, VERSION, UPTIME, SHUTDOWN.
 
-SHUTDOWN is not a single K3. It opens `SHUTDOWN?` (K2 cancel, K3 confirm). K1 returns PLAY and cancels. Encoders never halt. UI calls `PowerService.request_shutdown()`; the Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
+SYSTEM → SHUTDOWN → K3 begins halt immediately. There is no `SHUTDOWN?` confirm. OLED stays on SHUTTING DOWN until Linux stops. K1/K2/K3 and E1/E2/E3 do nothing after that; `PowerService.request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
 
 ## Screens vs parameters
 

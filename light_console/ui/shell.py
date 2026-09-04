@@ -47,10 +47,15 @@ class NornsUIShell:
             actions=self.actions,
         )
 
+    def _input_locked(self) -> bool:
+        return self.state.shutdown_requested or self.state.screen == ScreenId.SHUTTING_DOWN
+
     def active_screen(self) -> Screen:
         return self.screens[self.state.screen]
 
     def enc(self, n: int, delta: int) -> None:
+        if self._input_locked():
+            return
         if self.state.screen == ScreenId.MENU:
             if n == E1:
                 items = self.nav.current_items()
@@ -65,6 +70,8 @@ class NornsUIShell:
 
     def key(self, n: int, z: int) -> None:
         if z != 1:
+            return
+        if self._input_locked():
             return
         if n == K1:
             if self.state.screen == ScreenId.PLAY:

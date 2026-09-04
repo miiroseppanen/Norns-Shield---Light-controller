@@ -21,7 +21,7 @@ from light_console.display.screens import (
     draw_play,
     draw_scenes,
     draw_shows,
-    draw_shutdown,
+    draw_shutting_down,
     draw_system,
 )
 from light_console.hardware.events import E1, E2, E3, K2, K3
@@ -234,31 +234,26 @@ class SystemScreen(Screen):
         if z != 1 or n != K3:
             return
         if ctx.state.system_index == SYSTEM_SHUTDOWN_ROW:
-            ctx.nav.open_shutdown_confirm(ctx.state)
+            ctx.nav.begin_shutdown(ctx.state)
+            ctx.power.request_shutdown()
+            ctx.state.shutdown_requested = ctx.power.shutdown_requested
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_system(fb, ctx.state)
 
 
-class ShutdownScreen(Screen):
-    id = ScreenId.SHUTDOWN
-    title = "SHUTDOWN"
+class ShuttingDownScreen(Screen):
+    id = ScreenId.SHUTTING_DOWN
+    title = "SHUTTING DOWN"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
         del n, delta, ctx
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
-        if z != 1:
-            return
-        if n == K3:
-            accepted = ctx.power.request_shutdown()
-            ctx.state.shutdown_requested = ctx.power.shutdown_requested
-            del accepted
-        elif n == K2:
-            ctx.nav.back(ctx.state)
+        del n, z, ctx
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
-        draw_shutdown(fb, ctx.state)
+        draw_shutting_down(fb, ctx.state)
 
 
 def build_screens() -> dict[ScreenId, Screen]:
@@ -272,6 +267,6 @@ def build_screens() -> dict[ScreenId, Screen]:
         ChasersScreen(),
         OutputScreen(),
         SystemScreen(),
-        ShutdownScreen(),
+        ShuttingDownScreen(),
     )
     return {s.id: s for s in screens}
