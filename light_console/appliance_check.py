@@ -160,7 +160,8 @@ def _midi_bindings(aconnect: str) -> tuple[bool, bool]:
     for raw in aconnect.splitlines():
         line = raw.strip()
         if line.startswith("client "):
-            in_launchpad = "Launchpad Mini MIDI 1" in line
+            # ALSA client is "Launchpad Mini"; port name is "Launchpad Mini MIDI 1".
+            in_launchpad = "Launchpad Mini" in line
             continue
         if not in_launchpad:
             continue

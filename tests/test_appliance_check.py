@@ -57,18 +57,19 @@ def test_midi_bindings_parse_aconnect():
     sample = """
 client 0: 'System' [type=kernel]
     0 'Timer           '
-client 20: 'Launchpad Mini MIDI 1' [type=kernel,card=1]
+client 28: 'Launchpad Mini' [type=kernel,card=3]
     0 'Launchpad Mini MIDI 1'
 	Connecting To: 128:0
-	Connected From: 128:1
-client 128: 'qlcplus' [type=user,pid=1234]
-    0 '__QLC Input__'
-    1 '__QLC Feedback__'
+	Connected From: 128:0
+client 128: 'qlcplus' [type=user,pid=3514]
+    0 '__QLC__         '
+	Connecting To: 28:0
+	Connected From: 28:0
 """
     midi_in, midi_fb = _midi_bindings(sample)
     assert midi_in is True
     assert midi_fb is True
-    none_in, none_fb = _midi_bindings("client 20: 'Launchpad Mini MIDI 1'\n")
+    none_in, none_fb = _midi_bindings("client 28: 'Launchpad Mini'\n    0 'Launchpad Mini MIDI 1'\n")
     assert none_in is False
     assert none_fb is False
 
