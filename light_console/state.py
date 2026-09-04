@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from light_console.output.network import NetIface
+from light_console.output.routing import OutputRoute
+
 
 class UiMode(str, Enum):
     PLAY = "play"
@@ -72,6 +75,11 @@ class AppState:
     go_status: str = ""
     startup_status: str = ""
     output_mode: str = "SAFE"
+    network_ifaces: tuple[NetIface, ...] = ()
+    output_routes: tuple[OutputRoute, ...] = ()
+    output_page: int = 0
+    dmx_by_universe: dict[int, tuple[int, ...]] = field(default_factory=dict)
+    dmx_ready: bool = False
     current_scene: str = "WASH"
     current_chaser: str = "SLOW"
     active_function: str | None = None
@@ -84,7 +92,7 @@ class AppState:
     mode: UiMode = UiMode.PLAY
     screen: ScreenId = ScreenId.PLAY
     menu_index: int = 0
-    menu_count: int = 5
+    menu_count: int = 3
     param_index: int = 0
     param_count: int = 4
     system_index: int = 0

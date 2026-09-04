@@ -11,6 +11,7 @@ import struct
 from collections.abc import Callable
 from urllib.parse import urlparse
 
+from light_console.output.dmx import DmxCache
 from light_console.qlc.client import ConnectionState, QLCClient
 from light_console.qlc.fake import WsTransport
 from light_console.qlc.functions import QlcFunction
@@ -136,6 +137,8 @@ class QlcWebSocketClient(QLCClient):
         self.gm_sends: list[int] = []
         self.function_sends: list[tuple[int, int]] = []
         self.functions_number = 0
+        self._dmx = DmxCache()
+        self.channel_requests: list[str] = []
 
     def connection_state(self) -> ConnectionState:
         return self._state
@@ -215,6 +218,25 @@ class QlcWebSocketClient(QLCClient):
         addr = max(1, int(address_1_based))
         val = max(0, min(255, int(value)))
         self._send(f"CH|{addr}|{val}")
+
+    def request_channels_values(
+        self, universe_1based: int, start: int = 1, count: int = 512
+    ) -> None:
+        if not self.connected():
+            return
+        uni = max(1, int(universe_1based))
+        start = max(1, int(start))
+        count = max(1, min(512, int(count)))
+        self._dmx.begin_request(uni - 1)
+        msg = f"QLC+API|getChannelsValues|{uni}|{start}|{count}"
+        self.channel_requests.append(msg)
+        self._send(msg)
+
+    def dmx_snapshot(self, universe_0based: int) -> tuple[int, ...] | None:
+        return self._dmx.snapshot(universe_0based)
+
+    def clear_dmx(self) -> None:
+        self._dmx.clear()
 
     def pump(self, now: float) -> None:
         if self._closed:
@@ -320,12 +342,15 @@ class QlcWebSocketClient(QLCClient):
                 self.grand_master = int(parts[1])
             except ValueError:
                 return
+        elif len(parts) >= 2 and parts[0] == "QLC+API" and parts[1] == "getChannelsValues":
+            self._dmx.ingest(msg)
 
     def _drop(self, state: ConnectionState) -> None:
         transport = self._transport
         self._transport = None
         self._state = state
         self._project = False
+        self._dmx.clear()
         if transport is not None:
             try:
                 transport.close()

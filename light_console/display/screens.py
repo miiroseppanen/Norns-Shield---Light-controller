@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from light_console.display.framebuffer import Framebuffer
 from light_console.display.widgets import ROW, invert_bar, status_pair, text, text_right
+from light_console.output.dmx import DMX_ROWS, dmx_windows, nonzero_channels
+from light_console.output.pages import IFACES_PER_PAGE, ROUTES_PER_PAGE, build_output_pages
 from light_console.state import AppState, ScreenId
 from light_console.ui.menu import MENU_ITEMS, MenuItem
 
@@ -49,12 +51,11 @@ def draw_list(fb: Framebuffer, labels: list[str], selected: int, y0: int = ROW *
 def draw_play(fb: Framebuffer, state: AppState) -> None:
     _header(fb, "LIGHT CONSOLE", state)
     qlc = "OK" if state.qlc_connected else "OFF"
-    show = (state.show_name or "--")[:9]
     startup = (state.startup_status or ("WAIT" if state.qlc_connected else "--"))[:9]
-    midi = "LAUNCHPAD" if state.launchpad_connected else "--"
+    midi = "OK" if state.launchpad_connected else "--"
     output = (state.output_mode or "SAFE")[:9]
     status_pair(fb, ROW * 1, "QLC", qlc)
-    status_pair(fb, ROW * 2, "SHOW", show)
+    status_pair(fb, ROW * 2, "SHOW", "MASTER")
     status_pair(fb, ROW * 3, "STARTUP", startup)
     status_pair(fb, ROW * 4, "MIDI", midi)
     status_pair(fb, ROW * 5, "OUTPUT", output)
@@ -127,10 +128,93 @@ def draw_load_show(fb: Framebuffer, state: AppState) -> None:
 
 
 def draw_output(fb: Framebuffer, state: AppState) -> None:
-    _header(fb, "OUTPUT", state)
-    status_pair(fb, ROW * 2, "QLC", qlc_output_label(state))
-    status_pair(fb, ROW * 3, "ENGINE", (state.qlc_engine or "--")[:9])
-    status_pair(fb, ROW * 4, "HOST", (state.qlc_host or "--")[:9])
+    pages = build_output_pages(state.network_ifaces, state.output_routes, state.dmx_by_universe)
+
+    pages = build_output_pages(state.network_ifaces, state.output_routes, state.dmx_by_universe)
+    if not pages:
+        _header(fb, "OUTPUT", state)
+        text(fb, 0, ROW * 2, "NO DATA")
+        return
+    index = state.output_page % len(pages)
+    page = pages[index]
+    _header(fb, page.title[:16], state)
+    if page.kind == "network":
+        _draw_network(fb, state, page.offset)
+    elif page.kind == "routing":
+        _draw_routing(fb, state, page.offset)
+    else:
+        _draw_dmx(fb, state, page.universe or 1, page.window)
+
+
+def _draw_network(fb: Framebuffer, state: AppState, offset: int) -> None:
+
+    ifaces = state.network_ifaces
+    if not ifaces:
+        text(fb, 0, ROW * 2, "NO DATA")
+        return
+    slice_ = ifaces[offset : offset + IFACES_PER_PAGE]
+    y = ROW
+    for iface in slice_:
+        flag = "UP" if iface.up else "DOWN"
+        text(fb, 0, y, f"{iface.name} {flag}"[:21])
+        y += ROW
+        if iface.ssid:
+            text(fb, 0, y, iface.ssid[:21])
+            y += ROW
+        addr = iface.ipv4 or "--"
+        text(fb, 0, y, addr[:21])
+        y += ROW
+
+
+def _draw_routing(fb: Framebuffer, state: AppState, offset: int) -> None:
+
+    if not state.qlc_connected and not state.output_routes:
+        text(fb, 0, ROW * 2, "QLC OFFLINE")
+        return
+    routes = state.output_routes
+    if not routes:
+        text(fb, 0, ROW * 2, "NO DATA")
+        return
+    y = ROW
+    for route in routes[offset : offset + ROUTES_PER_PAGE]:
+        text(fb, 0, y, f"U{route.qlc_universe} {route.plugin}"[:21])
+        y += ROW
+        text(fb, 0, y, route.destination[:21])
+        y += ROW
+        wire = f"U{route.wire_universe}" if route.wire_universe is not None else "--"
+        text(fb, 0, y, f"WIRE {wire} {route.mode}"[:21])
+        y += ROW
+
+
+def _draw_dmx(fb: Framebuffer, state: AppState, universe: int, window: int) -> None:
+
+    if not state.qlc_connected:
+        text(fb, 0, ROW * 2, "NO DATA")
+        return
+    buf = state.dmx_by_universe.get(universe - 1)
+    if buf is None or not state.dmx_ready:
+        text(fb, 0, ROW * 2, "NO DATA")
+        return
+    active = nonzero_channels(buf)
+    windows = dmx_windows(active, DMX_ROWS)
+    chunk = windows[window % len(windows)] if windows else []
+    total = len(active)
+    status_pair(fb, ROW, "ACTIVE", str(total)[:9])
+    if not chunk:
+        text(fb, 0, ROW * 2, "NO DATA" if total == 0 else "--")
+        return
+    start = window * DMX_ROWS + 1
+    end = start + len(chunk) - 1
+    if total > DMX_ROWS:
+        text(fb, 0, ROW * 2, f"{start}-{end}/{total}"[:21])
+        y = ROW * 3
+    else:
+        y = ROW * 2
+    for channel, value in chunk:
+        text(fb, 0, y, f"{channel:02d} {value:03d}"[:21])
+        y += ROW
+        if y >= ROW * 8:
+            break
 
 
 def draw_system(fb: Framebuffer, state: AppState) -> None:

@@ -11,10 +11,14 @@ from light_console.display.renderer import Renderer
 from light_console.display.screens import qlc_output_label
 from light_console.hardware.base import HardwareBackend
 from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEvent, SimCommandEvent
+from light_console.output.network import collect_network
+from light_console.output.routing import parse_output_routes_file, routing_mode
 from light_console.power import MockPowerService, PowerService
 from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
 from light_console.qlc.functions import QlcFunction
+from light_console.qlc.launch import RUNTIME_MASTER
+from light_console.qxw import QxwError
 from light_console.shows import ShowCatalog
 from light_console.showdef import ShowDefinition
 from light_console.state import AppState
@@ -71,6 +75,11 @@ class Controller:
         self._last_draw = 0.0
         self.running = True
         self._status_body = ""
+        self.workspace_path = (shows_dir / "master.qxw") if shows_dir is not None else RUNTIME_MASTER
+        self._net_t = 0.0
+        self._dmx_t = -2.0
+        self._dmx_cursor = 0
+        self._route_mtime: float | None = None
         if not self.state.hostname:
             try:
                 self.state.hostname = socket.gethostname()
@@ -78,6 +87,7 @@ class Controller:
                 self.state.hostname = ""
         self.state.qlc_engine = config.qlc.engine_version
         self.state.qlc_host = qlc.host_label()
+        self._load_routes()
         self._refresh_show_state(force=True)
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
@@ -129,6 +139,7 @@ class Controller:
             self.qlc.pump(now)
         except Exception:
             LOG.exception("QLC pump failed; UI continues")
+        self._refresh_diagnostics(now)
         self._finish()
         interval = 1.0 / max(1, self.config.display.fps)
         if now - self._last_draw >= interval:
@@ -136,6 +147,60 @@ class Controller:
             if self.renderer.changed():
                 self.hardware.set_display(self.renderer.fb)
             self._last_draw = now
+
+    def _is_headless(self) -> bool:
+        return type(self.hardware).__name__ == "HeadlessBackend"
+
+    def _load_routes(self) -> None:
+        path = self.workspace_path
+        if not path.is_file():
+            return
+        try:
+            mtime = path.stat().st_mtime
+            if mtime == self._route_mtime:
+                return
+            routes = parse_output_routes_file(path)
+            self._route_mtime = mtime
+            self.state.output_routes = routes
+            self.state.output_mode = routing_mode(routes)
+        except (OSError, QxwError):
+            LOG.debug("routing parse failed", exc_info=True)
+
+    def _refresh_diagnostics(self, now: float) -> None:
+        if not self._is_headless():
+            if now - self._net_t >= 2.0:
+                try:
+                    self.state.network_ifaces = collect_network()
+                except Exception:
+                    LOG.debug("network snapshot failed", exc_info=True)
+                self._net_t = now
+                try:
+                    from light_console.midi_wait import launchpad_visible
+
+                    apply_launchpad(self.state, launchpad_visible())
+                except Exception:
+                    pass
+        self._load_routes()
+        if not self.qlc.connected():
+            if self.state.dmx_ready or self.state.dmx_by_universe:
+                self.qlc.clear_dmx()
+                self.state.dmx_by_universe = {}
+                self.state.dmx_ready = False
+            return
+        unis = [route.qlc_universe for route in self.state.output_routes] or [1]
+        if now - self._dmx_t >= 1.5:
+            uni = unis[self._dmx_cursor % len(unis)]
+            self._dmx_cursor += 1
+            try:
+                self.qlc.request_channels_values(uni, 1, 512)
+            except Exception:
+                LOG.debug("dmx request failed", exc_info=True)
+            self._dmx_t = now
+        for uni in unis:
+            snap = self.qlc.dmx_snapshot(uni - 1)
+            if snap is not None:
+                self.state.dmx_by_universe[uni - 1] = snap
+                self.state.dmx_ready = True
 
     def _sync_qlc(self) -> None:
         self.binding.pull(self.state)

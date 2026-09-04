@@ -1,6 +1,5 @@
-from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K3
+from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K3
 from light_console.state import AppState, ScreenId
-from light_console.ui.menu import menu_index_of
 from light_console.ui.params import (
     ActionParameter,
     NumberParameter,
@@ -67,9 +66,7 @@ def test_params_select_and_change():
 
 def test_params_screen_e2_e3():
     c = make_controller(master_dimmer=40)
-    c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("PARAMS")
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.screen = ScreenId.PARAMS
     assert c.state.screen == ScreenId.PARAMS
     c.state.param_index = 0
     c.params.index = 0
@@ -87,9 +84,7 @@ def test_qlc_offline_params_still_work():
     c = make_controller()
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
-    c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("PARAMS")
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.screen = ScreenId.PARAMS
     c.state.param_index = 0
     c.params.index = 0
     c.inject_cooked(EncoderEvent(E3, 1))

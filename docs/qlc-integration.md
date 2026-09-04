@@ -58,7 +58,8 @@ Messages are `field|field|…` text. Do not invent additional protocol.
 | recv | `QLC+API\|getFunctionsList\|<id>\|<name>\|…` | id/name pairs |
 | send | `QLC+API\|getFunctionType\|<id>` | type string (optional) |
 | recv | `QLC+API\|getFunctionType\|<id>\|<Scene\|Chaser\|…>` | |
-| send | `QLC+API\|setFunctionStatus\|<id>\|<0\|1>` | stop / start (GO) |
+| send | `QLC+API\|getChannelsValues\|<uni>\|<start>\|<count>` | live DMX (1-based uni/channel) |
+| recv | `QLC+API\|getChannelsValues\|<ch>\|<val>\|<type>\|<override>\|…` | stride 4; no universe in reply |
 | send | `GM_VALUE\|<0-255>` | Grand Master |
 | recv | `GM_VALUE\|<value>` or `GM_VALUE\|<value>\|<value>` | |
 
@@ -78,10 +79,12 @@ Runtime snapshot: `/tmp/light-console.status` (`screen`, `master`, `qlc_state`, 
 
 ## OUTPUT
 
+Read-only diagnostics. E1 cycles NETWORK / ROUTING / DMX Un. Never sends `CH|` or `QLC+IO`.
+
 ```
-QLC        CONNECTED | OFFLINE
-ENGINE     5.2.2
-HOST       localhost
+NETWORK     interface, SSID, IPv4
+ROUTING     from master.qxw  (U1 ARTNET 127.0.0.1 WIRE U0 SAFE)
+DMX Un      non-zero channels from getChannelsValues
 ```
 
 ## Forbidden

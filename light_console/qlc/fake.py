@@ -37,6 +37,7 @@ class FakeTransport(WsTransport):
         self.gm: int | None = None
         self.desk: list[tuple[int, int]] = []
         self.io: list[str] = []
+        self.dmx: dict[int, dict[int, int]] = {}
         self.functions: list[tuple[int, str]] = [(0, "Warm"), (1, "Blue")]
         self.function_sends: list[tuple[int, int]] = []
 
@@ -73,6 +74,17 @@ class FakeTransport(WsTransport):
             parts = text.split("|")
             if len(parts) >= 3:
                 self.desk.append((int(parts[1]), int(parts[2])))
+        elif text.startswith("QLC+API|getChannelsValues|"):
+            bits = text.split("|")
+            uni = int(bits[2]) if len(bits) > 2 else 1
+            start = int(bits[3]) if len(bits) > 3 else 1
+            count = int(bits[4]) if len(bits) > 4 else 1
+            values = getattr(self, "dmx", {}).get(uni - 1, {})
+            parts = ["QLC+API", "getChannelsValues"]
+            for ch in range(start, start + count):
+                val = int(values.get(ch, 0))
+                parts.extend([str(ch), str(val), "Intensity", "0"])
+            self.inbox.append("|".join(parts))
         elif text.startswith("QLC+IO|"):
             self.io.append(text)
         if self.drop_after_send:

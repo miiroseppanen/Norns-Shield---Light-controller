@@ -24,6 +24,7 @@ from light_console.display.screens import (
     draw_shutting_down,
     draw_system,
 )
+from light_console.output.pages import build_output_pages
 from light_console.hardware.events import E1, E2, E3, K2, K3
 from light_console.power import PowerService
 from light_console.state import AppState, ScreenId
@@ -213,6 +214,20 @@ class ChasersScreen(Screen):
 class OutputScreen(Screen):
     id = ScreenId.OUTPUT
     title = "OUTPUT"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        if n != E1:
+            return
+        pages = build_output_pages(
+            ctx.state.network_ifaces,
+            ctx.state.output_routes,
+            ctx.state.dmx_by_universe,
+        )
+        count = max(1, len(pages))
+        ctx.state.output_page = wrap_index(ctx.state.output_page, delta, count)
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        del n, z, ctx
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_output(fb, ctx.state)

@@ -17,13 +17,17 @@ class MenuItem:
 
 
 MENU_ITEMS: tuple[MenuItem, ...] = (
-    MenuItem("home", "HOME", action="play"),
+    MenuItem("status", "STATUS", action="play"),
+    MenuItem("output", "OUTPUT", page_id=ScreenId.OUTPUT.value),
+    MenuItem("system", "SYSTEM", page_id=ScreenId.SYSTEM.value),
+)
+
+# Implemented later. Hidden from the operator menu; screens stay in the tree.
+DEFERRED_MENU_ITEMS: tuple[MenuItem, ...] = (
     MenuItem("shows", "SHOWS", page_id=ScreenId.SHOWS.value),
     MenuItem("scenes", "SCENES", page_id=ScreenId.SCENES.value),
     MenuItem("chasers", "CHASERS", page_id=ScreenId.CHASERS.value),
     MenuItem("params", "PARAMS", page_id=ScreenId.PARAMS.value),
-    MenuItem("output", "OUTPUT", page_id=ScreenId.OUTPUT.value),
-    MenuItem("system", "SYSTEM", page_id=ScreenId.SYSTEM.value),
 )
 
 
@@ -33,6 +37,14 @@ def menu_index_of(label: str) -> int:
             return i
     raise KeyError(label)
 
+
 ROOT = MenuItem("root", "MENU", children=MENU_ITEMS)
 
-__all__ = ["MenuItem", "MENU_ITEMS", "ROOT", "ScreenId", "menu_index_of"]
+__all__ = [
+    "DEFERRED_MENU_ITEMS",
+    "MENU_ITEMS",
+    "MenuItem",
+    "ROOT",
+    "ScreenId",
+    "menu_index_of",
+]

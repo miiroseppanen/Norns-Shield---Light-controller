@@ -5,7 +5,6 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3,
 from light_console.merge import merge_files
 from light_console.qlc.functions import QlcFunction
 from light_console.state import ScreenId
-from light_console.ui.menu import menu_index_of
 
 from tests.conftest import make_controller
 
@@ -35,8 +34,7 @@ def _merged_controller(tmp_path: Path):
 def test_scenes_e1_k3_go_shared_with_play():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("SCENES")
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.screen = ScreenId.SCENES
     assert c.state.screen == ScreenId.SCENES
     c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.current_scene == c.state.scenes[1]
@@ -51,8 +49,7 @@ def test_scenes_e1_k3_go_shared_with_play():
 def test_chasers_e1_k3_go():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("CHASERS")
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.screen = ScreenId.CHASERS
     c.inject_cooked(EncoderEvent(E1, 1))
     c.qlc.function_sends.clear()
     c.inject_cooked(ButtonEvent(K3, "press"))
@@ -104,8 +101,7 @@ def test_show_switch_a_to_b_without_qlc_reload(tmp_path):
     assert c.state.scenes == ("Warm", "Blue", "Red")
     assert c.state.chasers == ("Slow Pulse", "Color Sweep")
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("SHOWS")
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.screen = ScreenId.SHOWS
     assert c.state.screen == ScreenId.SHOWS
     c.state.show_index = list(c.state.show_ids).index("show-b")
     c.qlc.function_sends.clear()

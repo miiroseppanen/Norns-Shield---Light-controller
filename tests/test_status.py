@@ -68,20 +68,19 @@ def test_sim_toggles():
     assert c.state.wiz_online == 1
 
 
-def test_menu_enter_opens_scenes():
+def test_menu_enter_opens_output():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
     assert c.state.screen == ScreenId.MENU
-    c.state.menu_index = menu_index_of("SCENES")
+    c.state.menu_index = menu_index_of("OUTPUT")
     c.inject_cooked(ButtonEvent(3, "press"))
-    assert c.state.screen == ScreenId.SCENES
+    assert c.state.screen == ScreenId.OUTPUT
 
 
 def test_blackout_is_local_state_not_a_stuck_output_loop():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
-    c.state.menu_index = menu_index_of("PARAMS")
-    c.inject_cooked(ButtonEvent(3, "press"))
+    c.state.screen = ScreenId.PARAMS
     c.state.param_index = 2
     c.params.index = 2
     c.inject_cooked(ButtonEvent(3, "press"))

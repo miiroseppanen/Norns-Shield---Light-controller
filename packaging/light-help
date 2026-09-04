@@ -102,10 +102,12 @@ Logical show metadata:
 
 OLED:
 
-  MENU -> SHOWS -> E1 select -> K3
+  MENU -> STATUS
+  MENU -> OUTPUT
+  MENU -> SYSTEM
 
-K3 activates that logical show. It does not load QLC.
-
+OUTPUT E1 cycles NETWORK / ROUTING / live DMX. Read-only.
+It does not change outputs.
 
 ------------------------------------------------------------
 IMPORT SHOW FROM MAC

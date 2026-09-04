@@ -78,6 +78,19 @@ class QLCClient(ABC):
         """Documented Simple Desk: CH|<abs>|<0-255>."""
         del address_1_based, value
 
+    def request_channels_values(
+        self, universe_1based: int, start: int = 1, count: int = 512
+    ) -> None:
+        """QLC+API|getChannelsValues — read-only live DMX."""
+        del universe_1based, start, count
+
+    def dmx_snapshot(self, universe_0based: int) -> tuple[int, ...] | None:
+        del universe_0based
+        return None
+
+    def clear_dmx(self) -> None:
+        return
+
     def pump(self, now: float) -> None:
         """Background reconnect. Must never restart the QLC process."""
         del now
@@ -109,6 +122,8 @@ class MockQLCClient(QLCClient):
         self.gm_sends: list[int] = []
         self.function_sends: list[tuple[int, int]] = []
         self._closed = False
+        self._dmx_cache = {}
+        self.channel_requests: list[str] = []
 
     def connection_state(self) -> ConnectionState:
         return self._state
@@ -122,12 +137,14 @@ class MockQLCClient(QLCClient):
             LOG.info("QLC connected")
         else:
             self._state = ConnectionState.DISCONNECTED
+            self.clear_dmx()
             LOG.warning("QLC connection lost")
 
     def simulate_drop(self) -> None:
         """WebSocket died; client still wants QLC (reconnect, never restart the process)."""
         self._state = ConnectionState.DISCONNECTED
         self._want_connected = True
+        self.clear_dmx()
         LOG.warning("QLC connection lost")
 
     def simulate_error(self) -> None:
@@ -209,6 +226,38 @@ class MockQLCClient(QLCClient):
 
     def set_simple_desk_channel(self, address_1_based: int, value: int) -> None:
         del address_1_based, value
+
+    def set_dmx_universe(self, universe_0based: int, values: dict[int, int]) -> None:
+        from light_console.output.dmx import empty_universe
+
+        buf = self._dmx_cache.setdefault(universe_0based, empty_universe())
+        for channel, value in values.items():
+            if 1 <= channel <= 512:
+                buf[channel - 1] = value
+
+    def request_channels_values(
+        self, universe_1based: int, start: int = 1, count: int = 512
+    ) -> None:
+        from light_console.output.dmx import empty_universe
+
+        self.channel_requests.append(
+            f"QLC+API|getChannelsValues|{universe_1based}|{start}|{count}"
+        )
+        if not self.connected():
+            return
+        uni0 = universe_1based - 1
+        buf = self._dmx_cache.setdefault(uni0, empty_universe())
+        del start, count
+        self._dmx_cache[uni0] = list(buf)
+
+    def dmx_snapshot(self, universe_0based: int) -> tuple[int, ...] | None:
+        buf = self._dmx_cache.get(universe_0based)
+        if buf is None:
+            return None
+        return tuple(buf)
+
+    def clear_dmx(self) -> None:
+        self._dmx_cache.clear()
 
     def pump(self, now: float) -> None:
         if self._closed or self.connected() or not self._want_connected:
