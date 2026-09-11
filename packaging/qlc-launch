@@ -1,0 +1,32 @@
+#!/usr/bin/python3
+"""Exec QLC+ 5.2.2 with /home/light/shows/current.qxw. User=light via systemd."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+SHOWS = Path("/home/light/shows")
+CURRENT = SHOWS / "current.qxw"
+ROOT = Path("/home/light/light-console")
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from light_console.qlc.launch import LaunchError, qml_argv, resolve_workspace  # noqa: E402
+
+
+def main() -> int:
+    try:
+        workspace = resolve_workspace(CURRENT, SHOWS)
+    except LaunchError as exc:
+        print(f"qlc-launch: {exc}", file=sys.stderr, flush=True)
+        return 1
+    argv = qml_argv(workspace)
+    print(f"qlc-launch: exec {' '.join(argv)}", flush=True)
+    os.execv(argv[0], argv)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

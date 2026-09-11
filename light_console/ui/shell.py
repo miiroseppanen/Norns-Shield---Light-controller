@@ -14,7 +14,7 @@ from light_console.hardware.events import E1, K1, K2, K3
 from light_console.power import MockPowerService, PowerService
 from light_console.state import AppState, ScreenId
 from light_console.ui.nav import Navigation
-from light_console.ui.pages import SYSTEM_ROW_COUNT, Screen, ScreenContext, build_screens
+from light_console.ui.pages import SYSTEM_ROW_COUNT, Screen, ScreenContext, _follow, build_screens
 from light_console.ui.params import Params, bind_console_params
 
 
@@ -48,7 +48,11 @@ class NornsUIShell:
         )
 
     def _input_locked(self) -> bool:
-        return self.state.shutdown_requested or self.state.screen == ScreenId.SHUTTING_DOWN
+        return (
+            self.state.shutdown_requested
+            or self.state.screen == ScreenId.SHUTTING_DOWN
+            or self.state.screen == ScreenId.STARTING_UP
+        )
 
     def active_screen(self) -> Screen:
         return self.screens[self.state.screen]
@@ -64,6 +68,7 @@ class NornsUIShell:
                         self.state.menu_index, delta, len(items)
                     )
                     self.state.menu_count = len(items)
+                    _follow(self.state, self.state.menu_index, len(items))
             return
         self.active_screen().enc(n, delta, self.ctx())
         self.params.store_index(self.state)
@@ -86,6 +91,9 @@ class NornsUIShell:
                 self.nav.back(self.state)
             return
         if n == K2 and self.state.screen != ScreenId.PLAY:
+            if self.state.screen == ScreenId.OUTPUT and self.state.output_detail:
+                self.active_screen().key(n, z, self.ctx())
+                return
             self.nav.back(self.state)
             return
         self.active_screen().key(n, z, self.ctx())

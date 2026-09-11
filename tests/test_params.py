@@ -81,7 +81,7 @@ def test_params_screen_e2_e3():
 
 
 def test_qlc_offline_params_still_work():
-    c = make_controller()
+    c = make_controller(master_dimmer=80)
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
     c.state.screen = ScreenId.PARAMS

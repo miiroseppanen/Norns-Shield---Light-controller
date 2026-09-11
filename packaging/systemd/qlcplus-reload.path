@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch Shield show reload stamp
+Documentation=file:///home/light/light-console/docs/qlc-integration.md
+
+[Path]
+PathModified=/home/light/shows/.reload-qlc
+Unit=qlcplus-reload.service
+
+[Install]
+WantedBy=multi-user.target

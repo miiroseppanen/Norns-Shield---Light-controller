@@ -86,6 +86,7 @@ def test_check_is_read_only():
         "shutdown",
         "setFunctionStatus",
         "nmcli",
+        "192.168.88.248",
     ):
         assert banned not in MODULE
         assert banned not in WRAPPER

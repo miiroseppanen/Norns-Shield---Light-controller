@@ -58,6 +58,7 @@ class Ssd1322:
         _ = (OLED_CS, OLED_MOSI, OLED_SCLK)
 
     def close(self) -> None:
+        """Release SPI/GPIO. Do not blank the SSD1322; last pixels stay."""
         try:
             self.spi.close()
         except Exception:

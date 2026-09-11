@@ -55,12 +55,18 @@ class ShieldXLBackend(HardwareBackend):
             )
 
         from light_console.hardware.oled import Ssd1322
+        from light_console.display.lifecycle import STARTING_UP_TEXT, render_lifecycle
+        from light_console.logutil import LOG
 
         self._gpiod = gpiod
         self._EdgeEvent = EdgeEvent
         self._Value = Value
         self._oled = Ssd1322(hz=spi_hz)
         self._oled.init()
+        try:
+            self._oled.show_framebuffer(render_lifecycle(STARTING_UP_TEXT))
+        except Exception:
+            LOG.exception("STARTING UP paint failed")
         self._closed = False
         self._encs: dict[int, _Enc] = {}
 
@@ -175,6 +181,7 @@ class ShieldXLBackend(HardwareBackend):
             return
 
     def close(self) -> None:
+        """Drop SPI/GPIO. Never paint a blank frame; SHUTTING DOWN must remain."""
         if self._closed:
             return
         self._closed = True

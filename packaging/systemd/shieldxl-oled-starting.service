@@ -1,0 +1,26 @@
+[Unit]
+Description=Shield XL OLED STARTING UP
+Documentation=file:///home/light/light-console/docs/boot.md
+After=local-fs.target
+Before=light-console.service
+# Visual only. Do not wait for network, QLC, MIDI, or Art-Net.
+# Do not After=/Wants= dev-spidev0.0.device (same trap as light-console).
+# Failure must not block multi-user.target; this unit is Wants=, not Requires=.
+
+[Service]
+Type=oneshot
+User=light
+Group=light
+SupplementaryGroups=gpio spi
+WorkingDirectory=/home/light/light-console
+Environment=PYTHONPATH=/home/light/light-console
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m light_console.boot_splash
+TimeoutStartSec=15
+RemainAfterExit=no
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shieldxl-starting
+
+[Install]
+WantedBy=multi-user.target

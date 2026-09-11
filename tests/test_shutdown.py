@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from light_console.display.lifecycle import render_lifecycle
 from light_console.display.renderer import Renderer
 from light_console.display.screens import SHUTTING_DOWN_LINES
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
@@ -41,11 +42,15 @@ def test_system_k3_starts_shutdown_immediately():
 def test_no_shutdown_confirmation_state():
     assert not hasattr(ScreenId, "SHUTDOWN")
     text = SCREENS.read_text(encoding="utf-8")
+    life = (ROOT / "light_console/display/lifecycle.py").read_text(encoding="utf-8")
     assert "SHUTDOWN?" not in text
     assert "K2  CANCEL" not in text
     assert "K3  CONFIRM" not in text
     for line in SHUTTING_DOWN_LINES:
-        assert line in text
+        assert line in life
+    assert "SAFE TO UNPLUG" not in text
+    assert "GREEN LED STOPS" not in text
+    assert "SAFE TO UNPLUG" not in life
 
 
 def test_k2_does_not_cancel_shutdown():
@@ -105,12 +110,8 @@ def test_renderer_shutdown_guidance():
     assert fb.width == 128
     assert fb.height == 64
     assert fb.digest() != b"\x00" * (128 * 64)
-    assert SHUTTING_DOWN_LINES == (
-        "SHUTTING DOWN",
-        "WAIT",
-        "GREEN LED STOPS",
-        "SAFE TO UNPLUG",
-    )
+    assert SHUTTING_DOWN_LINES == ("SHUTTING DOWN",)
+    assert fb.digest() == render_lifecycle("SHUTTING DOWN").digest()
 
 
 def test_play_status_unaffected_without_shutdown():

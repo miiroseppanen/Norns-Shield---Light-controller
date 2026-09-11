@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from light_console.output.fixtures import PatchedFixture
 from light_console.output.network import NetIface
+from light_console.output.nodes import KNOWN_ARTNET_NODES, ArtNetNode
 from light_console.output.routing import OutputRoute
+from light_console.ui.vocab import FAILED, NETWORK, RUNNING, STARTING, STOPPED
 
 
 class UiMode(str, Enum):
@@ -24,6 +27,7 @@ class ScreenId(str, Enum):
     LOAD_SHOW = "load_show"
     OUTPUT = "output"
     SYSTEM = "system"
+    STARTING_UP = "starting_up"
     SHUTTING_DOWN = "shutting_down"
 
 
@@ -49,8 +53,14 @@ class AppState:
     qlc_state: str = "disconnected"
     qlc_engine: str = "5.2.2"
     qlc_host: str = "localhost"
+    qlc_desired: bool = True
+    qlc_observed: str = STOPPED
+    network_mode: str = "network"
+    network_mode_observed: str = NETWORK
+    network_mode_busy: bool = False
     startup_running: bool = False
     launchpad_connected: bool = False
+    wiz_enabled: bool = False
     wiz_ap_up: bool = False
     wiz_expected: int = 6
     wiz_online: int = 0
@@ -77,13 +87,26 @@ class AppState:
     output_mode: str = "SAFE"
     network_ifaces: tuple[NetIface, ...] = ()
     output_routes: tuple[OutputRoute, ...] = ()
+    runtime_routes: tuple[OutputRoute, ...] = ()
+    artnet_nodes: tuple[ArtNetNode, ...] = KNOWN_ARTNET_NODES
     output_page: int = 0
+    output_focus: int = 0
+    output_detail: bool = False
+    route_busy: bool = False
+    route_op: str = ""
+    qlc_universes: tuple[int, ...] = ()
+    output_universe: int = 1
+    scroll_offset: int = 0
     dmx_by_universe: dict[int, tuple[int, ...]] = field(default_factory=dict)
     dmx_ready: bool = False
+    fixtures: tuple[PatchedFixture, ...] = ()
+    dmx_seen_ids: set[int] = field(default_factory=set)
+    wiz_tx_active: bool = False
+    ui_now: float = 0.0
     current_scene: str = "WASH"
     current_chaser: str = "SLOW"
     active_function: str | None = None
-    master_dimmer: int = 80
+    master_dimmer: int = 100
     bpm: int = 124
     blackout: bool = False
     special_armed: bool = False
@@ -96,11 +119,13 @@ class AppState:
     param_index: int = 0
     param_count: int = 4
     system_index: int = 0
-    system_count: int = 5
+    system_count: int = 3
     shutdown_requested: bool = False
     version: str = "0.4.0"
     hostname: str = ""
     uptime_s: int = 0
+    marquee_key: str = ""
+    marquee_t0: float = 0.0
     cpu_temp_c: float | None = None
 
     @property
@@ -135,7 +160,7 @@ class AppState:
 
     @property
     def wiz_waiting(self) -> bool:
-        return self.wiz_ap_up and self.wiz_online == 0
+        return self.wiz_enabled and self.wiz_ap_up and self.wiz_online == 0
 
     @property
     def ready(self) -> bool:
@@ -162,16 +187,28 @@ class AppState:
         self.master_dimmer = max(0, min(100, self.master_dimmer))
         self.bpm = max(20, min(240, self.bpm))
         self.wiz_online = max(0, min(self.wiz_expected, self.wiz_online))
+        if self.qlc_universes and self.output_universe not in self.qlc_universes:
+            self.output_universe = self.qlc_universes[0]
         if self.screen == ScreenId.PLAY:
             self.mode = UiMode.PLAY
         else:
             self.mode = UiMode.MENU
 
+    def reset_list_window(self) -> None:
+        self.scroll_offset = 0
+        self.output_focus = 0
+        self.output_detail = False
+        self.marquee_key = ""
+        self.marquee_t0 = 0.0
+
     def rebuild_warnings(self) -> None:
         warnings: list[str] = []
-        if not self.qlc_connected:
-            warnings.append("QLC LOST")
-        if self.wiz_ap_up and self.wiz_online < self.wiz_expected:
+        if self.qlc_desired:
+            if self.qlc_observed == FAILED:
+                warnings.append("QLC FAILED")
+            elif self.qlc_observed != STARTING and not self.qlc_connected:
+                warnings.append("QLC LOST")
+        if self.wiz_enabled and self.wiz_ap_up and self.wiz_online < self.wiz_expected:
             if self.wiz_online == 0:
                 warnings.append(f"! WIZ 0/{self.wiz_expected} WAIT")
             else:
@@ -193,8 +230,11 @@ def demo_live_state(wiz_expected: int = 6) -> AppState:
         qlc_state="connected",
         qlc_engine="5.2.2",
         qlc_host="localhost",
+        qlc_desired=True,
+        qlc_observed=RUNNING,
         startup_running=False,
         launchpad_connected=True,
+        wiz_enabled=False,
         wiz_ap_up=True,
         wiz_expected=wiz_expected,
         wiz_online=wiz_expected,
@@ -207,7 +247,7 @@ def demo_live_state(wiz_expected: int = 6) -> AppState:
         current_scene="WASH",
         current_chaser="SLOW",
         active_function="WASH",
-        master_dimmer=80,
+        master_dimmer=100,
         bpm=124,
         mode=UiMode.PLAY,
         screen=ScreenId.PLAY,

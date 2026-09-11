@@ -11,20 +11,30 @@ class Navigation:
         self.stack: list[str] = []
 
     def go_play(self, state: AppState) -> None:
-        if state.shutdown_requested or state.screen == ScreenId.SHUTTING_DOWN:
+        if (
+            state.shutdown_requested
+            or state.screen == ScreenId.SHUTTING_DOWN
+            or state.screen == ScreenId.STARTING_UP
+        ):
             return
         state.mode = UiMode.PLAY
         state.screen = ScreenId.PLAY
         self.stack = []
+        state.reset_list_window()
 
     def enter_menu(self, state: AppState) -> None:
-        if state.shutdown_requested or state.screen == ScreenId.SHUTTING_DOWN:
+        if (
+            state.shutdown_requested
+            or state.screen == ScreenId.SHUTTING_DOWN
+            or state.screen == ScreenId.STARTING_UP
+        ):
             return
         state.mode = UiMode.MENU
         state.screen = ScreenId.MENU
         self.stack = [ROOT.id]
         state.menu_index = 0
         state.menu_count = len(self.current_items())
+        state.reset_list_window()
 
     def current_node(self) -> MenuItem:
         node = ROOT
@@ -58,6 +68,7 @@ class Navigation:
         if item.page_id:
             self.stack.append(item.id)
             state.screen = ScreenId(item.page_id)
+            state.reset_list_window()
 
     def begin_shutdown(self, state: AppState) -> None:
         state.screen = ScreenId.SHUTTING_DOWN
@@ -67,7 +78,11 @@ class Navigation:
         state.screen = ScreenId.LOAD_SHOW
 
     def back(self, state: AppState) -> None:
-        if state.screen == ScreenId.SHUTTING_DOWN or state.shutdown_requested:
+        if (
+            state.screen == ScreenId.SHUTTING_DOWN
+            or state.shutdown_requested
+            or state.screen == ScreenId.STARTING_UP
+        ):
             return
         if state.screen == ScreenId.LOAD_SHOW:
             state.screen = ScreenId.SHOWS
@@ -77,6 +92,7 @@ class Navigation:
                 self.stack.pop()
             state.screen = ScreenId.MENU
             state.menu_count = len(self.current_items())
+            state.reset_list_window()
             return
         if len(self.stack) <= 1:
             return

@@ -8,6 +8,7 @@ import logging
 import os
 import socket
 import struct
+import time
 from collections.abc import Callable
 from urllib.parse import urlparse
 
@@ -15,10 +16,14 @@ from light_console.output.dmx import DmxCache
 from light_console.qlc.client import ConnectionState, QLCClient
 from light_console.qlc.fake import WsTransport
 from light_console.qlc.functions import QlcFunction
+from light_console.qlc.runtime import STARTUP_NAME
 
 LOG = logging.getLogger("light-console")
 
 BACKOFF_CAP = 16.0
+DRAIN_MAX_MSG = 64
+DRAIN_BUDGET_S = 0.008
+RECV_IDLE_S = 0.005
 
 
 def _parse_ws_url(url: str) -> tuple[str, int, str]:
@@ -75,7 +80,7 @@ class SocketTransport(WsTransport):
             ).decode("ascii")
             if accept and accept != expected:
                 raise OSError("websocket accept mismatch")
-            sock.settimeout(0.05)
+            sock.settimeout(RECV_IDLE_S)
             self._sock = sock
         except OSError:
             try:
@@ -139,6 +144,7 @@ class QlcWebSocketClient(QLCClient):
         self.functions_number = 0
         self._dmx = DmxCache()
         self.channel_requests: list[str] = []
+        self._pending_status_id: int | None = None
 
     def connection_state(self) -> ConnectionState:
         return self._state
@@ -206,7 +212,18 @@ class QlcWebSocketClient(QLCClient):
         self.speed_bpm = bpm
 
     def all_off(self) -> None:
-        return
+        self.clear_function_runtime()
+
+    def clear_function_runtime(self) -> None:
+        for fn in self._functions:
+            fn.running = False
+        self._pending_status_id = None
+
+    def request_function_status(self, function_id: int) -> None:
+        if not self.connected():
+            return
+        self._pending_status_id = int(function_id)
+        self._send(f"QLC+API|getFunctionStatus|{int(function_id)}")
 
     def patch_output(self, universe: int, spec: str) -> None:
         if not spec.startswith("ArtNet|0"):
@@ -292,12 +309,15 @@ class QlcWebSocketClient(QLCClient):
         transport = self._transport
         if transport is None:
             return
+        deadline = time.monotonic() + DRAIN_BUDGET_S
+        n = 0
         try:
-            while True:
+            while n < DRAIN_MAX_MSG and time.monotonic() < deadline:
                 msg = transport.recv_text()
                 if msg is None:
                     break
                 self._on_message(msg)
+                n += 1
         except OSError:
             self._drop(ConnectionState.ERROR)
 
@@ -328,6 +348,37 @@ class QlcWebSocketClient(QLCClient):
             self._functions = funcs
             if funcs:
                 self._project = True
+            for fn in funcs:
+                if fn.name == STARTUP_NAME:
+                    self.request_function_status(fn.function_id)
+                    break
+        elif len(parts) >= 3 and parts[0] == "FUNCTION":
+            try:
+                fid = int(parts[1])
+            except ValueError:
+                return
+            word = parts[2]
+            running = "Running" in word or word.upper() == "RUNNING"
+            for fn in self._functions:
+                if fn.function_id == fid:
+                    fn.running = running
+                    break
+        elif len(parts) >= 3 and parts[0] == "QLC+API" and parts[1] == "getFunctionStatus":
+            fid = self._pending_status_id
+            word = parts[2]
+            if len(parts) >= 4:
+                try:
+                    fid = int(parts[2])
+                except ValueError:
+                    fid = self._pending_status_id
+                word = parts[3]
+            if fid is None:
+                return
+            running = "Running" in word or word.upper() == "RUNNING"
+            for fn in self._functions:
+                if fn.function_id == fid:
+                    fn.running = running
+                    break
         elif len(parts) >= 4 and parts[0] == "QLC+API" and parts[1] == "getFunctionType":
             try:
                 fid = int(parts[2])
@@ -351,6 +402,7 @@ class QlcWebSocketClient(QLCClient):
         self._state = state
         self._project = False
         self._dmx.clear()
+        self.clear_function_runtime()
         if transport is not None:
             try:
                 transport.close()

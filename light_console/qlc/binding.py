@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from light_console.qlc.client import ConnectionState, QLCClient
+from light_console.qlc.runtime import invalidate_function_runtime
 from light_console.state import AppState
 
 LOG = logging.getLogger("light-console")
@@ -77,6 +78,8 @@ class QlcBinding:
             self._sent_gm = None
             self._sent_blackout = None
             self._sent_speed = None
+            self.qlc.clear_function_runtime()
+            invalidate_function_runtime(state)
         if not was and state.qlc_connected:
             LOG.info("QLC connected")
             self._sent_gm = None

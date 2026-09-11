@@ -91,6 +91,14 @@ class QLCClient(ABC):
     def clear_dmx(self) -> None:
         return
 
+    def clear_function_runtime(self) -> None:
+        """Drop cached function running flags. Does not start or stop QLC."""
+        return
+
+    def request_function_status(self, function_id: int) -> None:
+        """QLC+API|getFunctionStatus|<id>. No-op if offline."""
+        del function_id
+
     def pump(self, now: float) -> None:
         """Background reconnect. Must never restart the QLC process."""
         del now
@@ -138,6 +146,7 @@ class MockQLCClient(QLCClient):
         else:
             self._state = ConnectionState.DISCONNECTED
             self.clear_dmx()
+            self.clear_function_runtime()
             LOG.warning("QLC connection lost")
 
     def simulate_drop(self) -> None:
@@ -145,11 +154,13 @@ class MockQLCClient(QLCClient):
         self._state = ConnectionState.DISCONNECTED
         self._want_connected = True
         self.clear_dmx()
+        self.clear_function_runtime()
         LOG.warning("QLC connection lost")
 
     def simulate_error(self) -> None:
         self._state = ConnectionState.ERROR
         self._want_connected = True
+        self.clear_function_runtime()
         LOG.warning("QLC connection error")
 
     def connected(self) -> bool:
@@ -218,8 +229,14 @@ class MockQLCClient(QLCClient):
         self.speed_bpm = bpm
 
     def all_off(self) -> None:
+        self.clear_function_runtime()
+
+    def clear_function_runtime(self) -> None:
         for fn in self._functions:
             fn.running = False
+
+    def request_function_status(self, function_id: int) -> None:
+        del function_id
 
     def patch_output(self, universe: int, spec: str) -> None:
         del universe, spec
@@ -275,3 +292,4 @@ class MockQLCClient(QLCClient):
         self._closed = True
         self._want_connected = False
         self._state = ConnectionState.DISCONNECTED
+        self.clear_function_runtime()

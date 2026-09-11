@@ -1,0 +1,5 @@
+# Narrow QLC unit control from the OLED. visudo -cf before install.
+# start/stop qlcplus.service only. Never SIGKILL or generic sudo.
+
+light ALL=(root) NOPASSWD: /usr/bin/systemctl start qlcplus.service
+light ALL=(root) NOPASSWD: /usr/bin/systemctl stop qlcplus.service

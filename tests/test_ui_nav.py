@@ -145,7 +145,7 @@ def test_play_mapping_not_used_on_menu():
 
 
 def test_qlc_offline_does_not_block_ui():
-    c = make_controller()
+    c = make_controller(master_dimmer=80)
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
     assert c.state.qlc_connected is False

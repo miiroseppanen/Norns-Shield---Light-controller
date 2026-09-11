@@ -1,0 +1,8 @@
+[Unit]
+Description=Restart QLC+ after current.qxw change
+Documentation=file:///home/light/light-console/docs/qlc-integration.md
+# Root oneshot owned by systemd. Light Console never gets generic systemctl sudo.
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart qlcplus.service

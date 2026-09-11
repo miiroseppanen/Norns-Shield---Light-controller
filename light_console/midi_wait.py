@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 
 from light_console.machine import ShieldMachineProfile, load_machine_profile
+from light_console.status.midi import launchpad_usb_present
 
 LOG = logging.getLogger("wait-launchpad")
 DEFAULT_TIMEOUT_S = 12.0
@@ -22,6 +23,8 @@ POLL_S = 0.4
 
 def launchpad_visible(profile: ShieldMachineProfile) -> bool:
     lp = profile.launchpad
+    if launchpad_usb_present(lp.usb_id):
+        return True
     usb = _cmd_text(["lsusb"])
     if lp.usb_id.lower() in usb.lower():
         return True

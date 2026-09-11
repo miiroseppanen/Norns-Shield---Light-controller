@@ -11,7 +11,7 @@ from tests.conftest import make_controller
 
 
 def test_wiz_count_not_hardcoded_six():
-    c = make_controller(wiz_expected=9, wiz_online=0)
+    c = make_controller(wiz_expected=9, wiz_online=0, wiz_enabled=True)
     apply_wiz_online(c.state, 4)
     c._finish()
     assert c.state.wiz_online == 4
@@ -20,7 +20,7 @@ def test_wiz_count_not_hardcoded_six():
 
 
 def test_wiz_zero_wait():
-    c = make_controller(wiz_ap_up=True, wiz_online=0, wiz_expected=6)
+    c = make_controller(wiz_ap_up=True, wiz_online=0, wiz_expected=6, wiz_enabled=True)
     c._finish()
     assert c.state.wiz_waiting
     assert any("WAIT" in w for w in c.state.warnings)

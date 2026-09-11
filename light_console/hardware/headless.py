@@ -13,8 +13,10 @@ class HeadlessBackend(HardwareBackend):
 
     events: list[HardwareEvent] = field(default_factory=list)
     last_frame: bytes | None = None
+    frames: list[bytes] = field(default_factory=list)
     brightness: int = 15
     closed: bool = False
+    cleared_on_close: bool = False
 
     def push(self, *events: HardwareEvent) -> None:
         self.events.extend(events)
@@ -26,6 +28,7 @@ class HeadlessBackend(HardwareBackend):
 
     def set_display(self, fb: Framebuffer) -> None:
         self.last_frame = bytes(fb.pixels)
+        self.frames.append(self.last_frame)
 
     def set_display_brightness(self, level: int) -> None:
         self.brightness = level

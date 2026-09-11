@@ -2,31 +2,68 @@ from __future__ import annotations
 
 import logging
 import socket
+import threading
 import time
 from pathlib import Path
 
 from light_console.config import AppConfig
 from light_console.controls.buttons import ButtonTracker
+from light_console.controls.encoders import fold_encoder_stream, is_nav_encoder, nav_steps
 from light_console.display.renderer import Renderer
 from light_console.display.screens import qlc_output_label
 from light_console.hardware.base import HardwareBackend
 from light_console.hardware.events import ButtonEvent, EncoderEvent, HardwareEvent, SimCommandEvent
-from light_console.output.network import collect_network
-from light_console.output.routing import parse_output_routes_file, routing_mode
+from light_console.output.fixtures import parse_fixtures_file, update_seen
+from light_console.output.observe import LiveDiagnostics
+from light_console.output.routing import merge_routes, parse_output_routes_file, routing_mode
+from light_console.output.universe_map import parse_qlc_universes_file
+from light_console.output.netmode import (
+    MockNetworkModeService,
+    NetworkModeService,
+    oled_mode_word,
+    parse_network_mode,
+)
+from light_console.output.apply import (
+    APPLYING,
+    RouteApplyError,
+    apply_managed_target,
+)
+from light_console.output.targets import (
+    APPLYABLE_TARGETS,
+    TargetId,
+    TargetUnavailable,
+    apply_plan_for,
+    detect_target,
+    icmp_reachable,
+    lan_line_uid,
+    read_arp_table,
+    resolve_apply_ipv4,
+)
 from light_console.power import MockPowerService, PowerService
+from light_console.prefs import OperatorPrefs, load_prefs, save_prefs
 from light_console.qlc.binding import QlcBinding
 from light_console.qlc.client import QLCClient
 from light_console.qlc.functions import QlcFunction
 from light_console.qlc.launch import RUNTIME_MASTER
+from light_console.qlc.runtime import (
+    STARTUP_NAME,
+    apply_live_startup_runtime,
+    function_runtime_available,
+    invalidate_function_runtime,
+    parse_startup_status_file,
+)
+from light_console.qlc.service import LinuxQlcService, MockQlcService, QlcService
 from light_console.qxw import QxwError
+from light_console.ui.vocab import FAILED, SWITCHING
 from light_console.shows import ShowCatalog
 from light_console.showdef import ShowDefinition
-from light_console.state import AppState
+from light_console.state import AppState, ScreenId, UiMode
 from light_console.status.dmx import apply_dmx
 from light_console.status.midi import apply_launchpad
 from light_console.status.network import apply_upstream, apply_wiz_ap
 from light_console.status.wiz import bump_wiz
 from light_console.ui.nav import Navigation
+from light_console.ui.pages import SYSTEM_ROW_COUNT
 from light_console.ui.params import bind_console_params
 from light_console.ui.shell import NornsUIShell
 
@@ -54,12 +91,44 @@ class Controller:
         qlc: QLCClient,
         power: PowerService | None = None,
         shows_dir: Path | None = None,
+        prefs_path: Path | None = None,
+        qlc_service: QlcService | None = None,
+        net_service: NetworkModeService | None = None,
+        live_diag: bool | None = None,
     ) -> None:
         self.config = config
         self.state = state
         self.hardware = hardware
         self.qlc = qlc
         self.power = power or MockPowerService()
+        self._prefs_path = prefs_path
+        if prefs_path is not None:
+            prefs = load_prefs(prefs_path)
+            self.state.wiz_enabled = prefs.wiz_enabled
+            self.state.qlc_desired = prefs.qlc_desired
+            self.state.network_mode = parse_network_mode(prefs.network_mode)
+        else:
+            prefs = OperatorPrefs(
+                wiz_enabled=self.state.wiz_enabled,
+                qlc_desired=self.state.qlc_desired,
+                network_mode=parse_network_mode(self.state.network_mode),
+            )
+        observed = "RUNNING" if self.state.qlc_connected else "STOPPED"
+        self.qlc_service = qlc_service or MockQlcService(
+            desired_on=prefs.qlc_desired,
+            observed=self.state.qlc_observed if self.state.qlc_observed else observed,
+        )
+        self.qlc_service.desired_on = prefs.qlc_desired
+        if isinstance(self.qlc_service, LinuxQlcService) and not prefs.qlc_desired:
+            self.qlc_service.set_desired(False)
+        self.state.qlc_desired = self.qlc_service.desired_on
+        self.state.qlc_observed = self.qlc_service.poll()
+        self.net_service = net_service or MockNetworkModeService(
+            mode=parse_network_mode(prefs.network_mode)
+        )
+        self.state.network_mode = self.net_service.mode
+        self.state.network_mode_observed = self.net_service.poll()
+        self.state.network_mode_busy = self.net_service.busy
         self.nav = Navigation()
         self.params = bind_console_params(state)
         self.binding = QlcBinding(qlc)
@@ -76,10 +145,16 @@ class Controller:
         self.running = True
         self._status_body = ""
         self.workspace_path = (shows_dir / "master.qxw") if shows_dir is not None else RUNTIME_MASTER
-        self._net_t = 0.0
+        self._diag: LiveDiagnostics | None = None
         self._dmx_t = -2.0
         self._dmx_cursor = 0
+        self._startup_status_t = -1.0
         self._route_mtime: float | None = None
+        self._route_lock = threading.Lock()
+        self._route_thread: threading.Thread | None = None
+        self._route_ping = icmp_reachable
+        self._route_arp: dict[str, str] | None = None
+        self.state.system_count = SYSTEM_ROW_COUNT
         if not self.state.hostname:
             try:
                 self.state.hostname = socket.gethostname()
@@ -89,6 +164,44 @@ class Controller:
         self.state.qlc_host = qlc.host_label()
         self._load_routes()
         self._refresh_show_state(force=True)
+        if live_diag is None:
+            live_diag = not self._is_headless()
+        if live_diag:
+            try:
+                from light_console.machine import load_machine_profile
+
+                usb_id = load_machine_profile().launchpad.usb_id
+            except Exception:
+                usb_id = "1235:0036"
+            self._diag = LiveDiagnostics(
+                usb_id=usb_id,
+            )
+        self.reveal_normal_ui()
+
+    def reveal_normal_ui(self) -> None:
+        """Leave appliance STARTING UP once this process can render a real page."""
+        if self.state.shutdown_requested or self.state.screen == ScreenId.SHUTTING_DOWN:
+            return
+        if self.state.screen != ScreenId.STARTING_UP:
+            return
+        self.state.mode = UiMode.PLAY
+        self.state.screen = ScreenId.PLAY
+        self.state.reset_list_window()
+
+    def begin_appliance_shutdown(self) -> None:
+        """Paint SHUTTING DOWN, flush OLED, then halt. Not used for service restarts."""
+        if self.state.shutdown_requested and self.power.shutdown_requested:
+            return
+        self.nav.begin_shutdown(self.state)
+        try:
+            self.renderer.force_dirty()
+            self.renderer.render(self.state)
+            self.hardware.set_display(self.renderer.fb)
+            self._last_draw = time.monotonic()
+        except Exception:
+            LOG.exception("SHUTTING DOWN flush failed")
+        self.power.request_shutdown()
+        self.state.shutdown_requested = self.power.shutdown_requested
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now
@@ -126,12 +239,19 @@ class Controller:
         self._finish()
 
     def tick(self, now: float | None = None) -> None:
-        now = time.monotonic() if now is None else now
+        started = time.monotonic()
+        now = started if now is None else now
+        self.state.ui_now = now
         self.state.uptime_s = int(now - self._t0)
         temp = _read_cpu_temp()
         if temp is not None:
             self.state.cpu_temp_c = temp
-        for ev in self.hardware.read_events():
+        for ev in fold_encoder_stream(self.hardware.read_events()):
+            if isinstance(ev, EncoderEvent) and is_nav_encoder(self.state.screen, ev.encoder):
+                stepped = nav_steps(ev.delta)
+                if stepped == 0:
+                    continue
+                ev = EncoderEvent(encoder=ev.encoder, delta=stepped)
             self.handle_event(ev, now)
         for ev in self.buttons.poll(now):
             self._dispatch_key(ev)
@@ -147,6 +267,9 @@ class Controller:
             if self.renderer.changed():
                 self.hardware.set_display(self.renderer.fb)
             self._last_draw = now
+        elapsed = time.monotonic() - started
+        if elapsed > 0.12:
+            LOG.warning("slow tick %.0fms", elapsed * 1000.0)
 
     def _is_headless(self) -> bool:
         return type(self.hardware).__name__ == "HeadlessBackend"
@@ -162,25 +285,39 @@ class Controller:
             routes = parse_output_routes_file(path)
             self._route_mtime = mtime
             self.state.output_routes = routes
-            self.state.output_mode = routing_mode(routes)
+            try:
+                self.state.qlc_universes = parse_qlc_universes_file(path)
+            except (OSError, QxwError):
+                LOG.debug("universe list parse failed", exc_info=True)
+            try:
+                self.state.fixtures = parse_fixtures_file(path)
+            except (OSError, QxwError):
+                LOG.debug("fixture parse failed", exc_info=True)
+            self._sync_output_mode()
         except (OSError, QxwError):
             LOG.debug("routing parse failed", exc_info=True)
 
-    def _refresh_diagnostics(self, now: float) -> None:
-        if not self._is_headless():
-            if now - self._net_t >= 2.0:
-                try:
-                    self.state.network_ifaces = collect_network()
-                except Exception:
-                    LOG.debug("network snapshot failed", exc_info=True)
-                self._net_t = now
-                try:
-                    from light_console.midi_wait import launchpad_visible
+    def _sync_output_mode(self) -> None:
+        resolved = merge_routes(
+            self.state.output_routes,
+            self.state.runtime_routes,
+            self.state.network_ifaces,
+        )
+        self.state.output_mode = routing_mode(resolved)
 
-                    apply_launchpad(self.state, launchpad_visible())
-                except Exception:
-                    pass
+    def _refresh_diagnostics(self, now: float) -> None:
+        if self._diag is not None:
+            ifaces, launchpad = self._diag.snapshot()
+            self.state.network_ifaces = ifaces
+            apply_launchpad(self.state, launchpad)
         self._load_routes()
+        self._sync_output_mode()
+        self.state.qlc_observed = self.qlc_service.poll()
+        if not self.state.route_busy:
+            self.state.qlc_desired = self.qlc_service.desired_on
+        self._sync_network_mode()
+        if self.state.dmx_by_universe and self.state.fixtures:
+            update_seen(self.state.fixtures, self.state.dmx_by_universe, self.state.dmx_seen_ids)
         if not self.qlc.connected():
             if self.state.dmx_ready or self.state.dmx_by_universe:
                 self.qlc.clear_dmx()
@@ -201,6 +338,112 @@ class Controller:
             if snap is not None:
                 self.state.dmx_by_universe[uni - 1] = snap
                 self.state.dmx_ready = True
+        if self.state.dmx_by_universe and self.state.fixtures:
+            update_seen(self.state.fixtures, self.state.dmx_by_universe, self.state.dmx_seen_ids)
+
+    def apply_route_target(self, target_id: str) -> None:
+        try:
+            target = TargetId(target_id)
+        except ValueError:
+            return
+        if target not in APPLYABLE_TARGETS:
+            return
+        with self._route_lock:
+            if self.state.route_busy:
+                return
+            self.state.route_busy = True
+        self.state.route_op = APPLYING
+        worker = threading.Thread(
+            target=self._route_worker,
+            args=(target,),
+            daemon=True,
+            name="qlc-route",
+        )
+        self._route_thread = worker
+        worker.start()
+
+    def _route_worker(self, target: TargetId) -> None:
+        def progress(stage: str) -> None:
+            self.state.route_op = stage
+
+        failed = False
+        try:
+            arp = self._route_arp if self._route_arp is not None else read_arp_table()
+            ip = resolve_apply_ipv4(
+                target,
+                nodes=self.state.artnet_nodes,
+                arp=arp,
+                ping=self._route_ping,
+            )
+            ifaces = {iface.name: iface.ipv4 for iface in self.state.network_ifaces}
+            plan = apply_plan_for(target, ip, lan_uid=lan_line_uid(ifaces))
+            already = detect_target(
+                self.state.output_routes,
+                nodes=self.state.artnet_nodes,
+                arp=arp,
+            )
+            apply_managed_target(
+                self.workspace_path,
+                target,
+                plan,
+                qlc_service=self.qlc_service,
+                progress=progress,
+                connected=self.qlc.connected,
+                already=already,
+            )
+            self._route_mtime = None
+            self._load_routes()
+        except (TargetUnavailable, RouteApplyError, OSError, UnicodeError) as exc:
+            LOG.warning("route apply failed: %s", exc)
+            failed = True
+            self.state.route_op = FAILED
+        finally:
+            self.state.route_busy = False
+            if not failed:
+                self.state.route_op = ""
+
+    def set_qlc_desired(self, on: bool) -> None:
+        self.qlc_service.set_desired(on)
+        self.state.qlc_desired = on
+        self.state.qlc_observed = self.qlc_service.observed
+        if not on:
+            self.qlc.clear_function_runtime()
+            invalidate_function_runtime(self.state)
+        self._save_prefs()
+
+    def set_wiz_enabled(self, on: bool) -> None:
+        self.state.wiz_enabled = on
+        self._save_prefs()
+
+    def set_network_mode(self, mode: str) -> None:
+        if self.net_service.busy or self.state.network_mode_busy:
+            return
+        target = parse_network_mode(mode)
+        if not self.net_service.set_desired(target):
+            return
+        self.state.network_mode_busy = self.net_service.busy
+        self.state.network_mode_observed = self.net_service.poll()
+
+    def _sync_network_mode(self) -> None:
+        observed = self.net_service.poll()
+        self.state.network_mode_busy = self.net_service.busy
+        applied = parse_network_mode(self.net_service.mode)
+        if not self.net_service.busy and applied != parse_network_mode(self.state.network_mode):
+            self.state.network_mode = applied
+            self._save_prefs()
+        self.state.network_mode_observed = observed
+        if not self.net_service.busy and observed not in {SWITCHING, FAILED}:
+            self.state.network_mode_observed = oled_mode_word(applied)
+
+    def _save_prefs(self) -> None:
+        save_prefs(
+            self._prefs_path,
+            OperatorPrefs(
+                wiz_enabled=self.state.wiz_enabled,
+                qlc_desired=self.state.qlc_desired,
+                network_mode=parse_network_mode(self.state.network_mode),
+            ),
+        )
 
     def _sync_qlc(self) -> None:
         self.binding.pull(self.state)
@@ -296,29 +539,40 @@ class Controller:
         self.state.clamp_indices()
         self.params.store_index(self.state)
         self._sync_qlc()
-        self._read_startup_status()
+        self._refresh_startup_runtime()
         if self.catalog is not None:
             self._refresh_show_state()
         self.state.rebuild_warnings()
         self._write_status()
 
-    def _read_startup_status(self) -> None:
+    def _startup_file_status(self) -> str:
         try:
             text = STARTUP_STATUS_PATH.read_text(encoding="utf-8")
         except OSError:
-            if not self.state.startup_status:
-                self.state.startup_status = "WAIT" if self.state.qlc_connected else "--"
+            return ""
+        return parse_startup_status_file(text)
+
+    def _refresh_startup_runtime(self) -> None:
+        """Function RUNNING is valid only while QLC is connected and the unit is up."""
+        connected = self.state.qlc_connected
+        observed = self.state.qlc_observed
+        if not function_runtime_available(connected, observed):
+            self.qlc.clear_function_runtime()
+            invalidate_function_runtime(self.state)
+            self._startup_status_t = -1.0
             return
-        status = ""
-        for line in text.splitlines():
-            if line.startswith("status="):
-                status = line.split("=", 1)[1].strip()
-                break
-        if status:
-            self.state.startup_status = status
-            self.state.startup_running = status.upper() == "RUNNING"
-            if not self.state.show_name:
-                self.state.show_name = "SIIRTYMA"
+        file_status = self._startup_file_status()
+        if file_status and not self.state.show_name:
+            self.state.show_name = "SIIRTYMA"
+        fn = self.qlc.function_by_name(STARTUP_NAME)
+        now = self.state.ui_now
+        if fn is not None and now - self._startup_status_t >= 1.0:
+            self.qlc.request_function_status(fn.function_id)
+            self._startup_status_t = now
+        live = None if fn is None else bool(fn.running)
+        apply_live_startup_runtime(
+            self.state, live_running=live, file_status=file_status
+        )
 
     def _write_status(self) -> None:
         screen = self.state.screen.value if hasattr(self.state.screen, "value") else str(self.state.screen)
@@ -327,6 +581,10 @@ class Controller:
             f"master={self.state.master}\n"
             f"qlc_state={self.state.qlc_state}\n"
             f"qlc={qlc_output_label(self.state)}\n"
+            f"qlc_observed={self.state.qlc_observed}\n"
+            f"startup={self.state.startup_status}\n"
+            f"network_mode={self.state.network_mode}\n"
+            f"network_observed={self.state.network_mode_observed}\n"
         )
         if body == self._status_body:
             return

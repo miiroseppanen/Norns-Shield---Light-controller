@@ -97,6 +97,27 @@ def test_appliance_check_wrapper_is_read_only():
     assert "reboot" not in text
 
 
+def test_sudoers_qlc_start_stop_only():
+    path = ROOT / "packaging/sudoers.d/light-console-qlc"
+    text = path.read_text()
+    lines = [
+        ln.strip()
+        for ln in text.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
+    assert lines == [
+        "light ALL=(root) NOPASSWD: /usr/bin/systemctl start qlcplus.service",
+        "light ALL=(root) NOPASSWD: /usr/bin/systemctl stop qlcplus.service",
+    ]
+    assert "NOPASSWD: ALL" not in text
+    assert "restart" not in text
+    assert "kill" not in text
+    assert "shutdown" not in text
+    appliance = APPLIANCE.read_text()
+    assert "light-console-qlc" in appliance
+    assert "shieldxl-oled-starting.service" in appliance
+
+
 def test_appliance_install_does_not_enable_wiz():
     text = APPLIANCE.read_text()
     assert "siirtyma-shield.qxw" in text

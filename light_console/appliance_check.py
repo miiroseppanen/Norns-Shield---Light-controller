@@ -22,7 +22,6 @@ from light_console.startup_chaser import _function_list, _function_status
 MASTER = Path("/home/light/shows/master.qxw")
 EXPECTED_ARGV = ["/usr/bin/qlcplus-qml", "-w", "-o", "/home/light/shows/master.qxw"]
 EXPECTED_FUNCTIONS = 100
-PROD_PI = "192.168.88.248"
 LC_STATUS = Path("/tmp/light-console.status")
 STARTUP_STATUS = Path("/tmp/qlc-startup.status")
 WS_URL = "ws://127.0.0.1:9999/qlcplusWS"
@@ -387,16 +386,6 @@ def collect_checks() -> tuple[list[Check], dict[str, str]]:
     else:
         checks.append(Check("NETWORK", "wlan1", "FAIL", "interface missing"))
 
-    ping = _cmd(["ping", "-c", "1", "-W", "1", PROD_PI])
-    prod_up = "1 received" in ping or "0% packet loss" in ping
-    checks.append(
-        Check(
-            "OUTPUT",
-            "production Pi",
-            "PASS",
-            "up; Shield stays loopback" if prod_up else "unreachable (ok)",
-        )
-    )
     checks.append(Check("OUTPUT", "armed", "PASS", "SAFE loopback only"))
 
     lc = _read(LC_STATUS)

@@ -61,7 +61,7 @@ def test_ws_client_offline_does_not_raise():
 
 
 def test_qlc_offline_at_startup_ui_works():
-    c = make_controller(qlc_connected=False, qlc_project_loaded=False)
+    c = make_controller(qlc_connected=False, qlc_project_loaded=False, master_dimmer=80)
     c.qlc.simulate_link(False)
     c.tick(now=0.1)
     assert c.state.qlc_connected is False
@@ -215,3 +215,20 @@ def test_status_file_tracks_output_and_master(tmp_path, monkeypatch):
     c.nav.go_play(c.state)
     c.inject_cooked(EncoderEvent(E1, 5))
     assert "master=85" in path.read_text()
+
+
+def test_ws_drain_stays_bounded_under_function_flood():
+    import time
+
+    from light_console.qlc.ws_client import DRAIN_MAX_MSG
+
+    fake = FakeTransport()
+    qlc = QlcWebSocketClient(transport_factory=lambda: fake)
+    qlc.pump(0.0)
+    fake.inbox = [f"FUNCTION|{i % 8}|Running" for i in range(500)]
+    t0 = time.perf_counter()
+    qlc.pump(0.1)
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.05
+    assert len(fake.inbox) == 500 - DRAIN_MAX_MSG
+    qlc.close()

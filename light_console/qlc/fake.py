@@ -40,6 +40,7 @@ class FakeTransport(WsTransport):
         self.dmx: dict[int, dict[int, int]] = {}
         self.functions: list[tuple[int, str]] = [(0, "Warm"), (1, "Blue")]
         self.function_sends: list[tuple[int, int]] = []
+        self.function_running: dict[int, str] = {}
 
     def connect(self, host: str, port: int, path: str) -> None:
         del host, port, path
@@ -62,10 +63,18 @@ class FakeTransport(WsTransport):
             for fid, name in self.functions:
                 parts.extend([str(fid), name])
             self.inbox.append("|".join(parts))
+        elif text.startswith("QLC+API|getFunctionStatus|"):
+            bits = text.split("|")
+            fid = int(bits[2]) if len(bits) > 2 else -1
+            word = self.function_running.get(fid, "Stopped")
+            self.inbox.append(f"QLC+API|getFunctionStatus|{word}")
         elif text.startswith("QLC+API|setFunctionStatus|"):
             bits = text.split("|")
             if len(bits) >= 4:
-                self.function_sends.append((int(bits[2]), int(bits[3])))
+                fid = int(bits[2])
+                bit = int(bits[3])
+                self.function_sends.append((fid, bit))
+                self.function_running[fid] = "Running" if bit else "Stopped"
         elif text.startswith("GM_VALUE|"):
             value = int(text.split("|", 1)[1])
             self.gm = value
