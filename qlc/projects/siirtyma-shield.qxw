@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Workspace>
-<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="VC">
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="IOMGR">
  <Creator>
   <Name>Q Light Controller Plus</Name>
   <Version>5.2.2</Version>
@@ -8,26 +8,22 @@
  </Creator>
  <Engine Autostart="0">
   <InputOutputMap>
-   <BeatGenerator BeatType="Internal" BPM="120" />
-   <NetworkServer Type="Native" AutoStart="False" Name="QLC+_C0A8443F" Password="" />
+   <BeatGenerator BeatType="Internal" BPM="120"/>
+   <NetworkServer Type="Native" AutoStart="False" Name="QLC+_C0A8443F" Password=""/>
    <Universe Name="Universe 1" ID="0">
-    <Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" Line="1" Profile="Novation Launchpad Mini" UID="1-1.2:0">
-     <PluginParameters initmessage="Novation Launchpad MK2 welcome message" />
-    </Input>
+    <Input Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1" Profile="Novation Launchpad Mini"/>
     <Output Plugin="ArtNet" Name="127.0.0.1" UID="127.0.0.1" Line="0">
-     <PluginParameters UniverseChannels="42" outputIP="127.0.0.1" />
+     <PluginParameters UniverseChannels="42" outputIP="127.0.0.1"/>
     </Output>
-    <Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" Line="1" UID="1-1.2:0">
-     <PluginParameters initmessage="Novation Launchpad MK2 welcome message" />
-    </Feedback>
+    <Feedback Plugin="MIDI" Name="Launchpad Mini MIDI 1" UID="1-1.2:0" Line="1"/>
    </Universe>
    <Universe Name="Universe 2" ID="1">
     <Output Plugin="ArtNet" Name="127.0.0.1" UID="127.0.0.1" Line="0">
-     <PluginParameters UniverseChannels="33" outputIP="127.0.0.1" />
+     <PluginParameters UniverseChannels="33" outputIP="127.0.0.1"/>
     </Output>
    </Universe>
-   <Universe Name="Universe 3" ID="2" />
-   <Universe Name="Universe 4" ID="3" />
+   <Universe Name="Universe 3" ID="2"/>
+   <Universe Name="Universe 4" ID="3"/>
   </InputOutputMap>
   <Fixture>
    <Manufacturer>Eurolite</Manufacturer>
@@ -1132,18 +1128,6 @@ Oloaxolx</Manufacturer>
    <ShowEnableButton>True</ShowEnableButton>
    <Collapsed>False</Collapsed>
    <Disabled>False</Disabled>
-   <Label Caption="Raspi QLC off" ID="81">
-    <WindowState Visible="True" X="274" Y="913" Width="126" Height="40"/>
-   </Label>
-   <Label Caption="ssh -t valot@HOST 'sudo systemctl stop qlcplus'" ID="82">
-    <WindowState Visible="True" X="274" Y="959" Width="274" Height="91"/>
-   </Label>
-   <Label Caption="ssh -t valot@HOST 'sudo systemctl start qlcplus'" ID="79">
-    <WindowState Visible="True" X="0" Y="959" Width="274" Height="91"/>
-   </Label>
-   <Label Caption="Raspi QLC on" ID="80">
-    <WindowState Visible="True" X="0" Y="913" Width="126" Height="40"/>
-   </Label>
    <Frame Caption="PAR valot" ID="83">
     <Appearance>
      <BackgroundColor>4280558628</BackgroundColor>
@@ -1154,6 +1138,60 @@ Oloaxolx</Manufacturer>
     <ShowEnableButton>True</ShowEnableButton>
     <Collapsed>False</Collapsed>
     <Disabled>False</Disabled>
+    <Slider Caption="PAR 1 10% only strobe" ID="149" WidgetStyle="Slider" InvertedAppearance="false">
+     <WindowState Visible="True" X="152" Y="30" Width="76" Height="319"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <SliderMode ValueDisplayStyle="Percentage">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+     <Adjust Attribute="0" Function="39"/>
+     <Flash/>
+    </Slider>
+    <Slider Caption="PAR Random 28s" ID="155" WidgetStyle="Slider" InvertedAppearance="false">
+     <WindowState Visible="True" X="228" Y="30" Width="76" Height="319"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <SliderMode ValueDisplayStyle="Percentage">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+     <Adjust Attribute="0" Function="52"/>
+     <Flash/>
+    </Slider>
+    <Slider Caption="Par kirkkaus" ID="71" WidgetStyle="Slider" InvertedAppearance="false">
+     <WindowState Visible="True" X="-1" Y="47" Width="76" Height="319"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <SliderMode ValueDisplayStyle="Percentage">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="3">0</Channel>
+      <Channel Fixture="4">0</Channel>
+      <Channel Fixture="12">0</Channel>
+      <Channel Fixture="13">0</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="PAR strobo" ID="73" WidgetStyle="Slider" InvertedAppearance="false">
+     <WindowState Visible="True" X="76" Y="30" Width="76" Height="319"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <SliderMode ValueDisplayStyle="Percentage">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="3">1</Channel>
+      <Channel Fixture="4">1</Channel>
+      <Channel Fixture="12">1</Channel>
+      <Channel Fixture="13">1</Channel>
+     </Level>
+    </Slider>
+    <Button Caption="2 PAR flip" ID="75">
+     <WindowState Visible="True" X="0" Y="350" Width="76" Height="91"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="2"/>
+     <Action>Toggle</Action>
+    </Button>
     <Button Caption="Par lämmin valkoinen 3300K" ID="72">
      <WindowState Visible="True" X="456" Y="30" Width="86" Height="86"/>
      <Appearance>
@@ -1161,14 +1199,6 @@ Oloaxolx</Manufacturer>
       <BackgroundColor>4293636864</BackgroundColor>
      </Appearance>
      <Function ID="5"/>
-     <Action>Toggle</Action>
-    </Button>
-    <Button Caption="2 PAR flip" ID="75">
-     <WindowState Visible="True" X="0" Y="350" Width="76" Height="91"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="2"/>
      <Action>Toggle</Action>
     </Button>
     <Button Caption="PAR Blue UV" ID="151">
@@ -1244,53 +1274,72 @@ Oloaxolx</Manufacturer>
      <Function ID="40"/>
      <Action>Toggle</Action>
     </Button>
-    <Slider Caption="PAR strobo" ID="73" WidgetStyle="Slider" InvertedAppearance="false">
-     <WindowState Visible="True" X="76" Y="30" Width="76" Height="319"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <SliderMode ValueDisplayStyle="Percentage">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="139">
-      <Channel Fixture="3">1</Channel>
-      <Channel Fixture="4">1</Channel>
-      <Channel Fixture="12">1</Channel>
-      <Channel Fixture="13">1</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="PAR 1 10% only strobe" ID="149" WidgetStyle="Slider" InvertedAppearance="false">
-     <WindowState Visible="True" X="152" Y="30" Width="76" Height="319"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <SliderMode ValueDisplayStyle="Percentage">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-     <Adjust Attribute="0" Function="39"/>
-     <Flash/>
-    </Slider>
-    <Slider Caption="PAR Random 28s" ID="155" WidgetStyle="Slider" InvertedAppearance="false">
-     <WindowState Visible="True" X="228" Y="30" Width="76" Height="319"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <SliderMode ValueDisplayStyle="Percentage">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-     <Adjust Attribute="0" Function="52"/>
-     <Flash/>
-    </Slider>
-    <Slider Caption="Par kirkkaus" ID="71" WidgetStyle="Slider" InvertedAppearance="false">
-     <WindowState Visible="True" X="-1" Y="47" Width="76" Height="319"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <SliderMode ValueDisplayStyle="Percentage">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="194">
-      <Channel Fixture="3">0</Channel>
-      <Channel Fixture="4">0</Channel>
-      <Channel Fixture="12">0</Channel>
-      <Channel Fixture="13">0</Channel>
-     </Level>
-    </Slider>
    </Frame>
+   <Label Caption="ssh -t valot@HOST 'sudo systemctl start qlcplus'" ID="79">
+    <WindowState Visible="True" X="0" Y="959" Width="274" Height="91"/>
+   </Label>
+   <Label Caption="ssh -t valot@HOST 'sudo systemctl stop qlcplus'" ID="82">
+    <WindowState Visible="True" X="274" Y="959" Width="274" Height="91"/>
+   </Label>
+   <Label Caption="Raspi QLC off" ID="81">
+    <WindowState Visible="True" X="274" Y="913" Width="126" Height="40"/>
+   </Label>
+   <Label Caption="Raspi QLC on" ID="80">
+    <WindowState Visible="True" X="0" Y="913" Width="126" Height="40"/>
+   </Label>
+   <Slider Caption="PAR Random 10s" ID="159" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="1127" Y="411" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="0"/>
+    <Adjust Attribute="0" Function="56"/>
+   </Slider>
+   <Slider Caption="roll" ID="1" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="1081" Y="137" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="0"/>
+    <Adjust Attribute="0" Function="18"/>
+   </Slider>
+   <Slider Caption="Slider 10" ID="9" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="746" Y="517" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="255"/>
+   </Slider>
+   <Slider Caption="PAR Random 10ms" ID="157" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="898" Y="411" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="0"/>
+    <Adjust Attribute="0" Function="53"/>
+   </Slider>
+   <Slider Caption="PAR Random 400ms " ID="158" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="1050" Y="411" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="0"/>
+    <Adjust Attribute="0" Function="55"/>
+   </Slider>
+   <Slider Caption="PAR Random 50ms" ID="156" WidgetStyle="Slider" InvertedAppearance="false">
+    <WindowState Visible="True" X="974" Y="411" Width="76" Height="203"/>
+    <Appearance>
+     <BackgroundColor>4282664004</BackgroundColor>
+    </Appearance>
+    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+    <Level LowLimit="0" HighLimit="255" Value="0"/>
+    <Adjust Attribute="0" Function="54"/>
+   </Slider>
    <Button Caption="BALLS roll" ID="0">
     <WindowState Visible="True" X="1233" Y="76" Width="86" Height="86"/>
     <Appearance>
@@ -1315,59 +1364,6 @@ Oloaxolx</Manufacturer>
     <Function ID="0"/>
     <Action>Toggle</Action>
    </Button>
-   <Slider Caption="PAR Random 400ms " ID="158" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="1050" Y="411" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="0"/>
-    <Adjust Attribute="0" Function="55"/>
-   </Slider>
-   <Slider Caption="PAR Random 10ms" ID="157" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="898" Y="411" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="0"/>
-    <Adjust Attribute="0" Function="53"/>
-   </Slider>
-   <Slider Caption="PAR Random 50ms" ID="156" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="974" Y="411" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="0"/>
-    <Adjust Attribute="0" Function="54"/>
-   </Slider>
-   <Slider Caption="roll" ID="1" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="1081" Y="137" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="0"/>
-    <Adjust Attribute="0" Function="18"/>
-   </Slider>
-   <Slider Caption="PAR Random 10s" ID="159" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="1127" Y="411" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="0"/>
-    <Adjust Attribute="0" Function="56"/>
-   </Slider>
-   <Slider Caption="Slider 10" ID="9" WidgetStyle="Slider" InvertedAppearance="false">
-    <WindowState Visible="True" X="746" Y="517" Width="76" Height="203"/>
-    <Appearance>
-     <BackgroundColor>4282664004</BackgroundColor>
-    </Appearance>
-    <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-    <Level LowLimit="0" HighLimit="255" Value="255"/>
-   </Slider>
   </Frame>
   <Frame Caption="Launcpad mini MK2" ID="3">
    <Appearance>
@@ -1391,151 +1387,6 @@ Oloaxolx</Manufacturer>
     <ShowEnableButton>True</ShowEnableButton>
     <Collapsed>False</Collapsed>
     <Disabled>False</Disabled>
-    <Button Caption="Button 66" ID="128">
-     <WindowState Visible="True" X="349" Y="607" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="244"/>
-    </Button>
-    <Button Caption="STRROBE 3sek" ID="142">
-     <WindowState Visible="True" X="5" Y="521" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4278190080</BackgroundColor>
-     </Appearance>
-     <Function ID="99"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="224"/>
-    </Button>
-    <Button Caption="WHITE" ID="117">
-     <WindowState Visible="True" X="263" Y="263" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="95"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="179"/>
-    </Button>
-    <Button Caption="STROBE 20% 2sek" ID="145">
-     <WindowState Visible="True" X="5" Y="435" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4278190080</BackgroundColor>
-     </Appearance>
-     <Function ID="94"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="208"/>
-    </Button>
-    <Button Caption="BALLS-brightroll" ID="96">
-     <WindowState Visible="True" X="5" Y="177" Width="86" Height="86"/>
-     <Appearance>
-      <ForegroundColor>4278190080</ForegroundColor>
-      <BackgroundColor>4294967193</BackgroundColor>
-     </Appearance>
-     <Function ID="18"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="160"/>
-    </Button>
-    <Button Caption="BALLS -blue" ID="91">
-     <WindowState Visible="True" X="5" Y="5" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4278190335</BackgroundColor>
-     </Appearance>
-     <Function ID="24"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="128"/>
-    </Button>
-    <Button Caption="Button 21" ID="85">
-     <WindowState Visible="True" X="607" Y="91" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="151"/>
-    </Button>
-    <Button Caption="Button 67" ID="101">
-     <WindowState Visible="True" X="435" Y="607" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="245"/>
-    </Button>
-    <Button Caption="Button 49" ID="110">
-     <WindowState Visible="True" X="263" Y="435" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="42"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="211"/>
-    </Button>
-    <Button Caption="Button 37" ID="133">
-     <WindowState Visible="True" X="607" Y="263" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="183"/>
-    </Button>
-    <Button Caption="Stroberoll 1sek" ID="118">
-     <WindowState Visible="True" X="5" Y="263" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4278190080</BackgroundColor>
-     </Appearance>
-     <Function ID="93"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="176"/>
-    </Button>
-    <Button Caption="Button 44" ID="106">
-     <WindowState Visible="True" X="521" Y="349" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="198"/>
-    </Button>
-    <Button Caption="VIOLET" ID="119">
-     <WindowState Visible="True" X="91" Y="263" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4288217343</BackgroundColor>
-     </Appearance>
-     <Function ID="75"/>
-     <Action Override="0" ForceLTP="0">Flash</Action>
-     <Input ID="0" Universe="0" Channel="177"/>
-    </Button>
-    <Button Caption="Button 27" ID="116">
-     <WindowState Visible="True" X="435" Y="177" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="165"/>
-    </Button>
-    <Button Caption="RED" ID="146">
-     <WindowState Visible="True" X="177" Y="5" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4294901760</BackgroundColor>
-     </Appearance>
-     <Function ID="72"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="130"/>
-    </Button>
-    <Button Caption="Button 18" ID="88">
-     <WindowState Visible="True" X="349" Y="91" Width="86" Height="86"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Function ID="4294967295"/>
-     <Action>Toggle</Action>
-     <Input ID="0" Universe="0" Channel="148"/>
-    </Button>
     <Button Caption="Button 12" ID="92">
      <WindowState Visible="True" X="521" Y="5" Width="86" Height="86"/>
      <Appearance>
@@ -1545,21 +1396,23 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="134"/>
     </Button>
-    <Button Caption="Button 42" ID="126">
+    <Button Caption="PAR 28sek" ID="126">
      <WindowState Visible="True" X="349" Y="349" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <ForegroundColor>4294967295</ForegroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="52"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="196"/>
     </Button>
-    <Button Caption="Button 58" ID="113">
+    <Button Caption="PAR 50ms" ID="113">
      <WindowState Visible="True" X="349" Y="521" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
+      <Font>Roboto Condensed,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1</Font>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="54"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="228"/>
     </Button>
@@ -1609,12 +1462,12 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="194"/>
     </Button>
-    <Button Caption="Button 34" ID="124">
+    <Button Caption="PAR-10sek" ID="124">
      <WindowState Visible="True" X="349" Y="263" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
      </Appearance>
-     <Function ID="6"/>
+     <Function ID="56"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="180"/>
     </Button>
@@ -1714,12 +1567,12 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="240"/>
     </Button>
-    <Button Caption="Button 26" ID="122">
+    <Button Caption="PAR 10ms" ID="122">
      <WindowState Visible="True" X="349" Y="177" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
      </Appearance>
-     <Function ID="26"/>
+     <Function ID="53"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="164"/>
     </Button>
@@ -1742,12 +1595,13 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="242"/>
     </Button>
-    <Button Caption="Button 41" ID="125">
+    <Button Caption="PAR-UV-BLUE" ID="125">
      <WindowState Visible="True" X="263" Y="349" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <ForegroundColor>4294967295</ForegroundColor>
+      <BackgroundColor>4278190166</BackgroundColor>
      </Appearance>
-     <Function ID="43"/>
+     <Function ID="41"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="195"/>
     </Button>
@@ -1760,10 +1614,10 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="181"/>
     </Button>
-    <Button Caption="Button 57" ID="144">
+    <Button Caption="PAR-UV" ID="144">
      <WindowState Visible="True" X="263" Y="521" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4281532502</BackgroundColor>
      </Appearance>
      <Function ID="25"/>
      <Action>Toggle</Action>
@@ -1778,12 +1632,12 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="182"/>
     </Button>
-    <Button Caption="BLUE" ID="93">
+    <Button Caption="PAR-BLUE" ID="93">
      <WindowState Visible="True" X="263" Y="177" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190335</BackgroundColor>
      </Appearance>
-     <Function ID="96"/>
+     <Function ID="40"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="163"/>
     </Button>
@@ -1825,12 +1679,12 @@ Oloaxolx</Manufacturer>
      <Action Override="0" ForceLTP="1">Flash</Action>
      <Input ID="0" Universe="0" Channel="129"/>
     </Button>
-    <Button Caption="Button 50" ID="109">
+    <Button Caption="PAR 400ms" ID="109">
      <WindowState Visible="True" X="349" Y="435" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="55"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="212"/>
     </Button>
@@ -1843,12 +1697,13 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="197"/>
     </Button>
-    <Button Caption="Button 65" ID="105">
+    <Button Caption="PAR-AMBER-RGB" ID="105">
      <WindowState Visible="True" X="263" Y="607" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4294956697</BackgroundColor>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="26"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="243"/>
     </Button>
@@ -1917,21 +1772,22 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="133"/>
     </Button>
-    <Button Caption="blackout" ID="147">
+    <Button Caption="PAR-on-flip" ID="147">
      <WindowState Visible="True" X="349" Y="5" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <BackgroundColor>4278190080</BackgroundColor>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="2"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="132"/>
     </Button>
-    <Button Caption="GREEN" ID="89">
+    <Button Caption="PAR-GREEN" ID="89">
      <WindowState Visible="True" X="263" Y="91" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4278255360</BackgroundColor>
      </Appearance>
-     <Function ID="98"/>
+     <Function ID="4294967295"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="147"/>
     </Button>
@@ -1950,7 +1806,7 @@ Oloaxolx</Manufacturer>
      <Appearance>
       <BackgroundColor>4282664004</BackgroundColor>
      </Appearance>
-     <Function ID="4294967295"/>
+     <Function ID="52"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="213"/>
     </Button>
@@ -1963,12 +1819,13 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="215"/>
     </Button>
-    <Button Caption="RED" ID="98">
+    <Button Caption="PAR-RED" ID="98">
      <WindowState Visible="True" X="263" Y="5" Width="86" Height="86"/>
      <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
+      <ForegroundColor>4294967295</ForegroundColor>
+      <BackgroundColor>4294901760</BackgroundColor>
      </Appearance>
-     <Function ID="97"/>
+     <Function ID="43"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="131"/>
     </Button>
@@ -1980,6 +1837,152 @@ Oloaxolx</Manufacturer>
      <Function ID="4294967295"/>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="149"/>
+    </Button>
+    <Button Caption="Button 66" ID="128">
+     <WindowState Visible="True" X="349" Y="607" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="244"/>
+    </Button>
+    <Button Caption="STRROBE 3sek" ID="142">
+     <WindowState Visible="True" X="5" Y="521" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4278190080</BackgroundColor>
+     </Appearance>
+     <Function ID="99"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="224"/>
+    </Button>
+    <Button Caption="PAR-WHITE" ID="117">
+     <WindowState Visible="True" X="263" Y="263" Width="86" Height="86"/>
+     <Appearance>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4294967193</BackgroundColor>
+     </Appearance>
+     <Function ID="5"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="179"/>
+    </Button>
+    <Button Caption="STROBE 20% 2sek" ID="145">
+     <WindowState Visible="True" X="5" Y="435" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4278190080</BackgroundColor>
+     </Appearance>
+     <Function ID="94"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="208"/>
+    </Button>
+    <Button Caption="BALLS-brightroll" ID="96">
+     <WindowState Visible="True" X="5" Y="177" Width="86" Height="86"/>
+     <Appearance>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4294967193</BackgroundColor>
+     </Appearance>
+     <Function ID="18"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="160"/>
+    </Button>
+    <Button Caption="BALLS -blue" ID="91">
+     <WindowState Visible="True" X="5" Y="5" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4278190335</BackgroundColor>
+     </Appearance>
+     <Function ID="24"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="128"/>
+    </Button>
+    <Button Caption="Button 21" ID="85">
+     <WindowState Visible="True" X="607" Y="91" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="151"/>
+    </Button>
+    <Button Caption="Button 67" ID="101">
+     <WindowState Visible="True" X="435" Y="607" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="245"/>
+    </Button>
+    <Button Caption="PAR-RED-UV" ID="110">
+     <WindowState Visible="True" X="263" Y="435" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4283826262</BackgroundColor>
+     </Appearance>
+     <Function ID="42"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="211"/>
+    </Button>
+    <Button Caption="Button 37" ID="133">
+     <WindowState Visible="True" X="607" Y="263" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="183"/>
+    </Button>
+    <Button Caption="Stroberoll 1sek" ID="118">
+     <WindowState Visible="True" X="5" Y="263" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4278190080</BackgroundColor>
+     </Appearance>
+     <Function ID="93"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="176"/>
+    </Button>
+    <Button Caption="Button 44" ID="106">
+     <WindowState Visible="True" X="521" Y="349" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="198"/>
+    </Button>
+    <Button Caption="VIOLET" ID="119">
+     <WindowState Visible="True" X="91" Y="263" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4288217343</BackgroundColor>
+     </Appearance>
+     <Function ID="75"/>
+     <Action Override="0" ForceLTP="0">Flash</Action>
+     <Input ID="0" Universe="0" Channel="177"/>
+    </Button>
+    <Button Caption="Button 27" ID="116">
+     <WindowState Visible="True" X="435" Y="177" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Function ID="4294967295"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="165"/>
+    </Button>
+    <Button Caption="RED" ID="146">
+     <WindowState Visible="True" X="177" Y="5" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4294901760</BackgroundColor>
+     </Appearance>
+     <Function ID="72"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="130"/>
+    </Button>
+    <Button Caption="PAR-5sekfade" ID="88">
+     <WindowState Visible="True" X="349" Y="91" Width="86" Height="86"/>
+     <Appearance>
+      <BackgroundColor>4278190080</BackgroundColor>
+     </Appearance>
+     <Function ID="36"/>
+     <Action>Toggle</Action>
+     <Input ID="0" Universe="0" Channel="148"/>
     </Button>
    </Frame>
   </Frame>
@@ -2000,6 +2003,237 @@ Oloaxolx</Manufacturer>
     <ShowEnableButton>True</ShowEnableButton>
     <Collapsed>False</Collapsed>
     <Disabled>False</Disabled>
+    <Slider Caption="Knob 54" ID="53" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="852" Y="426" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="34"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 60" ID="61" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="670" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4281545727</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="19"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">3</Channel>
+      <Channel Fixture="6">3</Channel>
+      <Channel Fixture="7">3</Channel>
+      <Channel Fixture="8">3</Channel>
+      <Channel Fixture="9">3</Channel>
+      <Channel Fixture="10">3</Channel>
+      <Channel Fixture="11">3</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 60" ID="62" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="761" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4294967295</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="20"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">1</Channel>
+      <Channel Fixture="5">2</Channel>
+      <Channel Fixture="5">3</Channel>
+      <Channel Fixture="5">4</Channel>
+      <Channel Fixture="6">1</Channel>
+      <Channel Fixture="6">2</Channel>
+      <Channel Fixture="6">3</Channel>
+      <Channel Fixture="6">4</Channel>
+      <Channel Fixture="7">1</Channel>
+      <Channel Fixture="7">2</Channel>
+      <Channel Fixture="7">3</Channel>
+      <Channel Fixture="7">4</Channel>
+      <Channel Fixture="8">1</Channel>
+      <Channel Fixture="8">2</Channel>
+      <Channel Fixture="8">3</Channel>
+      <Channel Fixture="8">4</Channel>
+      <Channel Fixture="9">1</Channel>
+      <Channel Fixture="9">2</Channel>
+      <Channel Fixture="9">3</Channel>
+      <Channel Fixture="9">4</Channel>
+      <Channel Fixture="10">1</Channel>
+      <Channel Fixture="10">2</Channel>
+      <Channel Fixture="10">3</Channel>
+      <Channel Fixture="10">4</Channel>
+      <Channel Fixture="11">1</Channel>
+      <Channel Fixture="11">2</Channel>
+      <Channel Fixture="11">3</Channel>
+      <Channel Fixture="11">4</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 60" ID="66" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1127" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="24"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 60" ID="6" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="487" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4294901760</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="17"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">1</Channel>
+      <Channel Fixture="6">1</Channel>
+      <Channel Fixture="7">1</Channel>
+      <Channel Fixture="8">1</Channel>
+      <Channel Fixture="9">1</Channel>
+      <Channel Fixture="10">1</Channel>
+      <Channel Fixture="11">1</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 60" ID="63" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="852" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <ForegroundColor>4278190080</ForegroundColor>
+      <BackgroundColor>4294963133</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="21"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">5</Channel>
+      <Channel Fixture="6">5</Channel>
+      <Channel Fixture="7">5</Channel>
+      <Channel Fixture="8">5</Channel>
+      <Channel Fixture="9">5</Channel>
+      <Channel Fixture="10">5</Channel>
+      <Channel Fixture="11">5</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 55" ID="54" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1005" Y="426" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="35"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 52" ID="51" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="929" Y="304" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="44"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 49" ID="48" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="517" Y="304" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="46"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 56" ID="55" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1218" Y="258" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="37"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 60" ID="65" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1035" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="23"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 4" ID="3" WidgetStyle="Knob" InvertedAppearance="false" CatchValues="true">
+     <WindowState Visible="True" X="152" Y="152" Width="182" Height="198"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="48"/>
+     <SliderMode ValueDisplayStyle="Percentage">GrandMaster</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="255">
+      <Channel Fixture="5">0</Channel>
+      <Channel Fixture="5">4</Channel>
+      <Channel Fixture="6">0</Channel>
+      <Channel Fixture="6">4</Channel>
+      <Channel Fixture="7">0</Channel>
+      <Channel Fixture="7">4</Channel>
+      <Channel Fixture="8">0</Channel>
+      <Channel Fixture="8">4</Channel>
+      <Channel Fixture="9">0</Channel>
+      <Channel Fixture="9">4</Channel>
+      <Channel Fixture="10">0</Channel>
+      <Channel Fixture="10">4</Channel>
+      <Channel Fixture="11">0</Channel>
+      <Channel Fixture="11">4</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 59" ID="58" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1462" Y="137" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="39"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 60" ID="60" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="578" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4281597747</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="18"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">2</Channel>
+      <Channel Fixture="6">2</Channel>
+      <Channel Fixture="7">2</Channel>
+      <Channel Fixture="8">2</Channel>
+      <Channel Fixture="9">2</Channel>
+      <Channel Fixture="10">2</Channel>
+      <Channel Fixture="11">2</Channel>
+     </Level>
+     <Adjust Attribute="0" Function="18"/>
+    </Slider>
+    <Slider Caption="Knob 48" ID="47" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="380" Y="274" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="47"/>
+     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0">
+      <Channel Fixture="5">0</Channel>
+      <Channel Fixture="6">0</Channel>
+      <Channel Fixture="7">0</Channel>
+      <Channel Fixture="8">0</Channel>
+      <Channel Fixture="9">0</Channel>
+      <Channel Fixture="10">0</Channel>
+      <Channel Fixture="11">0</Channel>
+     </Level>
+    </Slider>
+    <Slider Caption="Knob 51" ID="50" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="594" Y="426" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="33"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
     <Slider Caption="Knob 53" ID="52" WidgetStyle="Knob" InvertedAppearance="false">
      <WindowState Visible="True" X="1081" Y="304" Width="76" Height="111"/>
      <Appearance>
@@ -2015,6 +2249,33 @@ Oloaxolx</Manufacturer>
       <BackgroundColor>4282664004</BackgroundColor>
      </Appearance>
      <Input ID="0" Universe="0" Channel="45"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 57" ID="56" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1355" Y="258" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="36"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 60" ID="64" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="944" Y="106" Width="60" Height="121"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="22"/>
+     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
+     <Level LowLimit="0" HighLimit="255" Value="0"/>
+    </Slider>
+    <Slider Caption="Knob 58" ID="57" WidgetStyle="Knob" InvertedAppearance="false">
+     <WindowState Visible="True" X="1325" Y="137" Width="76" Height="111"/>
+     <Appearance>
+      <BackgroundColor>4282664004</BackgroundColor>
+     </Appearance>
+     <Input ID="0" Universe="0" Channel="38"/>
      <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
      <Level LowLimit="0" HighLimit="255" Value="0"/>
     </Slider>
@@ -2297,264 +2558,6 @@ Oloaxolx</Manufacturer>
      <Action>Toggle</Action>
      <Input ID="0" Universe="0" Channel="205"/>
     </Button>
-    <Slider Caption="Knob 48" ID="47" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="380" Y="274" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="47"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">0</Channel>
-      <Channel Fixture="6">0</Channel>
-      <Channel Fixture="7">0</Channel>
-      <Channel Fixture="8">0</Channel>
-      <Channel Fixture="9">0</Channel>
-      <Channel Fixture="10">0</Channel>
-      <Channel Fixture="11">0</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="Knob 60" ID="60" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="578" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4281597747</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="18"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">2</Channel>
-      <Channel Fixture="6">2</Channel>
-      <Channel Fixture="7">2</Channel>
-      <Channel Fixture="8">2</Channel>
-      <Channel Fixture="9">2</Channel>
-      <Channel Fixture="10">2</Channel>
-      <Channel Fixture="11">2</Channel>
-     </Level>
-     <Adjust Attribute="0" Function="18"/>
-    </Slider>
-    <Slider Caption="Knob 51" ID="50" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="594" Y="426" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="33"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 4" ID="3" WidgetStyle="Knob" InvertedAppearance="false" CatchValues="true">
-     <WindowState Visible="True" X="152" Y="152" Width="182" Height="198"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="48"/>
-     <SliderMode ValueDisplayStyle="Percentage">GrandMaster</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="255">
-      <Channel Fixture="5">0</Channel>
-      <Channel Fixture="5">4</Channel>
-      <Channel Fixture="6">0</Channel>
-      <Channel Fixture="6">4</Channel>
-      <Channel Fixture="7">0</Channel>
-      <Channel Fixture="7">4</Channel>
-      <Channel Fixture="8">0</Channel>
-      <Channel Fixture="8">4</Channel>
-      <Channel Fixture="9">0</Channel>
-      <Channel Fixture="9">4</Channel>
-      <Channel Fixture="10">0</Channel>
-      <Channel Fixture="10">4</Channel>
-      <Channel Fixture="11">0</Channel>
-      <Channel Fixture="11">4</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="Knob 56" ID="55" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1218" Y="258" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="37"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 60" ID="65" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1035" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="23"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 59" ID="58" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1462" Y="137" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="39"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 49" ID="48" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="517" Y="304" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="46"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 57" ID="56" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1355" Y="258" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="36"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 58" ID="57" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1325" Y="137" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="38"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 60" ID="64" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="944" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="22"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 54" ID="53" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="852" Y="426" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="34"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 52" ID="51" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="929" Y="304" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="44"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 60" ID="61" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="670" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4281545727</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="19"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">3</Channel>
-      <Channel Fixture="6">3</Channel>
-      <Channel Fixture="7">3</Channel>
-      <Channel Fixture="8">3</Channel>
-      <Channel Fixture="9">3</Channel>
-      <Channel Fixture="10">3</Channel>
-      <Channel Fixture="11">3</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="Knob 60" ID="66" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1127" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="24"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 60" ID="62" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="761" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <ForegroundColor>4278190080</ForegroundColor>
-      <BackgroundColor>4294967295</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="20"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">1</Channel>
-      <Channel Fixture="5">2</Channel>
-      <Channel Fixture="5">3</Channel>
-      <Channel Fixture="5">4</Channel>
-      <Channel Fixture="6">1</Channel>
-      <Channel Fixture="6">2</Channel>
-      <Channel Fixture="6">3</Channel>
-      <Channel Fixture="6">4</Channel>
-      <Channel Fixture="7">1</Channel>
-      <Channel Fixture="7">2</Channel>
-      <Channel Fixture="7">3</Channel>
-      <Channel Fixture="7">4</Channel>
-      <Channel Fixture="8">1</Channel>
-      <Channel Fixture="8">2</Channel>
-      <Channel Fixture="8">3</Channel>
-      <Channel Fixture="8">4</Channel>
-      <Channel Fixture="9">1</Channel>
-      <Channel Fixture="9">2</Channel>
-      <Channel Fixture="9">3</Channel>
-      <Channel Fixture="9">4</Channel>
-      <Channel Fixture="10">1</Channel>
-      <Channel Fixture="10">2</Channel>
-      <Channel Fixture="10">3</Channel>
-      <Channel Fixture="10">4</Channel>
-      <Channel Fixture="11">1</Channel>
-      <Channel Fixture="11">2</Channel>
-      <Channel Fixture="11">3</Channel>
-      <Channel Fixture="11">4</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="Knob 60" ID="63" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="852" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <ForegroundColor>4278190080</ForegroundColor>
-      <BackgroundColor>4294963133</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="21"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">5</Channel>
-      <Channel Fixture="6">5</Channel>
-      <Channel Fixture="7">5</Channel>
-      <Channel Fixture="8">5</Channel>
-      <Channel Fixture="9">5</Channel>
-      <Channel Fixture="10">5</Channel>
-      <Channel Fixture="11">5</Channel>
-     </Level>
-    </Slider>
-    <Slider Caption="Knob 55" ID="54" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="1005" Y="426" Width="76" Height="111"/>
-     <Appearance>
-      <BackgroundColor>4282664004</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="35"/>
-     <SliderMode ValueDisplayStyle="Exact">Adjust</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0"/>
-    </Slider>
-    <Slider Caption="Knob 60" ID="6" WidgetStyle="Knob" InvertedAppearance="false">
-     <WindowState Visible="True" X="487" Y="106" Width="60" Height="121"/>
-     <Appearance>
-      <BackgroundColor>4294901760</BackgroundColor>
-     </Appearance>
-     <Input ID="0" Universe="0" Channel="17"/>
-     <SliderMode ValueDisplayStyle="Exact">Level</SliderMode>
-     <Level LowLimit="0" HighLimit="255" Value="0">
-      <Channel Fixture="5">1</Channel>
-      <Channel Fixture="6">1</Channel>
-      <Channel Fixture="7">1</Channel>
-      <Channel Fixture="8">1</Channel>
-      <Channel Fixture="9">1</Channel>
-      <Channel Fixture="10">1</Channel>
-      <Channel Fixture="11">1</Channel>
-     </Level>
-    </Slider>
     <Button Caption="Button 8" ID="42">
      <WindowState Visible="True" X="944" Y="30" Width="60" Height="60"/>
      <Appearance>
