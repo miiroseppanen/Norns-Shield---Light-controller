@@ -147,7 +147,7 @@ def _open_devices(c, device_map, observations=()):
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = 0
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.WIZ_DEVICES
 

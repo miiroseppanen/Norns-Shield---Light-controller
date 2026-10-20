@@ -26,9 +26,8 @@ from light_console.state import ScreenId
 from light_console.ui.menu import MENU_ITEMS, menu_index_of
 from light_console.ui.pages import (
     SYSTEM_QLC_TOGGLE,
+    SYSTEM_RESTART,
     SYSTEM_ROW_COUNT,
-    SYSTEM_VERSION,
-    SYSTEM_VERSION,
     WIZ_DEVICES_VISIBLE,
     system_slots,
     wiz_devices_visible_count,
@@ -265,27 +264,26 @@ def _open_devices(c, mapped=None, observations=(), *, wiz_enabled=False, bridge=
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    c.state.menu_index = 1
+    c.state.menu_index = 0
     c.inject_cooked(ButtonEvent(K3, "press"))
     return c
 
 
-def test_wiz_devices_is_after_control_in_wiz_submenu():
+def test_wiz_devices_is_first_in_wiz_submenu():
     c = make_controller()
     kinds = [slot.kind for slot in system_slots(c.state)]
-    assert kinds == ["qlc", "net", "version"]
+    assert kinds == ["qlc", "net", "version", "restart"]
     assert "wiz" not in kinds
     assert "wiz_devices" not in kinds
     assert "shutdown" not in kinds
     labels = [item.label for item in MENU_ITEMS]
-    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "RESTART", "SHUTDOWN"]
+    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN"]
     assert labels.index("WIZ") == labels.index("SYSTEM") - 1
     assert labels[-1] == "SHUTDOWN"
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
-    c.state.menu_index = 1
+    assert [item.label for item in c.nav.current_items()] == ["DEVICES", "CONTROL", "INFO"]
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.WIZ_DEVICES
     fb = Renderer().render(c.state)
@@ -300,10 +298,10 @@ def test_system_still_clamps_with_wiz_devices_row():
     c.inject_cooked(EncoderEvent(E2, -1))
     assert c.state.system_index == 0
     c.inject_cooked(EncoderEvent(E2, 40))
-    assert c.state.system_index == SYSTEM_VERSION
+    assert c.state.system_index == SYSTEM_RESTART
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_VERSION
-    assert SYSTEM_ROW_COUNT == 3
+    assert c.state.system_index == SYSTEM_RESTART
+    assert SYSTEM_ROW_COUNT == 4
 
 
 def test_k2_returns_and_k3_does_not_mutate(tmp_path: Path):
@@ -323,7 +321,7 @@ def test_k2_returns_and_k3_does_not_mutate(tmp_path: Path):
     assert path.read_bytes() == before
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
+    assert [item.label for item in c.nav.current_items()] == ["DEVICES", "CONTROL", "INFO"]
 
 
 def test_detail_is_observe_only():

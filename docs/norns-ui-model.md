@@ -45,9 +45,11 @@ HOME enters PLAY. SHOWS / SCENES / CHASERS / PARAMS / OUTPUT / SYSTEM are screen
 
 SHOWS lists named `.qxw` files on the appliance. K3 opens a confirm page (`LOAD` or `OPEN`). Confirming copies that file onto `master.qxw` and restarts QLC via systemd start/stop. Already-open files stay `OPEN` and do not bounce QLC. See [`docs/show-ui.md`](show-ui.md).
 
-SYSTEM list: QLC SERVICE, NETWORK MODE, VERSION.
+SYSTEM list: QLC SERVICE, NETWORK MODE, VERSION, RESTART.
 
-MENU after SYSTEM is RESTART, then SHUTDOWN last. K3 opens a confirm page (`PRESS RIGHT BUTTON` / `TO RESTART` or `TO SHUT DOWN`). K2 back. K3 on the confirm page begins reboot or halt. OLED stays on RESTARTING or SHUTTING DOWN until Linux stops. After that K1/K2/K3 and E1/E2/E3 do nothing; `PowerService.request_restart()` or `request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -r now` or `-h now`. The simulator only sets a flag.
+WIZ submenu: DEVICES, CONTROL, INFO.
+
+MENU after SYSTEM is SHUTDOWN last. SYSTEM → RESTART → K3, or MENU → SHUTDOWN → K3, opens a confirm page (`PRESS RIGHT BUTTON` / `TO RESTART` or `TO SHUT DOWN`). K2 back (RESTART confirm returns to SYSTEM). K3 on the confirm page begins reboot or halt. OLED stays on RESTARTING or SHUTTING DOWN until Linux stops. After that K1/K2/K3 and E1/E2/E3 do nothing; `PowerService.request_restart()` or `request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -r now` or `-h now`. The simulator only sets a flag.
 
 ## Screens vs parameters
 

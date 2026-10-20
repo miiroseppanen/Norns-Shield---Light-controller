@@ -43,6 +43,7 @@ from light_console.state import ScreenId
 from light_console.ui.pages import (
     SYSTEM_NET_TOGGLE,
     SYSTEM_QLC_TOGGLE,
+    SYSTEM_RESTART,
     SYSTEM_ROW_COUNT,
     SYSTEM_VERSION,
     system_slots,
@@ -450,25 +451,34 @@ def test_qlc_toggle_does_not_look_like_shutdown():
     assert c.power.request_count == 0
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.SYSTEM
+    c.inject_cooked(EncoderEvent(E2, 1))
+    assert c.state.system_index == SYSTEM_RESTART
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.RESTART_CONFIRM
+    assert c.power.restart_count == 0
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.SYSTEM
     from tests.test_shutdown import _start_shutdown
 
     _start_shutdown(c)
     assert c.state.screen == ScreenId.SHUTTING_DOWN
 
 
-def test_system_focus_order_is_three_actions():
+def test_system_focus_order_is_four_actions():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
     c.state.system_index = SYSTEM_QLC_TOGGLE
-    assert SYSTEM_ROW_COUNT == 3
+    assert SYSTEM_ROW_COUNT == 4
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_NET_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_VERSION
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_VERSION
+    assert c.state.system_index == SYSTEM_RESTART
+    c.inject_cooked(EncoderEvent(E2, 1))
+    assert c.state.system_index == SYSTEM_RESTART
     c.inject_cooked(EncoderEvent(E2, -1))
-    assert c.state.system_index == SYSTEM_NET_TOGGLE
+    assert c.state.system_index == SYSTEM_VERSION
     c.state.system_index = SYSTEM_QLC_TOGGLE
     c.inject_cooked(EncoderEvent(E2, -1))
     assert c.state.system_index == SYSTEM_QLC_TOGGLE
@@ -486,7 +496,9 @@ def test_system_qlc_state_is_not_separately_focusable():
     assert slots[1].kind == "net"
     assert slots[2].kind == "version"
     assert slots[2].rows == 1
-    assert len(slots) == 3
+    assert slots[3].kind == "restart"
+    assert slots[3].rows == 1
+    assert len(slots) == 4
 
 
 def test_system_layout_has_no_scrollbar_and_groups_settings():
@@ -498,15 +510,19 @@ def test_system_layout_has_no_scrollbar_and_groups_settings():
         SYSTEM_QLC_TOGGLE,
         SYSTEM_NET_TOGGLE,
         SYSTEM_VERSION,
+        SYSTEM_RESTART,
     ]
-    qlc, net, version = slots
+    qlc, net, version, restart = slots
     assert qlc.y == CONTENT_Y
     assert net.y == qlc.y + qlc.rows * ROW
     assert version.y == net.y + net.rows * ROW
+    assert restart.y == version.y + version.rows * ROW
     assert _toggle_match(fb, qlc.y, False)
     assert _toggle_match(fb, net.y, True)
     assert not _toggle_match(fb, version.y, True)
     assert not _toggle_match(fb, version.y, False)
+    assert not _toggle_match(fb, restart.y, True)
+    assert not _toggle_match(fb, restart.y, False)
     assert region_on_count(fb, 0, qlc.y, FOCUS_W, qlc.rows * ROW) == FOCUS_W * qlc.rows * ROW
     assert region_on_count(fb, 0, qlc.y + ROW, FOCUS_W, ROW) == FOCUS_W * ROW
     c._finish()
@@ -518,7 +534,7 @@ def test_system_wiz_off_has_no_redundant_off_line():
     kinds = [slot.kind for slot in system_slots(c.state)]
     assert "wiz" not in kinds
     assert "wiz_devices" not in kinds
-    assert kinds == ["qlc", "net", "version"]
+    assert kinds == ["qlc", "net", "version", "restart"]
     fb_src = ROOT / "light_console/display/screens.py"
     system_fn = fb_src.read_text(encoding="utf-8").split("def draw_system")[1].split("def draw_wiz_control")[0]
     assert "WIZ CONTROL" not in system_fn

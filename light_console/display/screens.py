@@ -531,6 +531,8 @@ def draw_system(fb: Framebuffer, state: AppState) -> None:
             draw_subordinate_status(fb, y + ROW, word)
         elif slot.kind == "version":
             draw_action_row(fb, y, "VERSION", focused=focused, x=TOGGLE_LABEL_X)
+        elif slot.kind == "restart":
+            draw_action_row(fb, y, "RESTART", focused=focused, x=TOGGLE_LABEL_X)
         y += slot.rows * ROW
 
 

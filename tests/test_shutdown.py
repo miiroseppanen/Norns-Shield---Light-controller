@@ -34,8 +34,8 @@ def test_menu_shutdown_is_last_and_needs_right_button():
 
     labels = [item.label for item in MENU_ITEMS]
     assert labels[-1] == "SHUTDOWN"
-    assert labels[-2] == "RESTART"
-    assert labels[-3] == "SYSTEM"
+    assert labels[-2] == "SYSTEM"
+    assert "RESTART" not in labels
     c = make_controller()
     _open_shutdown_confirm(c)
     assert c.power.request_count == 0

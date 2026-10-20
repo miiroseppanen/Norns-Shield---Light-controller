@@ -5,13 +5,14 @@ from __future__ import annotations
 from light_console.controls.encoders import clamp_index
 from light_console.display.layout import CONTENT_H, CONTENT_ROWS
 from light_console.display.viewport import ListViewport, scrollbar_metrics
-from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K3
+from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
 from light_console.output.fixtures import PatchedFixture
 from light_console.output.pages import build_output_pages_from_state
 from light_console.state import ScreenId
 from light_console.ui.menu import MENU_ITEMS
 from light_console.ui.pages import (
     SYSTEM_QLC_TOGGLE,
+    SYSTEM_RESTART,
     SYSTEM_ROW_COUNT,
     SYSTEM_VERSION,
     system_visible_count,
@@ -44,7 +45,7 @@ def test_menu_clamps_at_first_and_last():
     c.inject_cooked(ButtonEvent(K1, "press"))
     assert c.state.screen == ScreenId.MENU
     count = len(MENU_ITEMS)
-    assert count == 7
+    assert count == 6
     assert c.state.menu_index == 0
     c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == 0
@@ -60,7 +61,7 @@ def test_menu_clamps_at_first_and_last():
     assert _scrollbar(count, CONTENT_ROWS, c.state.scroll_offset) is None
 
 
-def test_system_clamps_at_version():
+def test_system_clamps_at_restart():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
     c.state.system_index = SYSTEM_QLC_TOGGLE
@@ -69,13 +70,18 @@ def test_system_clamps_at_version():
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == 1
     c.inject_cooked(EncoderEvent(E2, 20))
-    assert c.state.system_index == SYSTEM_VERSION
+    assert c.state.system_index == SYSTEM_RESTART
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_VERSION
+    assert c.state.system_index == SYSTEM_RESTART
     c.inject_cooked(EncoderEvent(E1, -1))
-    assert c.state.system_index == SYSTEM_VERSION - 1
-    c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.system_index == SYSTEM_VERSION
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.VERSION
+    assert c.power.request_count == 0
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.SYSTEM
+    c.inject_cooked(EncoderEvent(E1, 1))
+    assert c.state.system_index == SYSTEM_RESTART
     _assert_window(
         c.state.system_index,
         c.state.scroll_offset,
@@ -83,8 +89,8 @@ def test_system_clamps_at_version():
         system_visible_count(c.state),
     )
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.VERSION
-    assert c.power.request_count == 0
+    assert c.state.screen == ScreenId.RESTART_CONFIRM
+    assert c.power.restart_count == 0
 
 
 def test_scenes_scroll_clamps_and_scrollbar_tracks_viewport():

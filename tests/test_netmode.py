@@ -85,9 +85,9 @@ def test_system_network_mode_is_one_block():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
     slots = system_slots(c.state)
-    assert [slot.kind for slot in slots] == ["qlc", "net", "version"]
+    assert [slot.kind for slot in slots] == ["qlc", "net", "version", "restart"]
     assert slots[1].rows == 2
-    assert SYSTEM_ROW_COUNT == 3
+    assert SYSTEM_ROW_COUNT == 4
     c.state.system_index = SYSTEM_NET_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_VERSION

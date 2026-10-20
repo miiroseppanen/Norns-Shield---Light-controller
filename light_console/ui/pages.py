@@ -54,7 +54,8 @@ from light_console.ui.params import Params
 SYSTEM_QLC_TOGGLE = 0
 SYSTEM_NET_TOGGLE = 1
 SYSTEM_VERSION = 2
-SYSTEM_ROW_COUNT = 3
+SYSTEM_RESTART = 3
+SYSTEM_ROW_COUNT = 4
 SYSTEM_EDITABLE_ROWS = frozenset({SYSTEM_QLC_TOGGLE, SYSTEM_NET_TOGGLE})
 WIZ_CONTROL_TOGGLE = 0
 WIZ_CONTROL_SCAN = 1
@@ -130,7 +131,9 @@ def system_slots(state: AppState) -> tuple[SystemSlot, ...]:
     net = SystemSlot(SYSTEM_NET_TOGGLE, "net", y, 2)
     y += net.rows * ROW
     version = SystemSlot(SYSTEM_VERSION, "version", y, 1)
-    return (qlc, net, version)
+    y += version.rows * ROW
+    restart = SystemSlot(SYSTEM_RESTART, "restart", y, 1)
+    return (qlc, net, version, restart)
 
 
 def system_visible_count(state: AppState) -> int:
@@ -449,6 +452,10 @@ class SystemScreen(Screen):
             return
         if ctx.state.system_index == SYSTEM_VERSION:
             ctx.state.screen = ScreenId.VERSION
+            ctx.state.scroll_offset = 0
+            return
+        if ctx.state.system_index == SYSTEM_RESTART:
+            ctx.state.screen = ScreenId.RESTART_CONFIRM
             ctx.state.scroll_offset = 0
             return
         actions = ctx.actions

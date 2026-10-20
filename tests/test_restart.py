@@ -8,6 +8,7 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3,
 from light_console.power import LinuxPowerService, MockPowerService
 from light_console.state import ScreenId
 from light_console.ui.menu import MENU_ITEMS, menu_index_of
+from light_console.ui.pages import SYSTEM_RESTART
 
 from tests.conftest import make_controller
 
@@ -17,7 +18,10 @@ def _open_restart_confirm(c):
         c.inject_cooked(ButtonEvent(K1, "press"))
     c.inject_cooked(ButtonEvent(K1, "press"))
     assert c.state.screen == ScreenId.MENU
-    c.state.menu_index = menu_index_of("RESTART")
+    c.state.menu_index = menu_index_of("SYSTEM")
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.SYSTEM
+    c.state.system_index = SYSTEM_RESTART
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.RESTART_CONFIRM
 
@@ -29,7 +33,8 @@ def _start_restart(c):
 
 def test_menu_restart_sits_under_system():
     labels = [item.label for item in MENU_ITEMS]
-    assert labels[-3:] == ["SYSTEM", "RESTART", "SHUTDOWN"]
+    assert labels[-2:] == ["SYSTEM", "SHUTDOWN"]
+    assert "RESTART" not in labels
     c = make_controller()
     _open_restart_confirm(c)
     assert c.power.restart_count == 0
@@ -46,7 +51,8 @@ def test_menu_restart_sits_under_system():
                 raise AssertionError("restart confirm copy missing")
     assert RESTART_CONFIRM_LINES == ("PRESS RIGHT BUTTON", "TO RESTART")
     c.inject_cooked(ButtonEvent(K2, "press"))
-    assert c.state.screen == ScreenId.MENU
+    assert c.state.screen == ScreenId.SYSTEM
+    assert c.state.system_index == SYSTEM_RESTART
     assert c.power.restart_count == 0
 
 

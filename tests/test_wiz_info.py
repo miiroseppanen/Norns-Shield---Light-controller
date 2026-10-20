@@ -45,7 +45,7 @@ def test_wiz_info_opens_from_submenu_and_k2_returns():
     assert _row_has(fb, 6, "POWER CYCLE IT.")
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
+    assert [item.label for item in c.nav.current_items()] == ["DEVICES", "CONTROL", "INFO"]
     assert c.state.menu_index == 2
 
 

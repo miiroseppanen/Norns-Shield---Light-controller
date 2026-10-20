@@ -132,7 +132,7 @@ class AppState:
     mode: UiMode = UiMode.PLAY
     screen: ScreenId = ScreenId.PLAY
     menu_index: int = 0
-    menu_count: int = 7
+    menu_count: int = 6
     menu_title: str = "MENU"
     menu_labels: tuple[str, ...] = ()
     param_index: int = 0

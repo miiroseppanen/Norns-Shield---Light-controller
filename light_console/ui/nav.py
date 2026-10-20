@@ -103,6 +103,10 @@ class Navigation:
             state.screen = ScreenId.SYSTEM
             state.reset_list_window()
             return
+        if state.screen == ScreenId.RESTART_CONFIRM:
+            state.screen = ScreenId.SYSTEM
+            state.reset_list_window()
+            return
         if state.screen == ScreenId.WIZ_DEVICES:
             if state.wiz_prompt:
                 state.wiz_prompt = ""

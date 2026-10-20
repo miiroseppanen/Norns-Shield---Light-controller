@@ -89,7 +89,6 @@ def test_visit_all_menu_pages():
         ("SHOWS", ScreenId.SHOWS),
         ("OUTPUT", ScreenId.OUTPUT),
         ("SYSTEM", ScreenId.SYSTEM),
-        ("RESTART", ScreenId.RESTART_CONFIRM),
         ("SHUTDOWN", ScreenId.SHUTDOWN_CONFIRM),
     )
     for label, screen in expected:

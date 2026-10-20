@@ -11,6 +11,7 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, K1,
 from light_console.state import ScreenId
 from light_console.ui.menu import DEFERRED_MENU_ITEMS, MENU_ITEMS, menu_index_of
 from light_console.ui.pages import (
+    SYSTEM_RESTART,
     SYSTEM_VERSION,
     WIZ_CONTROL_SCAN,
     WIZ_CONTROL_TOGGLE,
@@ -48,6 +49,12 @@ def _enter_wiz_submenu(c):
     c.inject_cooked(ButtonEvent(K3, "press"))
 
 
+def _open_wiz_control(c):
+    _enter_wiz_submenu(c)
+    c.state.menu_index = 1
+    c.inject_cooked(ButtonEvent(K3, "press"))
+
+
 def _focus_on(fb: Framebuffer, row: int) -> bool:
     y = CONTENT_Y + row * ROW
     return region_on_count(fb, 0, y, FOCUS_W, ROW) == FOCUS_W * ROW
@@ -59,7 +66,7 @@ def _row_has(fb: Framebuffer, row: int, label: str) -> bool:
 
 def test_top_level_is_status_shows_output_wiz_system():
     labels = [item.label for item in MENU_ITEMS]
-    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "RESTART", "SHUTDOWN"]
+    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN"]
     assert labels.count("WIZ") == 1
     assert labels.index("WIZ") < labels.index("SYSTEM")
     deferred = {item.label for item in DEFERRED_MENU_ITEMS}
@@ -77,14 +84,14 @@ def test_wiz_submenu_control_and_devices():
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.MENU
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
+    assert [item.label for item in c.nav.current_items()] == ["DEVICES", "CONTROL", "INFO"]
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.WIZ_CONTROL
+    assert c.state.screen == ScreenId.WIZ_DEVICES
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     c.state.menu_index = 1
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.WIZ_DEVICES
+    assert c.state.screen == ScreenId.WIZ_CONTROL
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     c.inject_cooked(ButtonEvent(K2, "press"))
@@ -95,7 +102,6 @@ def test_wiz_submenu_control_and_devices():
         "OUTPUT",
         "WIZ",
         "SYSTEM",
-        "RESTART",
         "SHUTDOWN",
     ]
     assert c.state.menu_index == menu_index_of("WIZ")
@@ -104,13 +110,18 @@ def test_wiz_submenu_control_and_devices():
 def test_system_has_version_and_no_wiz_duplicates():
     c = make_controller()
     kinds = [slot.kind for slot in system_slots(c.state)]
-    assert kinds == ["qlc", "net", "version"]
+    assert kinds == ["qlc", "net", "version", "restart"]
     assert "wiz" not in kinds
     assert "wiz_devices" not in kinds
     c.state.screen = ScreenId.SYSTEM
     c.state.system_index = SYSTEM_VERSION
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.VERSION
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.SYSTEM
+    c.state.system_index = SYSTEM_RESTART
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.RESTART_CONFIRM
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.SYSTEM
 
@@ -133,12 +144,12 @@ def test_wiz_submenu_renders_control_and_devices_not_top_level():
     _enter_wiz_submenu(c)
     assert c.state.screen == ScreenId.MENU
     assert c.state.menu_title == "WIZ"
-    assert c.state.menu_labels == ("CONTROL", "DEVICES", "INFO")
+    assert c.state.menu_labels == ("DEVICES", "CONTROL", "INFO")
     assert c.state.menu_index == 0
     fb = _render(c)
     assert _has_text(fb, 0, 0, "WIZ")
-    assert _row_has(fb, 0, "CONTROL")
-    assert _row_has(fb, 1, "DEVICES")
+    assert _row_has(fb, 0, "DEVICES")
+    assert _row_has(fb, 1, "CONTROL")
     assert _row_has(fb, 2, "INFO")
     assert _focus_on(fb, 0)
     assert not _focus_on(fb, 1)
@@ -158,8 +169,8 @@ def test_wiz_submenu_selector_follows_navigation_on_render():
     c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.menu_index == 1
     fb = _render(c)
-    assert _row_has(fb, 0, "CONTROL")
-    assert _row_has(fb, 1, "DEVICES")
+    assert _row_has(fb, 0, "DEVICES")
+    assert _row_has(fb, 1, "CONTROL")
     assert not _focus_on(fb, 0)
     assert _focus_on(fb, 1)
     c.inject_cooked(EncoderEvent(E1, 1))
@@ -179,24 +190,24 @@ def test_wiz_submenu_k3_opens_control_and_devices_pages():
     c = make_controller()
     _enter_wiz_submenu(c)
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.WIZ_CONTROL
+    assert c.state.screen == ScreenId.WIZ_DEVICES
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
-    assert c.state.menu_labels == ("CONTROL", "DEVICES", "INFO")
+    assert c.state.menu_labels == ("DEVICES", "CONTROL", "INFO")
     assert c.state.menu_index == 0
     fb = _render(c)
     assert _has_text(fb, 0, 0, "WIZ")
-    assert _row_has(fb, 0, "CONTROL")
+    assert _row_has(fb, 0, "DEVICES")
     assert _focus_on(fb, 0)
     c.inject_cooked(EncoderEvent(E1, 1))
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.WIZ_DEVICES
+    assert c.state.screen == ScreenId.WIZ_CONTROL
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     assert c.state.menu_index == 1
     fb = _render(c)
     assert _has_text(fb, 0, 0, "WIZ")
-    assert _row_has(fb, 1, "DEVICES")
+    assert _row_has(fb, 1, "CONTROL")
     assert _focus_on(fb, 1)
 
 
@@ -207,7 +218,7 @@ def test_wiz_submenu_k2_returns_top_level_with_wiz_selected():
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     assert c.state.menu_title == "MENU"
-    assert c.state.menu_labels == ("STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "RESTART", "SHUTDOWN")
+    assert c.state.menu_labels == ("STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN")
     assert c.state.menu_index == menu_index_of("WIZ")
     fb = _render(c)
     assert _has_text(fb, 0, 0, "MENU")
@@ -216,8 +227,7 @@ def test_wiz_submenu_k2_returns_top_level_with_wiz_selected():
     assert _row_has(fb, 2, "OUTPUT")
     assert _row_has(fb, 3, "WIZ")
     assert _row_has(fb, 4, "SYSTEM")
-    assert _row_has(fb, 5, "RESTART")
-    assert _row_has(fb, 6, "SHUTDOWN")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, menu_index_of("WIZ"))
     assert not _focus_on(fb, 0)
 
@@ -232,8 +242,7 @@ def test_top_level_and_system_still_render_after_menu_view_publish():
     assert _row_has(fb, 2, "OUTPUT")
     assert _row_has(fb, 3, "WIZ")
     assert _row_has(fb, 4, "SYSTEM")
-    assert _row_has(fb, 5, "RESTART")
-    assert _row_has(fb, 6, "SHUTDOWN")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, 0)
     c.state.menu_index = menu_index_of("SYSTEM")
     c.inject_cooked(ButtonEvent(K3, "press"))
@@ -246,15 +255,13 @@ def test_top_level_and_system_still_render_after_menu_view_publish():
     fb = _render(c)
     assert _has_text(fb, 0, 0, "MENU")
     assert _row_has(fb, 4, "SYSTEM")
-    assert _row_has(fb, 5, "RESTART")
-    assert _row_has(fb, 6, "SHUTDOWN")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, menu_index_of("SYSTEM"))
 
 
 def test_wiz_control_has_scan_row():
     c = make_controller()
-    _enter_wiz_submenu(c)
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _open_wiz_control(c)
     assert c.state.screen == ScreenId.WIZ_CONTROL
     kinds = [slot.kind for slot in wiz_control_slots(c.state)]
     assert kinds == ["wiz", "scan"]
@@ -289,8 +296,7 @@ def test_wiz_control_scan_pulses_discover_status(tmp_path, monkeypatch):
     c.wiz_service.busy = False
     c._sync_wiz_runtime()
     c.state.ui_now = 1.0
-    _enter_wiz_submenu(c)
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _open_wiz_control(c)
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.wiz_control_index == WIZ_CONTROL_SCAN
     c.inject_cooked(ButtonEvent(K3, "press"))
@@ -313,8 +319,7 @@ def test_wiz_control_scan_is_noop_when_wiz_off(tmp_path, monkeypatch):
     path = tmp_path / "light-console.status"
     monkeypatch.setattr(ctl, "STATUS_PATH", path)
     c = make_controller()
-    _enter_wiz_submenu(c)
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _open_wiz_control(c)
     c.inject_cooked(EncoderEvent(E2, 1))
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.wiz_tx_armed is False
