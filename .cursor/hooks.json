@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "\".cursor/skills/impeccable/scripts/impeccable\" hook-before-edit",
+        "timeout": 5
+      }
+    ]
+  }
+}

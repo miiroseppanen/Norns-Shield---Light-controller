@@ -11,8 +11,19 @@ build/
 .DS_Store
 config/light-console.yaml
 .env
+light_console/BUILD_REVISION
 *.log
 *firstboot.env
+# Impeccable: local consent, generated comps, and the platform binary.
+# Shared hook config (.impeccable/config.json) and PRODUCT.md stay tracked.
+.impeccable/config.local.json
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/build/
+.impeccable/live/
+.impeccable/critique/
+.cursor/skills/
+.cursor/agents/
 # OS / QLC package artifacts (never commit)
 *.deb
 *.img
