@@ -87,6 +87,17 @@ def drop_elementtree_prefixes(text: str) -> str:
     return _NS_PREFIX_TAG.sub(r"\1", text)
 
 
+def ensure_workspace_doctype(text: str) -> str:
+    """QLC 5.2.2 loadXML requires <!DOCTYPE Workspace> or it rejects the file."""
+    if _DOCTYPE.search(text):
+        return text
+    doctype = "<!DOCTYPE Workspace>\n"
+    decl = re.match(r"<\?xml[^?]*\?>\s*", text)
+    if decl:
+        return text[: decl.end()] + doctype + text[decl.end() :]
+    return doctype + text
+
+
 def safe_show_name(path: Path) -> str:
     name = path.name
     if not name.lower().endswith(".qxw"):
@@ -207,7 +218,7 @@ def prepare_for_shield_report(
     """Return a Shield-safe workspace string and MIDI rewrite notes. Does not load QLC+."""
     if not text or not text.strip():
         raise QxwError("empty workspace")
-    text = drop_elementtree_prefixes(text)
+    text = ensure_workspace_doctype(drop_elementtree_prefixes(text))
     _parse_workspace(text)
     try:
         machine = profile if profile is not None else load_machine_profile()

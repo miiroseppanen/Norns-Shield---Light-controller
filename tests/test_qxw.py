@@ -4,6 +4,7 @@ from light_console.output.mutate import cover_universe_fixtures, universe_channe
 from light_console.qxw import (
     QxwError,
     drop_elementtree_prefixes,
+    ensure_workspace_doctype,
     parse_functions,
     parse_functions_file,
     prepare_file,
@@ -220,6 +221,8 @@ def test_drop_elementtree_prefixes_and_prepare_prefixed_workspace():
     assert "192.168.88.248" not in patched
     assert 'outputIP="127.0.0.1"' in patched
     assert "HOST" in patched
+    assert "<!DOCTYPE Workspace>" in patched
+    assert ensure_workspace_doctype(patched) == patched
     covered = cover_universe_fixtures(patched, 0)
     assert universe_channels(patched, 0) == 60
     assert universe_channels(covered, 0) == 512
@@ -227,11 +230,14 @@ def test_drop_elementtree_prefixes_and_prepare_prefixed_workspace():
 
 def test_prepare_halloween_wiz16_source():
     src = ROOT / "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+    if not src.is_file():
+        pytest.skip("halloween workspace not in tree")
     original = src.read_text(encoding="utf-8")
     assert "192.168.88.248" in original
     patched = prepare_for_shield(original)
     assert original == src.read_text(encoding="utf-8")
     assert "192.168.88.248" not in patched
+    assert "<!DOCTYPE Workspace>" in patched
     assert patched.count('outputIP="127.0.0.1"') >= 1
     fns = parse_functions(patched)
     startup = [fn for fn in fns if fn.name == "startup"]
