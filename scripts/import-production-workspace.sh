@@ -162,6 +162,7 @@ ls -l \"\$DEST\"
 python3 - "$FILE" "$MASTER" "$APPLY" "$INSTALL" "$TMPDIR/patched.qxw" <<'PY'
 import sys
 from pathlib import Path
+from light_console.output.mutate import cover_universe_fixtures, universe_channels
 from light_console.qxw import format_midi_report, parse_functions, prepare_for_shield_report
 
 src = Path(sys.argv[1])
@@ -171,6 +172,8 @@ do_install = sys.argv[4] == "1"
 out_path = Path(sys.argv[5])
 original = src.read_text(encoding="utf-8")
 patched, changes = prepare_for_shield_report(original)
+before_ch = universe_channels(patched, 0)
+patched = cover_universe_fixtures(patched, 0)
 print(format_midi_report(changes))
 print("source (unchanged):", src)
 if do_install:
@@ -180,6 +183,7 @@ else:
 print("functions:", len(parse_functions(patched)))
 print("startup:", any(fn.name == "startup" for fn in parse_functions(patched)))
 print("loopback outputs:", patched.count('outputIP="127.0.0.1"'))
+print("u1 channels:", before_ch, "->", universe_channels(patched, 0))
 if src.read_text(encoding="utf-8") != original:
     raise SystemExit("source file changed")
 if do_install:

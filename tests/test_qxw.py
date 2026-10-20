@@ -1,7 +1,9 @@
 from pathlib import Path
 
+from light_console.output.mutate import cover_universe_fixtures, universe_channels
 from light_console.qxw import (
     QxwError,
+    drop_elementtree_prefixes,
     parse_functions,
     parse_functions_file,
     prepare_file,
@@ -174,4 +176,67 @@ def test_prepare_sanitizes_caption_hosts_and_patches_io():
 def test_parse_functions_rejects_non_workspace():
     with pytest.raises(QxwError):
         parse_functions("<nope/>")
+
+
+PREFIXED = """\
+<?xml version='1.0' encoding='UTF-8'?>
+<ns0:Workspace xmlns:ns0="http://www.qlcplus.org/Workspace">
+  <ns0:Engine>
+    <ns0:InputOutputMap>
+      <ns0:Universe Name="Universe 1" ID="0">
+        <ns0:Input Plugin="MIDI" Name="None" UID="None" Line="0" Profile="Novation Launchpad Mini"/>
+        <ns0:Output Plugin="ArtNet" Name="192.168.88.244" UID="" Line="1">
+          <ns0:PluginParameters UniverseChannels="60" outputIP="192.168.88.248"/>
+        </ns0:Output>
+      </ns0:Universe>
+    </ns0:InputOutputMap>
+    <ns0:Fixture>
+      <ns0:Manufacturer>WiZ</ns0:Manufacturer>
+      <ns0:Model>WiZ RGB+CCT via Pi</ns0:Model>
+      <ns0:ID>1</ns0:ID>
+      <ns0:Name>WiZ 16</ns0:Name>
+      <ns0:Universe>0</ns0:Universe>
+      <ns0:Address>90</ns0:Address>
+      <ns0:Channels>6</ns0:Channels>
+    </ns0:Fixture>
+    <ns0:Function ID="0" Type="Chaser" Name="startup"></ns0:Function>
+  </ns0:Engine>
+  <ns0:VirtualConsole>
+    <ns0:Label Caption="ssh -t valot@192.168.88.248 'sudo systemctl start qlcplus'" ID="79"/>
+  </ns0:VirtualConsole>
+</ns0:Workspace>
+"""
+
+
+def test_drop_elementtree_prefixes_and_prepare_prefixed_workspace():
+    dropped = drop_elementtree_prefixes(PREFIXED)
+    assert "<Workspace xmlns=" in dropped
+    assert "<ns0:" not in dropped
+    fns = parse_functions(PREFIXED)
+    assert [(fn.function_id, fn.name, fn.type_name) for fn in fns] == [
+        (0, "startup", "Chaser")
+    ]
+    patched = prepare_for_shield(PREFIXED)
+    assert "192.168.88.248" not in patched
+    assert 'outputIP="127.0.0.1"' in patched
+    assert "HOST" in patched
+    covered = cover_universe_fixtures(patched, 0)
+    assert universe_channels(patched, 0) == 60
+    assert universe_channels(covered, 0) == 512
+
+
+def test_prepare_halloween_wiz16_source():
+    src = ROOT / "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+    original = src.read_text(encoding="utf-8")
+    assert "192.168.88.248" in original
+    patched = prepare_for_shield(original)
+    assert original == src.read_text(encoding="utf-8")
+    assert "192.168.88.248" not in patched
+    assert patched.count('outputIP="127.0.0.1"') >= 1
+    fns = parse_functions(patched)
+    startup = [fn for fn in fns if fn.name == "startup"]
+    assert len(startup) == 1
+    assert startup[0].type_name == "Chaser"
+    covered = cover_universe_fixtures(patched, 0)
+    assert universe_channels(covered, 0) == 512
 

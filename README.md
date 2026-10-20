@@ -10,7 +10,7 @@
 
 Standalone lighting console UI for **Raspberry Pi 4 + Denki Oto shieldXL**. QLC+ is the show engine. This repository is **new and separate** from the production wiz-bridge Pi and from the Norns Shield SD card.
 
-**Milestone 0.5** — QLC+ 5.2.2 runs as `qlcplus.service` (`-w`). Light Console stays up if QLC is stopped. PLAY E1 MASTER → `GM_VALUE`. Physically verified. Tag `v0.5.0`.
+**Milestone 0.6** — WIZ-LIGHTS AP lifecycle, independent LIGHT-CONTROL switching, OLED design system. Halloween WiZ16 startup workspace. Tag `v0.6.0`.
 
 ## Mac simulator
 
@@ -68,5 +68,6 @@ Hardware facts: [`research/shieldxl.md`](research/shieldxl.md).
 | 0.3.0 | QLC+ 5.2.2 engine baseline |
 | 0.4.0 | Norns-like UI framework |
 | 0.4c | Appliance autostart |
-| 0.5.0 | QLC engine integration (now) |
+| 0.5.0 | QLC engine integration |
+| 0.6.0 | WiZ AP lifecycle, OLED design system, Halloween WiZ16 startup (now) |
 | 1.0.0 | Show-ready |

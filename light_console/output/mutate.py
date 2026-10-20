@@ -12,6 +12,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
+from light_console.output.fixtures import parse_fixtures
 from light_console.output.routing import is_loopback_ip, parse_output_routes
 from light_console.output.targets import (
     MANAGED_QLC_UNIVERSE,
@@ -305,6 +306,26 @@ def parse_ok(path: Path) -> None:
         parse_output_routes(path.read_text(encoding="utf-8"))
     except (OSError, QxwError) as exc:
         raise RoutePatchError(str(exc)) from exc
+
+
+def cover_universe_fixtures(xml: str, xml_universe_id: int = 0, cap: int = 512) -> str:
+    """Raise advertised UniverseChannels when patched fixtures would be clipped."""
+    if cap < 1 or cap > 512:
+        raise RoutePatchError("UniverseChannels cap must be 1..512")
+    have = universe_channels(xml, xml_universe_id)
+    if have is None:
+        return xml
+    need = 0
+    for fx in parse_fixtures(xml):
+        if fx.universe_id == xml_universe_id:
+            need = max(need, fx.address + fx.channels)
+    if need <= have:
+        return xml
+    if need > cap:
+        raise RoutePatchError(
+            f"fixtures need {need} channels on universe ID {xml_universe_id}"
+        )
+    return set_artnet_universe_channels(xml, xml_universe_id, cap)
 
 
 def preserve_managed_universe(prepared: str, current: str) -> str:

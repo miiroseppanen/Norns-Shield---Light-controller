@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 REVISION_FILENAME = "BUILD_REVISION"
 
 

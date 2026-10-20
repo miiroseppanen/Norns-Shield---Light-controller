@@ -45,6 +45,7 @@ def test_import_production_cli_and_help():
     text = SCRIPT.read_text()
     assert "prepare_for_shield" in text
     assert "preserve_managed_universe" in text
+    assert "cover_universe_fixtures" in text
     assert "/home/light/shows/master.qxw" in text
     assert "192.168.88.248" in text
 
@@ -144,6 +145,26 @@ def test_install_applies_locally_with_backup_and_u2(tmp_path):
     assert routes[1].output_ip == AIR2DMX_FALLBACK_IP
     assert (shows / "master.qxw.bak").is_file()
     assert "192.168.88.248" not in installed
+
+
+def test_dry_run_halloween_prefixed_source_does_not_write(tmp_path):
+    src = ROOT / "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+    before = src.read_bytes()
+    dest = tmp_path / "siirtyma-shield.qxw"
+    env = _env(tmp_path)
+    out = subprocess.check_output(
+        [str(SCRIPT), "--dry-run", str(src)],
+        text=True,
+        env=env,
+        cwd=ROOT,
+    )
+    assert src.read_bytes() == before
+    assert not dest.exists()
+    assert "startup: True" in out
+    assert "source (unchanged):" in out
+    assert "192.168.88.248" in src.read_text(encoding="utf-8")
+    assert "u1 channels:" in out
+    assert "-> 512" in out
 
 
 def test_install_refuses_production_host(tmp_path):

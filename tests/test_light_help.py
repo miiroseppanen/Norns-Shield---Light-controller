@@ -10,10 +10,7 @@ PROFILE = ROOT / "packaging/profile.d/light-help.sh"
 INSTALL = ROOT / "packaging/install-light-help.sh"
 VERSION_PY = ROOT / "light_console/version.py"
 
-DROPBOX = (
-    "/Users/miiroseppanen/Library/CloudStorage/Dropbox/Valot/Showt/"
-    "siirtyma-startup.qxw"
-)
+STARTUP_SHOW = "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
 RSYNC_EXCLUDES = (
     "--exclude '.venv'",
     "--exclude '.git'",
@@ -21,6 +18,7 @@ RSYNC_EXCLUDES = (
     "--exclude '.pytest_cache'",
     "--exclude '*.pyc'",
     "--exclude '.cursor'",
+    "--exclude '.impeccable/config.local.json'",
 )
 BOX_BLOCK = set("─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬█▄▀▌▐■□▪▫●○")
 CANONICAL_WORDMARK = (
@@ -149,7 +147,7 @@ def test_wrapped_commands_remain_valid_shell():
         ["bash", "-c", show.replace("./scripts/import-production-workspace.sh --install", "printf '%s\\n'")],
         text=True,
     ).strip()
-    assert echoed == DROPBOX
+    assert echoed == STARTUP_SHOW
     assert "scp " not in show
     assert "master.qxw" not in show
 

@@ -93,6 +93,7 @@ wlan1 = WIZ-LIGHTS AP (later, 0.6+). See [`output-architecture.md`](output-archi
 | 0.4.0 | Norns-like UI framework |
 | 0.4c | Appliance autostart (`light-console.service`) |
 | 0.5.0 | QLC+ 5.2.2 systemd + MASTER WebSocket (physically verified) |
+| 0.6.0 | WIZ-LIGHTS AP lifecycle, LIGHT-CONTROL network mode, OLED design system |
 | 1.0.0 | Show-ready |
 
 ## Milestone 0.1 out of scope

@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T16:05:00Z",
+  "title": "Design System: Shield XL Light Console",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "OLED Ink",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#000000", "#000000", "#000000", "#000000", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"]
+      },
+      "pit": {
+        "role": "neutral",
+        "displayName": "Pit",
+        "canonical": "#000000",
+        "tonalRamp": ["#000000", "#000000", "#000000", "#000000", "#000000", "#000000", "#000000", "#000000"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Wordmark",
+        "purpose": "PLAY header only: custom 13-row LIGHT CTRL caps in a 16px band."
+      },
+      "label": {
+        "displayName": "5×7 label",
+        "purpose": "Every operator string. Uppercase bitmap in 6×8 cells."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "activity-scan",
+        "value": "6 frames, 0.16s each, 3px × 1px, LTR wrap, never reverse",
+        "purpose": "Only while a live signal is progressing now. Idle draws nothing."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "oled",
+        "value": "128px × 64px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Page",
+      "kind": "custom",
+      "refersTo": "page",
+      "description": "The only canvas: 128×64 pit with ink.",
+      "html": "<div class=\"ds-page\">LIGHT CTRL</div>",
+      "css": ".ds-page { width: 128px; height: 64px; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; letter-spacing: 0; text-transform: uppercase; image-rendering: pixelated; }"
+    },
+    {
+      "name": "Status row",
+      "kind": "custom",
+      "refersTo": "status-row",
+      "description": "Label left, vocab word right, optional warn square and activity slot.",
+      "html": "<div class=\"ds-status\"><span class=\"ds-status-label\">QLC</span><span class=\"ds-status-word\">RUNNING</span></div>",
+      "css": ".ds-status { display: flex; justify-content: space-between; align-items: center; width: 116px; height: 8px; padding-left: 4px; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; } .ds-status-word { letter-spacing: 0; }"
+    },
+    {
+      "name": "Toggle on",
+      "kind": "chip",
+      "refersTo": "toggle-on",
+      "description": "Filled 7px circle: the operator’s enabled choice.",
+      "html": "<div class=\"ds-toggle ds-toggle-on\"><span class=\"ds-toggle-disk\"></span><span>NETWORK</span></div>",
+      "css": ".ds-toggle { display: flex; align-items: center; gap: 4px; height: 8px; padding-left: 4px; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; } .ds-toggle-disk { width: 7px; height: 7px; border-radius: 7px; box-sizing: border-box; } .ds-toggle-on .ds-toggle-disk { background: #fff; }"
+    },
+    {
+      "name": "Toggle off",
+      "kind": "chip",
+      "refersTo": "toggle-off",
+      "description": "Outline 7px circle: the operator’s disabled choice.",
+      "html": "<div class=\"ds-toggle ds-toggle-off\"><span class=\"ds-toggle-disk\"></span><span>STANDALONE</span></div>",
+      "css": ".ds-toggle-off .ds-toggle-disk { background: #000; border: 1px solid #fff; }"
+    },
+    {
+      "name": "Focus rail",
+      "kind": "custom",
+      "refersTo": "focus-rail",
+      "description": "2px left bar. Selection without invert.",
+      "html": "<div class=\"ds-row-focus\"><i class=\"ds-rail\"></i><span>SCENES</span></div>",
+      "css": ".ds-row-focus { display: flex; align-items: stretch; height: 8px; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; } .ds-rail { width: 2px; background: #fff; margin-right: 2px; } .ds-row-focus span { line-height: 8px; }"
+    },
+    {
+      "name": "Warn mark",
+      "kind": "custom",
+      "refersTo": "warn-mark",
+      "description": "3×3 ink square beside FAILED / LOST / OFFLINE / AP FAILED / BRIDGE FAILED.",
+      "html": "<div class=\"ds-warn\"><i></i><span>AP FAILED</span></div>",
+      "css": ".ds-warn { display: flex; align-items: center; gap: 2px; height: 8px; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; } .ds-warn i { width: 3px; height: 3px; background: #fff; }"
+    },
+    {
+      "name": "Activity scan",
+      "kind": "custom",
+      "refersTo": "activity-scan",
+      "description": "3×1 px LTR scan. Movement means happening now.",
+      "html": "<div class=\"ds-activity\"><i></i></div>",
+      "css": ".ds-activity { position: relative; width: 9px; height: 8px; background: #000; } .ds-activity i { position: absolute; top: 3px; left: 1px; width: 3px; height: 1px; background: #fff; animation: ds-scan 0.96s steps(6) infinite; } @keyframes ds-scan { 0% { left: 1px; } 100% { left: 6px; } }"
+    },
+    {
+      "name": "Empty state",
+      "kind": "custom",
+      "refersTo": "empty-state",
+      "description": "Centered uppercase empty word. No illustration.",
+      "html": "<div class=\"ds-empty\">NO DEVICES</div>",
+      "css": ".ds-empty { width: 128px; height: 56px; display: flex; align-items: center; justify-content: center; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; }"
+    },
+    {
+      "name": "Lifecycle frame",
+      "kind": "custom",
+      "refersTo": "lifecycle-frame",
+      "description": "Full pit, one centered sentence, nothing else.",
+      "html": "<div class=\"ds-life\">STARTING UP</div>",
+      "css": ".ds-life { width: 128px; height: 64px; display: flex; align-items: center; justify-content: center; background: #000; color: #fff; font-family: ui-monospace, monospace; font-size: 7px; line-height: 8px; text-transform: uppercase; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Desk",
+    "overview": "This is a lighting desk in the dark. The SSD1322 is the only page. The operator’s hands are on K1–K3 and E1–E3; the screen reports. It is an instrument, not an app. Norns grammar tells you how to read the page: PLAY versus MENU, physical control names, one 128×64 frame for every screen.\n\nDensity is the point. Eight rows of 8 px, a 5×7 bitmap in 6×8 cells (~21 columns), uppercase labels, no chrome. The Mac window is a scaled copy of that framebuffer, not a second interface.\n\nConfirmed rejections: do not become a dashboard, Material, or a Mac-native layout. Stay 1-bit unless a real hierarchy need appears. Do not invent greys, glows, or a palette because the panel can do 4-bit greyscale.",
+    "keyCharacteristics": [
+      "One physical page: 128×64, every screen",
+      "1-bit ink on pit black",
+      "Instrument first: keys and encoders are the UI",
+      "Norns reading grammar without being Norns OS",
+      "STATIC CONTROL / STATIC STATUS / MOVEMENT as the only visual verbs"
+    ],
+    "rules": [
+      { "name": "The 1-Bit Rule", "body": "There is no grey, no glow, no accent. Warn is still ink: a 3×3 square beside the word. If you need a third color, you are off the Night Desk.", "section": "colors" },
+      { "name": "The OLED Ink Rule", "body": "Do not lock a web hex as brand. Simulator (210, 220, 160) is a Mac preview of phosphor, not identity.", "section": "colors" },
+      { "name": "The Vocab Rule", "body": "Editable booleans are only ON / OFF. Observed words live in light_console/ui/vocab.py. Do not invent sentence case, icons-as-type, or title case marketing lines.", "section": "typography" },
+      { "name": "The Twenty-One Column Rule", "body": "A row is ~21 cells. Prefer a shorter word over a smaller font. Marquee is for the focused field, not decoration.", "section": "typography" },
+      { "name": "The One Page Rule", "body": "Every screen is this frame. Do not add a sidebar, tab bar, modal, or a second resolution.", "section": "layout" },
+      { "name": "The No Invert Rule", "body": "Never invert a row or the page to show selection.", "section": "elevation" },
+      { "name": "The Circle Means Choice Rule", "body": "Disks are for operator-chosen toggles only. Status is a word, not a LED.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do design every screen as 128×64 with 8 px rows and the 5×7 label face.",
+      "Do use OLED Ink on Pit only; warn with a 3×3 square plus a vocab word.",
+      "Do show choice as filled/outline 7 px circles and selection as a 2 px rail.",
+      "Do reserve movement for “happening now”; keep control and status static.",
+      "Do keep the Mac window a scaled copy of the same framebuffer."
+    ],
+    "donts": [
+      "Don't introduce a web/dashboard/Material layout or a second Mac UI.",
+      "Don't add greys, glows, drop shadows, or a 4-bit ramp “because the panel can.”",
+      "Don't invert rows to show focus.",
+      "Don't use sentence-case body copy, webfonts, or icons-as-navigation.",
+      "Don't treat activity/ACTIVE as reachability of AIR2DMX or LIGHT-CONTROL."
+    ]
+  }
+}

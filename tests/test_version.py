@@ -39,12 +39,12 @@ def _has_text(fb, x: int, y: int, s: str) -> bool:
 
 
 def test_one_canonical_semantic_version():
-    assert VERSION == "0.5.0"
+    assert VERSION == "0.6.0"
     assert semantic_version() == VERSION
     assert PKG_VERSION == VERSION
     source = VERSION_PY.read_text(encoding="utf-8")
     assert source.count('VERSION = "') == 1
-    assert "0.4.0" not in source
+    assert "0.5.0" not in source
 
 
 def test_version_page_renders_without_git(tmp_path: Path, monkeypatch):

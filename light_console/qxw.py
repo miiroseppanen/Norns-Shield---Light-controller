@@ -33,6 +33,10 @@ _MIDI_IO_TAG = re.compile(
     re.IGNORECASE,
 )
 _DOCTYPE = re.compile(r"<!DOCTYPE[^>]*>", re.IGNORECASE)
+_NS_PREFIX_XMLNS = re.compile(
+    r'xmlns:ns\d+="http://www.qlcplus.org/Workspace"'
+)
+_NS_PREFIX_TAG = re.compile(r"(</?)ns\d+:")
 _FUNCTION_BLOCK = re.compile(
     r"<Function\b([^>]*)>.*?</Function>",
     re.IGNORECASE | re.DOTALL,
@@ -71,6 +75,16 @@ class MidiBindingChange:
 
 class QxwError(ValueError):
     """Workspace is missing, malformed, or unsafe for the Shield."""
+
+
+def drop_elementtree_prefixes(text: str) -> str:
+    """QLC files re-saved via ElementTree use ns0: tags. Regex patches need default xmlns."""
+    if "xmlns:ns" not in text and "<ns" not in text:
+        return text
+    text = _NS_PREFIX_XMLNS.sub(
+        'xmlns="http://www.qlcplus.org/Workspace"', text, count=1
+    )
+    return _NS_PREFIX_TAG.sub(r"\1", text)
 
 
 def safe_show_name(path: Path) -> str:
@@ -193,6 +207,7 @@ def prepare_for_shield_report(
     """Return a Shield-safe workspace string and MIDI rewrite notes. Does not load QLC+."""
     if not text or not text.strip():
         raise QxwError("empty workspace")
+    text = drop_elementtree_prefixes(text)
     _parse_workspace(text)
     try:
         machine = profile if profile is not None else load_machine_profile()
@@ -254,6 +269,7 @@ def prepare_for_shield_report(
 
 def parse_functions(text: str) -> tuple[QxwFunction, ...]:
     """Read Scene/Chaser (and other) Function rows from workspace XML."""
+    text = drop_elementtree_prefixes(text)
     _parse_workspace(text)
     found: list[QxwFunction] = []
     for block in _FUNCTION_BLOCK.finditer(text):

@@ -51,14 +51,14 @@ UPDATE / CODE
       --exclude '.pytest_cache' \
       --exclude '*.pyc' \
       --exclude '.cursor' \
+      --exclude '.impeccable/config.local.json' \
       ./ light@shieldxl-light.local:~/light-console/
 
 UPDATE / STARTUP SHOW
   never copy onto /home/light/shows/master.qxw
   from Mac repo:
     ./scripts/import-production-workspace.sh --install \
-      "/Users/miiroseppanen/Library/CloudStorage/Dropbox/Valot/Showt/\
-siirtyma-startup.qxw"
+      qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw
 
 POWER
   OLED SYSTEM -> SHUTDOWN -> K3
