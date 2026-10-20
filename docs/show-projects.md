@@ -115,7 +115,7 @@ QLC 5.2.2 `main.cpp` loads the workspace **before** starting WebAccess. `-9` is 
 
 ## Architecture (Milestone 0.8)
 
-**DEFERRED:** interactive multi-workspace SHOWS UI as the appliance path.
+**SHOWS:** OLED lists named `.qxw` files in `/home/light/shows`. Confirm copies the file onto `master.qxw` (prepare_for_shield + live U2) and bounces `qlcplus.service`. Still no `/loadProject` and no `-9`.
 
 **Current appliance:** Shield-safe copy of production `siirtyma-startup.qxw` as `/home/light/shows/master.qxw`. QLC starts `-w -o` that file. See [`docs/production-parity.md`](production-parity.md) and [`docs/boot-sequence.md`](boot-sequence.md).
 

@@ -94,6 +94,8 @@ class NornsUIShell:
             if self.state.screen == ScreenId.OUTPUT and self.state.output_detail:
                 self.active_screen().key(n, z, self.ctx())
                 return
+            if self.state.screen == ScreenId.LOAD_SHOW and self.state.show_busy:
+                return
             self.nav.back(self.state)
             return
         self.active_screen().key(n, z, self.ctx())

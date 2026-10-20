@@ -19,7 +19,7 @@ from light_console.display.widgets import text
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E2, K3
 from light_console.hardware.oled import Ssd1322
 from light_console.state import AppState, ScreenId
-from light_console.ui.pages import SYSTEM_NET_TOGGLE, SYSTEM_QLC_TOGGLE, SYSTEM_SHUTDOWN_ROW
+from light_console.ui.pages import SYSTEM_NET_TOGGLE, SYSTEM_QLC_TOGGLE
 
 from tests.conftest import make_controller
 from tests.test_shutdown import _start_shutdown
@@ -186,9 +186,7 @@ def test_shutting_down_flushed_before_shutdown_backend():
 
     hw.set_display = wrapped_set  # type: ignore[method-assign]
     power.request_shutdown = wrapped_req  # type: ignore[method-assign]
-    c.state.screen = ScreenId.SYSTEM
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.begin_appliance_shutdown()
     assert order == ["display", "shutdown"]
     assert c.state.screen == ScreenId.SHUTTING_DOWN
     assert c.power.request_count == 1

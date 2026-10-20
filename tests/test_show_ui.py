@@ -1,10 +1,13 @@
 from pathlib import Path
 import shutil
+import time
 
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
 from light_console.merge import merge_files
 from light_console.qlc.functions import QlcFunction
 from light_console.state import ScreenId
+from light_console.ui.menu import menu_index_of
+from light_console.ui.vocab import LOAD, OPEN
 
 from tests.conftest import make_controller
 
@@ -113,36 +116,60 @@ def test_go_disabled_without_project():
     assert c.qlc.function_sends == []
 
 
-def test_show_switch_a_to_b_without_qlc_reload(tmp_path):
-    c = _merged_controller(tmp_path)
-    assert c.state.show_files == ("SHOW A", "SHOW B")
-    assert c.state.show_ids == ("show-a", "show-b")
-    assert c.state.scenes == ("Warm", "Blue", "Red")
-    assert c.state.chasers == ("Slow Pulse", "Color Sweep")
+def _wait_show_idle(c, timeout: float = 2.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not c.state.show_busy:
+            return
+        time.sleep(0.02)
+    raise AssertionError("workspace switch still busy")
+
+
+def test_shows_menu_lists_files_and_loads_with_qlc_bounce(tmp_path):
+    shows = tmp_path / "shows"
+    shows.mkdir()
+    shutil.copy(SHOW_A, shows / "master.qxw")
+    shutil.copy(SHOW_A, shows / "warm.qxw")
+    shutil.copy(SHOW_B, shows / "full.qxw")
+    before = (shows / "full.qxw").read_bytes()
+    c = make_controller(shows_dir=shows)
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.screen = ScreenId.SHOWS
+    c.state.menu_index = menu_index_of("SHOWS")
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.SHOWS
-    c.state.show_index = list(c.state.show_ids).index("show-b")
-    c.qlc.function_sends.clear()
+    assert c.state.show_ids == ("full.qxw", "warm.qxw")
+    assert c.state.show_files == ("FULL", "WARM")
+    c.state.show_index = list(c.state.show_ids).index("full.qxw")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.LOAD_SHOW
-    assert c.state.scenes == ("Full", "Dim", "Blackout")
-    assert c.state.chasers == ("Fast Pulse", "Alternate")
-    assert c.state.show_name == "SHOW B"
-    assert c.state.show_status == "ACTIVE"
-    assert c.state.current_scene == "Full"
-    assert c.state.current_chaser == "Fast Pulse"
-    assert c.state.scene_index == 0
-    assert c.state.chaser_index == 0
-    assert c.qlc.function_sends == []
-    assert not (c.catalog.shows_dir / ".reload-qlc").exists()
-    c.inject_cooked(ButtonEvent(K2, "press"))
-    assert c.state.screen == ScreenId.SHOWS
-    c.state.show_index = list(c.state.show_ids).index("show-a")
+    assert c.state.show_name == "FULL"
+    assert c.state.show_status == LOAD
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.scenes[0] == "Warm"
-    assert c.state.show_name == "SHOW A"
-    assert c.state.current_scene == "Warm"
+    _wait_show_idle(c)
+    assert c.state.show_status == OPEN
+    assert c.state.show_open_id == "full.qxw"
+    assert c.state.screen == ScreenId.SHOWS
+    assert (shows / "full.qxw").read_bytes() == before
+    assert "light-console-show-b" in (shows / "master.qxw").read_text(encoding="utf-8")
+    assert c.qlc_service.commands == ["stop", "start"]
+    assert not (shows / ".reload-qlc").exists()
+    c.state.show_index = list(c.state.show_ids).index("full.qxw")
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.show_status == OPEN
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.SHOWS
+    assert c.qlc_service.commands == ["stop", "start"]
+
+
+def test_shows_empty_state():
+    c = make_controller()
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    c.state.menu_index = menu_index_of("SHOWS")
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.SHOWS
+    assert c.state.show_files == ()
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.SHOWS
 
 
 def test_go_refuses_when_engine_ids_differ(tmp_path):

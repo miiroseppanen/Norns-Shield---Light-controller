@@ -61,7 +61,7 @@ UPDATE / STARTUP SHOW
       qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw
 
 POWER
-  OLED SYSTEM -> SHUTDOWN -> K3
+  OLED MENU -> SHUTDOWN -> K3 HALT
   sudo /usr/sbin/shutdown -h now
 
 SAFETY

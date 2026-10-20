@@ -39,7 +39,6 @@ from light_console.ui.pages import (
     SYSTEM_NET_TOGGLE,
     SYSTEM_QLC_TOGGLE,
     SYSTEM_ROW_COUNT,
-    SYSTEM_SHUTDOWN_ROW,
     SYSTEM_VERSION,
     system_slots,
 )
@@ -86,9 +85,9 @@ def test_system_network_mode_is_one_block():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
     slots = system_slots(c.state)
-    assert [slot.kind for slot in slots] == ["qlc", "net", "version", "shutdown"]
+    assert [slot.kind for slot in slots] == ["qlc", "net", "version"]
     assert slots[1].rows == 2
-    assert SYSTEM_ROW_COUNT == 4
+    assert SYSTEM_ROW_COUNT == 3
     c.state.system_index = SYSTEM_NET_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_VERSION
@@ -276,9 +275,9 @@ def test_qlc_wiz_shutdown_still_work():
     c.state.screen = ScreenId.WIZ_CONTROL
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.wiz_enabled is True
-    c.state.screen = ScreenId.SYSTEM
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    from tests.test_shutdown import _start_shutdown
+
+    _start_shutdown(c)
     assert c.state.screen == ScreenId.SHUTTING_DOWN
 
 

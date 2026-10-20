@@ -21,6 +21,7 @@ from light_console.display.screens import (
     draw_play,
     draw_scenes,
     draw_shows,
+    draw_shutdown_confirm,
     draw_shutting_down,
     draw_starting_up,
     draw_system,
@@ -38,15 +39,14 @@ from light_console.live_color import HUE_DEFAULT, SAT_DEFAULT
 from light_console.power import PowerService
 from light_console.state import AppState, ScreenId
 from light_console.wiz.device_map import WIZ_MAX_SLOTS
-from light_console.ui.vocab import SWITCHING
+from light_console.ui.vocab import LOAD, OPEN, SWITCHING
 from light_console.ui.nav import Navigation
 from light_console.ui.params import Params
 
 SYSTEM_QLC_TOGGLE = 0
 SYSTEM_NET_TOGGLE = 1
 SYSTEM_VERSION = 2
-SYSTEM_SHUTDOWN_ROW = 3
-SYSTEM_ROW_COUNT = 4
+SYSTEM_ROW_COUNT = 3
 SYSTEM_EDITABLE_ROWS = frozenset({SYSTEM_QLC_TOGGLE, SYSTEM_NET_TOGGLE})
 WIZ_DEVICES_VISIBLE = 6
 
@@ -97,9 +97,7 @@ def system_slots(state: AppState) -> tuple[SystemSlot, ...]:
     net = SystemSlot(SYSTEM_NET_TOGGLE, "net", y, 2)
     y += net.rows * ROW
     version = SystemSlot(SYSTEM_VERSION, "version", y, 1)
-    y += version.rows * ROW
-    shutdown = SystemSlot(SYSTEM_SHUTDOWN_ROW, "shutdown", y, 1)
-    return (qlc, net, version, shutdown)
+    return (qlc, net, version)
 
 
 def system_visible_count(state: AppState) -> int:
@@ -226,11 +224,22 @@ class ShowsScreen(Screen):
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1 or n != K3:
             return
-        actions = ctx.actions
-        if actions is not None:
-            actions.activate_show(ctx.state)
-        if ctx.state.show_status == "ACTIVE":
-            ctx.nav.open_load_show_confirm(ctx.state)
+        if ctx.state.show_busy:
+            return
+        items = ctx.state.show_ids or ctx.state.show_files
+        if not items:
+            return
+        idx = bound_index(ctx.state.show_index, len(items))
+        filename = ctx.state.show_ids[idx] if ctx.state.show_ids else items[idx]
+        if ctx.state.show_files:
+            ctx.state.show_name = ctx.state.show_files[idx]
+        else:
+            ctx.state.show_name = filename
+        if ctx.state.show_open_id == filename:
+            ctx.state.show_status = OPEN
+        else:
+            ctx.state.show_status = LOAD
+        ctx.nav.open_load_show_confirm(ctx.state)
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_shows(fb, ctx.state)
@@ -243,13 +252,20 @@ class LoadShowScreen(Screen):
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1:
             return
-        if n == K3:
-            actions = ctx.actions
-            if actions is not None:
-                actions.activate_show(ctx.state)
+        if n == K2:
+            if not ctx.state.show_busy:
+                ctx.nav.back(ctx.state)
+            return
+        if n != K3:
+            return
+        if ctx.state.show_busy:
+            return
+        if ctx.state.show_status == OPEN:
             ctx.nav.back(ctx.state)
-        elif n == K2:
-            ctx.nav.back(ctx.state)
+            return
+        actions = ctx.actions
+        if actions is not None and hasattr(actions, "open_workspace"):
+            actions.open_workspace()
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_load_show(fb, ctx.state)
@@ -398,15 +414,6 @@ class SystemScreen(Screen):
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1 or n != K3:
             return
-        if ctx.state.system_index == SYSTEM_SHUTDOWN_ROW:
-            actions = ctx.actions
-            if actions is not None and hasattr(actions, "begin_appliance_shutdown"):
-                actions.begin_appliance_shutdown()
-            else:
-                ctx.nav.begin_shutdown(ctx.state)
-                ctx.power.request_shutdown()
-                ctx.state.shutdown_requested = ctx.power.shutdown_requested
-            return
         if ctx.state.system_index == SYSTEM_VERSION:
             ctx.state.screen = ScreenId.VERSION
             ctx.state.scroll_offset = 0
@@ -501,6 +508,28 @@ class WizControlScreen(Screen):
         draw_wiz_control(fb, ctx.state)
 
 
+class ShutdownConfirmScreen(Screen):
+    id = ScreenId.SHUTDOWN_CONFIRM
+    title = "SHUTDOWN"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        del n, delta, ctx
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1 or n != K3:
+            return
+        actions = ctx.actions
+        if actions is not None and hasattr(actions, "begin_appliance_shutdown"):
+            actions.begin_appliance_shutdown()
+            return
+        ctx.nav.begin_shutdown(ctx.state)
+        ctx.power.request_shutdown()
+        ctx.state.shutdown_requested = ctx.power.shutdown_requested
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_shutdown_confirm(fb, ctx.state)
+
+
 class VersionScreen(Screen):
     id = ScreenId.VERSION
     title = "VERSION"
@@ -557,6 +586,7 @@ def build_screens() -> dict[ScreenId, Screen]:
         WizControlScreen(),
         WizDevicesScreen(),
         VersionScreen(),
+        ShutdownConfirmScreen(),
         StartingUpScreen(),
         ShuttingDownScreen(),
     )

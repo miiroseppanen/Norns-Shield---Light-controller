@@ -37,6 +37,10 @@ from light_console.output.apply import (
     RouteApplyError,
     apply_managed_target,
 )
+from light_console.output.workspace_switch import (
+    WorkspaceSwitchError,
+    switch_workspace,
+)
 from light_console.output.targets import (
     APPLYABLE_TARGETS,
     TargetId,
@@ -63,8 +67,9 @@ from light_console.qlc.runtime import (
 )
 from light_console.qlc.service import LinuxQlcService, MockQlcService, QlcService
 from light_console.qxw import QxwError
-from light_console.ui.vocab import FAILED, READY, SWITCHING
+from light_console.ui.vocab import FAILED, LOAD, OPEN, READY, SWITCHING
 from light_console.shows import ShowCatalog
+from light_console.workspaces import WorkspaceCatalog
 from light_console.showdef import ShowDefinition
 from light_console.state import AppState, ScreenId, UiMode
 from light_console.status.dmx import apply_dmx
@@ -174,6 +179,7 @@ class Controller:
         self.params = bind_console_params(state)
         self.binding = QlcBinding(qlc)
         self.catalog = ShowCatalog(shows_dir) if shows_dir is not None else None
+        self.workspaces = WorkspaceCatalog(shows_dir) if shows_dir is not None else None
         self.show_load = None
         self._applied_show: str | None = None
         self.shell = NornsUIShell(
@@ -214,6 +220,7 @@ class Controller:
         self.state.qlc_host = qlc.host_label()
         self._load_routes()
         self._refresh_show_state(force=True)
+        self._refresh_workspace_state()
         if live_diag is None:
             live_diag = not self._is_headless()
         if live_diag:
@@ -411,7 +418,7 @@ class Controller:
         if target not in APPLYABLE_TARGETS:
             return
         with self._route_lock:
-            if self.state.route_busy:
+            if self.state.route_busy or self.state.show_busy:
                 return
             self.state.route_busy = True
         self.state.route_op = APPLYING
@@ -586,6 +593,57 @@ class Controller:
         self._apply_show(show)
         state.show_status = "ACTIVE"
 
+    def open_workspace(self) -> None:
+        """Install the selected .qxw as master.qxw and bounce QLC."""
+        if self.workspaces is None or not self.state.show_ids:
+            return
+        if self.state.show_busy or self.state.route_busy:
+            return
+        filename = self.state.show_ids[
+            bound_index(self.state.show_index, len(self.state.show_ids))
+        ]
+        if self.workspaces.is_open(filename):
+            self.state.show_status = OPEN
+            return
+        with self._route_lock:
+            if self.state.show_busy or self.state.route_busy:
+                return
+            self.state.show_busy = True
+        self.state.show_status = APPLYING
+        worker = threading.Thread(
+            target=self._workspace_worker,
+            args=(filename,),
+            daemon=True,
+            name="qlc-show",
+        )
+        worker.start()
+
+    def _workspace_worker(self, filename: str) -> None:
+        def progress(stage: str) -> None:
+            if stage:
+                self.state.show_status = APPLYING
+
+        try:
+            opened = switch_workspace(
+                self.workspaces,
+                filename,
+                qlc_service=self.qlc_service,
+                progress=progress,
+            )
+            self.state.show_open_id = opened
+            self.state.show_status = OPEN
+            self.state.qlc_desired = True
+            self._save_prefs()
+            if self.state.screen == ScreenId.LOAD_SHOW:
+                self.state.screen = ScreenId.SHOWS
+            self._route_mtime = None
+            self._load_routes()
+        except (WorkspaceSwitchError, OSError, UnicodeError) as exc:
+            LOG.warning("workspace switch failed: %s", exc)
+            self.state.show_status = FAILED
+        finally:
+            self.state.show_busy = False
+
     def _apply_show(self, show: ShowDefinition) -> None:
         self._applied_show = show.show_id
         self.state.show_name = show.name
@@ -601,16 +659,36 @@ class Controller:
     def _refresh_show_state(self, force: bool = False) -> None:
         if self.catalog is None:
             return
-        shows = self.catalog.list_shows()
-        self.state.show_ids = tuple(show.show_id for show in shows)
-        self.state.show_files = tuple(show.name for show in shows)
         current = self.catalog.current_show()
         if current is None:
             return
-        self.state.show_name = current.name
         if not force and current.show_id == self._applied_show:
             return
         self._apply_show(current)
+
+    def _refresh_workspace_state(self) -> None:
+        if self.workspaces is None:
+            return
+        entries = self.workspaces.list_entries()
+        self.state.show_ids = tuple(entry.filename for entry in entries)
+        self.state.show_files = tuple(entry.label for entry in entries)
+        self.state.show_open_id = self.workspaces.open_filename() or ""
+        self.state.show_count = len(entries)
+        if self.state.show_busy:
+            return
+        if self.state.screen == ScreenId.LOAD_SHOW and self.state.show_status in {
+            LOAD,
+            APPLYING,
+            FAILED,
+        }:
+            return
+        if self.state.show_open_id:
+            for entry in entries:
+                if entry.filename == self.state.show_open_id:
+                    self.state.show_name = entry.label
+                    break
+            if self.state.show_status != FAILED:
+                self.state.show_status = OPEN
 
     def apply_wiz_snapshot(
         self,
@@ -807,6 +885,7 @@ class Controller:
         self._refresh_startup_runtime()
         if self.catalog is not None:
             self._refresh_show_state()
+        self._refresh_workspace_state()
         self._sync_wiz_runtime()
         self._poll_wiz_observed()
         self._sync_wiz_view()

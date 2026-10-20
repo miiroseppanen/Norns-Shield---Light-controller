@@ -27,7 +27,7 @@ from light_console.ui.menu import MENU_ITEMS, menu_index_of
 from light_console.ui.pages import (
     SYSTEM_QLC_TOGGLE,
     SYSTEM_ROW_COUNT,
-    SYSTEM_SHUTDOWN_ROW,
+    SYSTEM_VERSION,
     SYSTEM_VERSION,
     WIZ_DEVICES_VISIBLE,
     system_slots,
@@ -273,12 +273,14 @@ def _open_devices(c, mapped=None, observations=(), *, wiz_enabled=False, bridge=
 def test_wiz_devices_is_after_control_in_wiz_submenu():
     c = make_controller()
     kinds = [slot.kind for slot in system_slots(c.state)]
-    assert kinds == ["qlc", "net", "version", "shutdown"]
+    assert kinds == ["qlc", "net", "version"]
     assert "wiz" not in kinds
     assert "wiz_devices" not in kinds
+    assert "shutdown" not in kinds
     labels = [item.label for item in MENU_ITEMS]
-    assert labels == ["STATUS", "OUTPUT", "WIZ", "SYSTEM"]
+    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN"]
     assert labels.index("WIZ") == labels.index("SYSTEM") - 1
+    assert labels[-1] == "SHUTDOWN"
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
@@ -298,10 +300,10 @@ def test_system_still_clamps_with_wiz_devices_row():
     c.inject_cooked(EncoderEvent(E2, -1))
     assert c.state.system_index == 0
     c.inject_cooked(EncoderEvent(E2, 40))
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
+    assert c.state.system_index == SYSTEM_VERSION
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
-    assert SYSTEM_ROW_COUNT == 4
+    assert c.state.system_index == SYSTEM_VERSION
+    assert SYSTEM_ROW_COUNT == 3
 
 
 def test_k2_returns_and_k3_does_not_mutate(tmp_path: Path):
@@ -415,21 +417,15 @@ def test_empty_list_has_no_blank_focus_crash():
 
 
 def test_shutdown_reachable_when_wiz_control_has_detail():
+    from tests.test_shutdown import _start_shutdown
+
     c = make_controller(wiz_enabled=True, wiz_online=6, wiz_expected=6)
-    c.state.screen = ScreenId.SYSTEM
-    c.state.system_index = SYSTEM_QLC_TOGGLE
-    c.inject_cooked(EncoderEvent(E2, 20))
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _start_shutdown(c)
     assert c.state.screen == ScreenId.SHUTTING_DOWN
     assert c.power.request_count == 1
     c = make_controller()
     _open_devices(c, (_dev("aabbccddeeff", 1),))
-    c.inject_cooked(ButtonEvent(K2, "press"))
-    assert c.state.screen == ScreenId.MENU
-    c.state.screen = ScreenId.SYSTEM
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
-    c.inject_cooked(ButtonEvent(K3, "press"))
+    _start_shutdown(c)
     assert c.state.screen == ScreenId.SHUTTING_DOWN
     assert c.power.request_count == 1
     assert c.state.shutdown_requested is True

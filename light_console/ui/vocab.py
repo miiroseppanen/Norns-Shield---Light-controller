@@ -8,6 +8,9 @@ STARTING = "STARTING"
 STOPPING = "STOPPING"
 STOPPED = "STOPPED"
 ACTIVE = "ACTIVE"
+OPEN = "OPEN"
+LOAD = "LOAD"
+HALT = "HALT"
 IDLE = "IDLE"
 SEEN = "SEEN"
 LOST = "LOST"
@@ -32,6 +35,9 @@ OBSERVED = frozenset(
         STOPPING,
         STOPPED,
         ACTIVE,
+        OPEN,
+        LOAD,
+        HALT,
         IDLE,
         SEEN,
         LOST,

@@ -13,6 +13,7 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3,
 from light_console.output.fixtures import PatchedFixture
 from light_console.output.pages import build_output_pages_from_state
 from light_console.state import ScreenId
+from light_console.ui.menu import MENU_ITEMS
 from light_console.display.layout import CONTENT_ROWS
 from light_console.display.viewport import ListViewport
 
@@ -80,8 +81,8 @@ def test_slow_and_normal_menu_detents_stay_precise():
     c.hardware.push(EncoderEvent(E1, 1))
     c.tick(now=1.2)
     assert c.state.menu_index == 2
-    c.inject_cooked(EncoderEvent(E1, 2))
-    assert c.state.menu_index == 3  # 4 items: 2+2 lands on last
+    c.inject_cooked(EncoderEvent(E1, 3))
+    assert c.state.menu_index == len(MENU_ITEMS) - 1
 
 
 def test_rapid_menu_rotation_is_about_half_as_aggressive():

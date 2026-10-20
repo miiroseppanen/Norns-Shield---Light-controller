@@ -81,7 +81,7 @@ def test_light_help_prints_compact_guide():
         "light@shieldxl-light.local:~/light-console/",
         "./scripts/import-production-workspace.sh --install",
         "never copy onto /home/light/shows/master.qxw",
-        "OLED SYSTEM -> SHUTDOWN -> K3",
+        "OLED MENU -> SHUTDOWN -> K3 HALT",
         "sudo /usr/sbin/shutdown -h now",
         "192.168.88.248 -- DO NOT CONTACT",
         "light-help",

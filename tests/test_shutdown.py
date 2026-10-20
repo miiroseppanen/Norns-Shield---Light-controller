@@ -7,7 +7,8 @@ from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3,
 from light_console.power import LinuxPowerService, MockPowerService
 from light_console.state import ScreenId
 from light_console.ui.menu import menu_index_of
-from light_console.ui.pages import SYSTEM_SHUTDOWN_ROW
+from light_console.ui.pages import SYSTEM_VERSION
+from light_console.ui.vocab import HALT
 
 from tests.conftest import make_controller
 
@@ -15,20 +16,55 @@ ROOT = Path(__file__).resolve().parents[1]
 SCREENS = ROOT / "light_console/display/screens.py"
 
 
-def _open_system(c):
+def _open_shutdown_confirm(c):
+    if c.state.screen != ScreenId.PLAY:
+        c.inject_cooked(ButtonEvent(K1, "press"))
     c.inject_cooked(ButtonEvent(K1, "press"))
-    c.state.menu_index = menu_index_of("SYSTEM")
+    assert c.state.screen == ScreenId.MENU
+    c.state.menu_index = menu_index_of("SHUTDOWN")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.SYSTEM
+    assert c.state.screen == ScreenId.SHUTDOWN_CONFIRM
 
 
 def _start_shutdown(c):
-    _open_system(c)
-    c.state.system_index = SYSTEM_SHUTDOWN_ROW
+    _open_shutdown_confirm(c)
     c.inject_cooked(ButtonEvent(K3, "press"))
 
 
-def test_system_k3_starts_shutdown_immediately():
+def test_menu_shutdown_is_last_and_needs_halt():
+    from light_console.ui.menu import MENU_ITEMS
+
+    labels = [item.label for item in MENU_ITEMS]
+    assert labels[-1] == "SHUTDOWN"
+    assert labels[-2] == "SYSTEM"
+    c = make_controller()
+    _open_shutdown_confirm(c)
+    assert c.power.request_count == 0
+    assert c.state.shutdown_requested is False
+    fb = Renderer().render(c.state)
+    ref = Renderer().render(c.state)
+    assert fb.digest() == ref.digest()
+    from light_console.display.framebuffer import Framebuffer
+    from light_console.display.layout import CONTENT_Y, LABEL_X, ROW
+    from light_console.display.widgets import text
+
+    want = Framebuffer()
+    text(want, LABEL_X, CONTENT_Y + ROW, HALT)
+    found = False
+    for y in range(fb.height):
+        for x in range(fb.width):
+            if not want.get(x, y):
+                continue
+            if fb.get(x, y) != 1:
+                raise AssertionError("HALT missing")
+            found = True
+    assert found
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.MENU
+    assert c.power.request_count == 0
+
+
+def test_k3_on_halt_starts_shutdown():
     c = make_controller()
     _start_shutdown(c)
     assert c.state.screen == ScreenId.SHUTTING_DOWN
@@ -39,8 +75,19 @@ def test_system_k3_starts_shutdown_immediately():
     assert c.power.spawn_count == 0
 
 
-def test_no_shutdown_confirmation_state():
-    assert not hasattr(ScreenId, "SHUTDOWN")
+def test_system_no_longer_halts():
+    c = make_controller()
+    c.inject_cooked(ButtonEvent(K1, "press"))
+    c.state.menu_index = menu_index_of("SYSTEM")
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    c.state.system_index = SYSTEM_VERSION
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.screen == ScreenId.VERSION
+    assert c.power.request_count == 0
+
+
+def test_no_shutdown_question_mark_copy():
+    assert hasattr(ScreenId, "SHUTDOWN_CONFIRM")
     text = SCREENS.read_text(encoding="utf-8")
     life = (ROOT / "light_console/display/lifecycle.py").read_text(encoding="utf-8")
     assert "SHUTDOWN?" not in text
@@ -74,7 +121,6 @@ def test_keys_and_encoders_ignored_after_shutdown():
     c = make_controller()
     _start_shutdown(c)
     master = c.state.master
-    system_index = c.state.system_index
     for ev in (
         ButtonEvent(K1, "press"),
         ButtonEvent(K2, "press"),
@@ -88,7 +134,6 @@ def test_keys_and_encoders_ignored_after_shutdown():
     assert c.power.request_count == 1
     assert c.power.shutdown_requested is True
     assert c.state.master == master
-    assert c.state.system_index == system_index
 
 
 def test_shutdown_backend_called_exactly_once():

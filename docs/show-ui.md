@@ -1,21 +1,23 @@
 # Show UI
 
-OLED **SHOWS** lists logical shows (metadata), not `.qxw` files to load.
+OLED **SHOWS** lists named `.qxw` files in `/home/light/shows`. QLC still launches `-o /home/light/shows/master.qxw`. Choosing a file copies it onto `master.qxw` (Shield patch + live U2 preserved) and bounces `qlcplus.service` with start/stop. Light Console does not POST `/loadProject` or use `-9`.
 
 ```
 SHOWS
-> SHOW A
-  SHOW B
+* HALLOWEEN UV
+  WARM
 ```
 
-E1 moves the cursor. K3 activates that logical show. QLC is not restarted and no workspace is loaded. The confirmation screen is:
+E1 moves the cursor. `*` is the file last opened into QLC. K3 opens:
 
 ```
 SHOW
-SHOW A
-ACTIVE
+HALLOWEEN UV
+LOAD
 ```
 
-SCENES / CHASERS / PLAY E2–E3 then list only that show's functions. PLAY GO still requires live QLC id+name match. If the master workspace is not loaded in QLC, GO is `NO PROJECT`.
+K3 confirms and restarts QLC. Already-open files show `OPEN` and do not bounce the engine. K2 back. While QLC is stopping/starting the status is `APPLYING`; failure is `FAILED`.
 
-The multi-workspace `current.qxw` / `LOAD SHOW?` / `AUTO LOAD NYI` model is **SUPERSEDED**. See [`docs/master-workspace.md`](master-workspace.md).
+SCENES / CHASERS stay deferred. PLAY GO still requires live QLC id+name match.
+
+See [`docs/show-projects.md`](show-projects.md) for why `/loadProject` is unused.

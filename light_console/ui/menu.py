@@ -18,6 +18,7 @@ class MenuItem:
 
 MENU_ITEMS: tuple[MenuItem, ...] = (
     MenuItem("status", "STATUS", action="play"),
+    MenuItem("shows", "SHOWS", page_id=ScreenId.SHOWS.value),
     MenuItem("output", "OUTPUT", page_id=ScreenId.OUTPUT.value),
     MenuItem(
         "wiz",
@@ -28,11 +29,11 @@ MENU_ITEMS: tuple[MenuItem, ...] = (
         ),
     ),
     MenuItem("system", "SYSTEM", page_id=ScreenId.SYSTEM.value),
+    MenuItem("shutdown", "SHUTDOWN", page_id=ScreenId.SHUTDOWN_CONFIRM.value),
 )
 
 # Implemented later. Hidden from the operator menu; screens stay in the tree.
 DEFERRED_MENU_ITEMS: tuple[MenuItem, ...] = (
-    MenuItem("shows", "SHOWS", page_id=ScreenId.SHOWS.value),
     MenuItem("scenes", "SCENES", page_id=ScreenId.SCENES.value),
     MenuItem("chasers", "CHASERS", page_id=ScreenId.CHASERS.value),
     MenuItem("params", "PARAMS", page_id=ScreenId.PARAMS.value),

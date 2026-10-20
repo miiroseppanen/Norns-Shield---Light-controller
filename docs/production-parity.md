@@ -1,6 +1,6 @@
 # Production parity
 
-Interactive multi-workspace SHOWS/SCENES/CHASERS work is **DEFERRED**. This milestone copies the working production Pi appliance.
+Interactive SCENES/CHASERS work is **DEFERRED**. SHOWS switches named `.qxw` files onto `master.qxw` and restarts QLC. This milestone copies the working production Pi appliance.
 
 ```
 POWER ON
@@ -24,7 +24,7 @@ Same `qlcplus-qml` hash on Shield and production. `-o/--open` is a **boolean** f
 
 `QLC+API|isProjectLoaded` stays `false` after CLI load. Use `getFunctionsList` / function count. Production `startup` is function ID 0, type Chaser.
 
-OLED PLAY is status-only: QLC / SHOW / STARTUP / MIDI / OUTPUT / MASTER. Shutdown remains SYSTEM → SHUTDOWN → K3.
+OLED PLAY is status-only: QLC / SHOW / STARTUP / MIDI / OUTPUT / MASTER. Shutdown is MENU → SHUTDOWN → K3 HALT.
 
 Outputs stay **SAFE** (both Art-Net universes `127.0.0.1`). PKNight `192.168.88.201` is configured in software mapping docs only. Production Pi is up; do not dual-drive the rig.
 

@@ -51,7 +51,7 @@ from light_console.output.targets import APPLYABLE_TARGETS, last_octet
 from light_console.state import AppState, ScreenId
 from light_console.ui.menu import MENU_ITEMS, MenuItem
 from light_console.output.netmode import oled_mode_word, toggle_filled
-from light_console.ui.vocab import IDLE, NEW, OFF, OFFLINE, RUNNING, STOPPED
+from light_console.ui.vocab import HALT, IDLE, NEW, OFF, OFFLINE, RUNNING, STOPPED
 from light_console.wiz.device_map import format_dmx_span
 from light_console.wiz.view import list_label
 
@@ -257,9 +257,10 @@ def draw_shows(fb: Framebuffer, state: AppState) -> None:
         draw_empty_state(fb, "NO SHOWS")
         return
     labels = []
-    current = state.show_name
-    for name in labels_src:
-        mark = "*" if name == current else " "
+    ids = state.show_ids or labels_src
+    for i, name in enumerate(labels_src):
+        file_id = ids[i] if i < len(ids) else name
+        mark = "*" if file_id == state.show_open_id else " "
         labels.append(f"{mark}{name}")
     draw_list(
         fb,
@@ -277,7 +278,7 @@ def draw_load_show(fb: Framebuffer, state: AppState) -> None:
     field_w = CONTENT_RIGHT - LABEL_X
     off = field_offset(state, "load_show", state.ui_now, name, field_w)
     text_clipped(fb, LABEL_X - off, ROW * 2, name, LABEL_X, LABEL_X + field_w)
-    text(fb, LABEL_X, ROW * 3, (state.show_status or "ACTIVE")[:21])
+    text(fb, LABEL_X, ROW * 3, (state.show_status or "LOAD")[:21])
 
 
 def _item_span(items: tuple[OutputItem, ...]) -> int:
@@ -529,8 +530,6 @@ def draw_system(fb: Framebuffer, state: AppState) -> None:
             draw_subordinate_status(fb, y + ROW, word)
         elif slot.kind == "version":
             draw_action_row(fb, y, "VERSION", focused=focused, x=TOGGLE_LABEL_X)
-        elif slot.kind == "shutdown":
-            draw_action_row(fb, y, "SHUTDOWN", focused=focused, x=TOGGLE_LABEL_X)
         y += slot.rows * ROW
 
 
@@ -688,6 +687,12 @@ def draw_starting_up(fb: Framebuffer, state: AppState) -> None:
     draw_lifecycle(fb, STARTING_UP_TEXT)
 
 
+def draw_shutdown_confirm(fb: Framebuffer, state: AppState) -> None:
+    del state
+    draw_page_header(fb, "SHUTDOWN")
+    text(fb, LABEL_X, CONTENT_Y + ROW, HALT)
+
+
 def draw_shutting_down(fb: Framebuffer, state: AppState) -> None:
     del state
     draw_lifecycle(fb, SHUTTING_DOWN_TEXT)
@@ -706,6 +711,7 @@ DRAWERS = {
     ScreenId.WIZ_CONTROL: draw_wiz_control,
     ScreenId.WIZ_DEVICES: draw_wiz_devices,
     ScreenId.VERSION: draw_version,
+    ScreenId.SHUTDOWN_CONFIRM: draw_shutdown_confirm,
     ScreenId.STARTING_UP: draw_starting_up,
     ScreenId.SHUTTING_DOWN: draw_shutting_down,
 }

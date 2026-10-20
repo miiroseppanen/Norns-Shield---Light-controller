@@ -14,7 +14,7 @@ Production Pi pattern, same QLC 5.2.2 binary:
 
 `-o/--open` is a boolean flag. The path is the positional workspace. WebAccess may take **minutes** after Virtual Console refresh. Do not use `-9` or POST `/loadProject`.
 
-Interactive multi-workspace switching remains **DEFERRED**.
+Interactive SHOWS switching copies a named `.qxw` onto `master.qxw` and restarts QLC. Do not POST `/loadProject`.
 
 ```
 SOURCE production .qxw

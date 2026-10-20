@@ -32,6 +32,7 @@ class ScreenId(str, Enum):
     WIZ_CONTROL = "wiz_control"
     WIZ_DEVICES = "wiz_devices"
     VERSION = "version"
+    SHUTDOWN_CONFIRM = "shutdown_confirm"
     STARTING_UP = "starting_up"
     SHUTTING_DOWN = "shutting_down"
 
@@ -91,6 +92,8 @@ class AppState:
     show_ids: tuple[str, ...] = ()
     show_name: str = ""
     show_status: str = ""
+    show_open_id: str = ""
+    show_busy: bool = False
     go_status: str = ""
     startup_status: str = ""
     output_mode: str = "SAFE"
@@ -126,7 +129,7 @@ class AppState:
     mode: UiMode = UiMode.PLAY
     screen: ScreenId = ScreenId.PLAY
     menu_index: int = 0
-    menu_count: int = 4
+    menu_count: int = 6
     menu_title: str = "MENU"
     menu_labels: tuple[str, ...] = ()
     param_index: int = 0

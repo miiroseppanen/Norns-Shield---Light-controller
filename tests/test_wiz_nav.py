@@ -1,4 +1,4 @@
-"""Top-level WIZ navigation. No SCENES/CHASERS/SHOWS added by this task."""
+"""Top-level WIZ navigation. No SCENES/CHASERS added by this task."""
 
 from __future__ import annotations
 
@@ -50,15 +50,15 @@ def _row_has(fb: Framebuffer, row: int, label: str) -> bool:
     return _has_text(fb, LABEL_X, CONTENT_Y + row * ROW, label)
 
 
-def test_top_level_is_status_output_wiz_system():
+def test_top_level_is_status_shows_output_wiz_system():
     labels = [item.label for item in MENU_ITEMS]
-    assert labels == ["STATUS", "OUTPUT", "WIZ", "SYSTEM"]
+    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN"]
     assert labels.count("WIZ") == 1
     assert labels.index("WIZ") < labels.index("SYSTEM")
     deferred = {item.label for item in DEFERRED_MENU_ITEMS}
     assert "SCENES" in deferred and "SCENES" not in labels
     assert "CHASERS" in deferred and "CHASERS" not in labels
-    assert "SHOWS" in deferred and "SHOWS" not in labels
+    assert "SHOWS" in labels and "SHOWS" not in deferred
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
     assert [item.label for item in c.nav.current_items()] == labels
@@ -84,9 +84,11 @@ def test_wiz_submenu_control_and_devices():
     assert c.state.screen == ScreenId.MENU
     assert [item.label for item in c.nav.current_items()] == [
         "STATUS",
+        "SHOWS",
         "OUTPUT",
         "WIZ",
         "SYSTEM",
+        "SHUTDOWN",
     ]
     assert c.state.menu_index == menu_index_of("WIZ")
 
@@ -94,7 +96,7 @@ def test_wiz_submenu_control_and_devices():
 def test_system_has_version_and_no_wiz_duplicates():
     c = make_controller()
     kinds = [slot.kind for slot in system_slots(c.state)]
-    assert kinds == ["qlc", "net", "version", "shutdown"]
+    assert kinds == ["qlc", "net", "version"]
     assert "wiz" not in kinds
     assert "wiz_devices" not in kinds
     c.state.screen = ScreenId.SYSTEM
@@ -191,14 +193,16 @@ def test_wiz_submenu_k2_returns_top_level_with_wiz_selected():
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     assert c.state.menu_title == "MENU"
-    assert c.state.menu_labels == ("STATUS", "OUTPUT", "WIZ", "SYSTEM")
+    assert c.state.menu_labels == ("STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN")
     assert c.state.menu_index == menu_index_of("WIZ")
     fb = _render(c)
     assert _has_text(fb, 0, 0, "MENU")
     assert _row_has(fb, 0, "STATUS")
-    assert _row_has(fb, 1, "OUTPUT")
-    assert _row_has(fb, 2, "WIZ")
-    assert _row_has(fb, 3, "SYSTEM")
+    assert _row_has(fb, 1, "SHOWS")
+    assert _row_has(fb, 2, "OUTPUT")
+    assert _row_has(fb, 3, "WIZ")
+    assert _row_has(fb, 4, "SYSTEM")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, menu_index_of("WIZ"))
     assert not _focus_on(fb, 0)
 
@@ -209,9 +213,11 @@ def test_top_level_and_system_still_render_after_menu_view_publish():
     fb = _render(c)
     assert _has_text(fb, 0, 0, "MENU")
     assert _row_has(fb, 0, "STATUS")
-    assert _row_has(fb, 1, "OUTPUT")
-    assert _row_has(fb, 2, "WIZ")
-    assert _row_has(fb, 3, "SYSTEM")
+    assert _row_has(fb, 1, "SHOWS")
+    assert _row_has(fb, 2, "OUTPUT")
+    assert _row_has(fb, 3, "WIZ")
+    assert _row_has(fb, 4, "SYSTEM")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, 0)
     c.state.menu_index = menu_index_of("SYSTEM")
     c.inject_cooked(ButtonEvent(K3, "press"))
@@ -223,5 +229,6 @@ def test_top_level_and_system_still_render_after_menu_view_publish():
     assert c.state.menu_index == menu_index_of("SYSTEM")
     fb = _render(c)
     assert _has_text(fb, 0, 0, "MENU")
-    assert _row_has(fb, 3, "SYSTEM")
+    assert _row_has(fb, 4, "SYSTEM")
+    assert _row_has(fb, 5, "SHUTDOWN")
     assert _focus_on(fb, menu_index_of("SYSTEM"))

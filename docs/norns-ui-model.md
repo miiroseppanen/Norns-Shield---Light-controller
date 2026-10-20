@@ -43,19 +43,11 @@ SYSTEM
 
 HOME enters PLAY. SHOWS / SCENES / CHASERS / PARAMS / OUTPUT / SYSTEM are screens.
 
-SHOWS K3 activates the selected logical show (metadata inside the master workspace). QLC is not loaded or restarted. OLED:
+SHOWS lists named `.qxw` files on the appliance. K3 opens a confirm page (`LOAD` or `OPEN`). Confirming copies that file onto `master.qxw` and restarts QLC via systemd start/stop. Already-open files stay `OPEN` and do not bounce QLC. See [`docs/show-ui.md`](show-ui.md).
 
-```
-SHOW
-SIIRTYMA
-ACTIVE
-```
+SYSTEM list: QLC SERVICE, NETWORK MODE, VERSION.
 
-SCENES / CHASERS / PLAY then list that show's functions. GO still requires live QLC id+name match. See [`docs/show-ui.md`](show-ui.md).
-
-SYSTEM list: QLC STATUS, HOSTNAME, VERSION, UPTIME, SHUTDOWN.
-
-SYSTEM → SHUTDOWN → K3 begins halt immediately. There is no `SHUTDOWN?` confirm. OLED stays on SHUTTING DOWN until Linux stops. K1/K2/K3 and E1/E2/E3 do nothing after that; `PowerService.request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
+MENU last row is SHUTDOWN. K3 opens a confirm page (`HALT`). K2 back. K3 on `HALT` begins halt. OLED stays on SHUTTING DOWN until Linux stops. After that K1/K2/K3 and E1/E2/E3 do nothing; `PowerService.request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
 
 ## Screens vs parameters
 
