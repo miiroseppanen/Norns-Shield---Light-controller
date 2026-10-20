@@ -12,15 +12,12 @@ class ListViewport:
     offset: int = 0
     visible: int = 6
 
-    def move(self, delta: int, *, wrap: bool = True) -> None:
+    def move(self, delta: int) -> None:
         if self.total <= 0:
             self.focused = 0
             self.offset = 0
             return
-        if wrap:
-            self.focused = (self.focused + delta) % self.total
-        else:
-            self.focused = max(0, min(self.total - 1, self.focused + delta))
+        self.focused = max(0, min(self.total - 1, self.focused + delta))
         self.reveal()
 
     def reveal(self) -> None:

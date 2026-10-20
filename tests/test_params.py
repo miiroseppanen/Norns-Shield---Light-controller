@@ -11,7 +11,21 @@ from light_console.ui.params import (
 from tests.conftest import make_controller
 
 
-def test_number_clamps():
+def test_number_set_and_wrap_hue_set():
+    box = {"v": 40}
+    p = NumberParameter("n", "N", lambda: box["v"], lambda v: box.__setitem__("v", v), 0, 200)
+    p.set(100)
+    assert p.get() == 100
+    p.set(999)
+    assert p.get() == 200
+    from light_console.ui.params import WrapNumberParameter
+
+    hue = {"v": 90}
+    w = WrapNumberParameter("h", "H", lambda: hue["v"], lambda v: hue.__setitem__("v", v), -180, 180)
+    w.set(0)
+    assert w.get() == 0
+    w.set(181)
+    assert w.get() == -179
     box = {"v": 50}
     p = NumberParameter("n", "N", lambda: box["v"], lambda v: box.__setitem__("v", v), 0, 100)
     p.delta(80)
@@ -21,13 +35,21 @@ def test_number_clamps():
     assert p.formatted() == "0"
 
 
-def test_option_cycles():
+def test_option_clamps():
     box = {"v": "A"}
     p = OptionParameter("o", "O", lambda: box["v"], lambda v: box.__setitem__("v", v), ("A", "B", "C"))
     p.delta(1)
     assert p.get() == "B"
-    p.delta(-2)
+    p.delta(1)
     assert p.get() == "C"
+    p.delta(1)
+    assert p.get() == "C"
+    p.delta(20)
+    assert p.get() == "C"
+    p.delta(-2)
+    assert p.get() == "A"
+    p.delta(-1)
+    assert p.get() == "A"
 
 
 def test_toggle_delta_and_trigger():
@@ -56,6 +78,8 @@ def test_params_select_and_change():
     params = bind_console_params(state)
     assert params.selected.id == "master"
     params.select_delta(1)
+    assert params.selected.id == "sat"
+    params.select_delta(2)
     assert params.selected.id == "speed"
     params.selected.delta(6)
     assert state.speed == 130
@@ -74,6 +98,8 @@ def test_params_screen_e2_e3():
     assert c.params.selected.id == "master"
     c.inject_cooked(EncoderEvent(E3, 5))
     assert c.state.master == 45
+    c.inject_cooked(EncoderEvent(E2, 2))
+    assert c.params.selected.id == "hue"
     c.inject_cooked(EncoderEvent(E2, 2))
     assert c.params.selected.id == "blackout"
     c.inject_cooked(ButtonEvent(K3, "press"))

@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+"""Narrow root helper for WIZ CONTROL. Hardcoded WIZ-LIGHTS / wlan1 / wizbridge.
+
+No shell. No extra argv. Never targets the onboard client radio.
+"""
+from __future__ import annotations
+
+import subprocess
+import sys
+
+CONNECTION = "WIZ-LIGHTS"
+IFACE = "wlan1"
+BRIDGE_UNIT = "wizbridge.service"
+NMCLI = "/usr/bin/nmcli"
+SYSTEMCTL = "/usr/bin/systemctl"
+ACTIONS = ("ap-up", "ap-down", "bridge-start", "bridge-stop")
+
+
+def _run(argv: list[str], timeout: float = 35.0) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+
+
+def _profile_iface() -> str:
+    try:
+        proc = _run(
+            [NMCLI, "-t", "-f", "connection.interface-name", "connection", "show", CONNECTION],
+            timeout=5.0,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    text = (proc.stdout or "").strip()
+    if ":" in text:
+        return text.split(":", 1)[1].strip()
+    return text
+
+
+def _ap_up() -> int:
+    iface = _profile_iface()
+    if iface != IFACE:
+        print(f"FAIL: {CONNECTION} iface {iface!r} is not {IFACE}", file=sys.stderr)
+        return 1
+    try:
+        proc = _run([NMCLI, "-w", "30", "connection", "up", CONNECTION])
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"FAIL: ap-up {exc}", file=sys.stderr)
+        return 1
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        print(err, file=sys.stderr)
+    return int(proc.returncode)
+
+
+def _ap_down() -> int:
+    try:
+        proc = _run([NMCLI, "-w", "30", "connection", "down", CONNECTION])
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"FAIL: ap-down {exc}", file=sys.stderr)
+        return 1
+    if proc.returncode == 0:
+        return 0
+    text = f"{proc.stderr or ''}\n{proc.stdout or ''}".lower()
+    if "not an active" in text or "not active" in text:
+        return 0
+    print((proc.stderr or proc.stdout or "").strip(), file=sys.stderr)
+    return int(proc.returncode)
+
+
+def _bridge_start() -> int:
+    try:
+        proc = _run([SYSTEMCTL, "start", BRIDGE_UNIT])
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"FAIL: bridge-start {exc}", file=sys.stderr)
+        return 1
+    if proc.returncode != 0:
+        print((proc.stderr or proc.stdout or "").strip(), file=sys.stderr)
+    return int(proc.returncode)
+
+
+def _bridge_stop() -> int:
+    try:
+        proc = _run([SYSTEMCTL, "stop", BRIDGE_UNIT])
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"FAIL: bridge-stop {exc}", file=sys.stderr)
+        return 1
+    if proc.returncode == 0:
+        return 0
+    text = f"{proc.stderr or ''}\n{proc.stdout or ''}".lower()
+    if "not-found" in text or "not found" in text or "inactive" in text:
+        return 0
+    print((proc.stderr or proc.stdout or "").strip(), file=sys.stderr)
+    return int(proc.returncode)
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2 or argv[1] not in ACTIONS:
+        print(
+            "usage: light-console-wiz ap-up|ap-down|bridge-start|bridge-stop",
+            file=sys.stderr,
+        )
+        return 2
+    action = argv[1]
+    if action == "ap-up":
+        return _ap_up()
+    if action == "ap-down":
+        return _ap_down()
+    if action == "bridge-start":
+        return _bridge_start()
+    if action == "bridge-stop":
+        return _bridge_stop()
+    return 2
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv))
+    except KeyboardInterrupt:
+        raise SystemExit(1)

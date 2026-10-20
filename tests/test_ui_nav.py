@@ -30,7 +30,7 @@ def test_menu_e1_changes_selection():
     c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == 0
     c.inject_cooked(EncoderEvent(E1, -1))
-    assert c.state.menu_index == len(MENU_ITEMS) - 1
+    assert c.state.menu_index == 0
 
 
 def test_menu_e2_does_not_change_selection():
@@ -84,13 +84,13 @@ def test_menu_home_item_returns_play():
 def test_visit_all_menu_pages():
     c = make_controller()
     expected = (
-        ScreenId.OUTPUT,
-        ScreenId.SYSTEM,
+        ("OUTPUT", ScreenId.OUTPUT),
+        ("SYSTEM", ScreenId.SYSTEM),
     )
-    for i, screen in enumerate(expected):
+    for label, screen in expected:
         c.state.screen = ScreenId.PLAY
         c.inject_cooked(ButtonEvent(K1, "press"))
-        c.state.menu_index = i + 1
+        c.state.menu_index = menu_index_of(label)
         c.inject_cooked(ButtonEvent(K3, "press"))
         assert c.state.screen == screen
         c.inject_cooked(ButtonEvent(K2, "press"))

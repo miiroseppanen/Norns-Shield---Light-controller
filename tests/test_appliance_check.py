@@ -15,7 +15,7 @@ WRAPPER = (ROOT / "packaging/light-appliance-check").read_text(encoding="utf-8")
 
 def test_inspect_siirtyma_shield_is_safe():
     ws = inspect_workspace(SHIELD)
-    assert ws["functions"] == 100
+    assert ws["functions"] == 109
     assert ws["startup"] is True
     assert ws["startup_id"] == 0
     assert ws["loopback"] == 2

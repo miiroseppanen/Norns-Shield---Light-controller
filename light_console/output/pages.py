@@ -180,7 +180,7 @@ def pack_universe_pages(
     return [
         OutputPage(
             "universe",
-            f"UNIVERSE {view}",
+            "UNIVERSE",
             universe=view,
             archetype="map",
             universes=unis,

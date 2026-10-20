@@ -11,7 +11,6 @@ from light_console.qxw import QxwError, _DOCTYPE
 
 MAP_COLS = 32
 MAP_ROWS = 16
-CELL = 2
 CHANNELS = UNIVERSE_SIZE
 BLINK_HALF_S = 0.25
 BLINK_PERIOD_S = BLINK_HALF_S * 2  # 2 Hz

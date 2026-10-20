@@ -1,0 +1,5 @@
+# Narrow LIGHT-CONTROL NETWORK/STANDALONE helper. visudo -cf before install.
+# Hardcoded standalone|network only. No generic NetworkManager argv.
+
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-net standalone
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-net network

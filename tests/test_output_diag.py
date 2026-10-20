@@ -43,7 +43,7 @@ REACHABLE_PY = (
 
 
 def test_production_menu_is_status_output_system():
-    assert [item.label for item in MENU_ITEMS] == ["STATUS", "OUTPUT", "SYSTEM"]
+    assert [item.label for item in MENU_ITEMS] == ["STATUS", "OUTPUT", "WIZ", "SYSTEM"]
     assert {item.label for item in DEFERRED_MENU_ITEMS} == {
         "SHOWS",
         "SCENES",
@@ -52,7 +52,7 @@ def test_production_menu_is_status_output_system():
     }
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
-    assert [item.label for item in c.nav.current_items()] == ["STATUS", "OUTPUT", "SYSTEM"]
+    assert [item.label for item in c.nav.current_items()] == ["STATUS", "OUTPUT", "WIZ", "SYSTEM"]
     c.state.menu_index = menu_index_of("OUTPUT")
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.OUTPUT

@@ -21,6 +21,9 @@ class PatchedFixture:
     universe_id: int
     address: int
     channels: int
+    manufacturer: str = ""
+    model: str = ""
+    mode: str = ""
 
     @property
     def start_1(self) -> int:
@@ -67,6 +70,9 @@ def parse_fixtures(text: str) -> tuple[PatchedFixture, ...]:
                 universe_id=universe_id,
                 address=max(0, address),
                 channels=max(0, channels),
+                manufacturer=fields.get("Manufacturer", ""),
+                model=fields.get("Model", ""),
+                mode=fields.get("Mode", ""),
             )
         )
     found.sort(key=lambda fx: (fx.universe_id, fx.address, fx.fixture_id))

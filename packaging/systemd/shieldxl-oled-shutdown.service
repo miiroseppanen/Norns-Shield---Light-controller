@@ -1,0 +1,33 @@
+[Unit]
+Description=Shield XL OLED SHUTTING DOWN
+Documentation=file:///home/light/light-console/docs/boot.md
+DefaultDependencies=yes
+After=local-fs.target
+Before=light-console.service shutdown.target reboot.target halt.target poweroff.target
+# Idle while the machine is up (ExecStart=/usr/bin/true). ExecStop paints
+# SHUTTING DOWN only when THIS unit is stopped, which DefaultDependencies
+# ties to machine shutdown/reboot/halt/poweroff — not to
+# systemctl restart light-console.service.
+# light-console.service After= this unit, so Light Console stops first and
+# releases SPI/GPIO; then ExecStop owns the OLED exclusively.
+# Do not PartOf=/BindsTo= light-console.service.
+# Do not After=/Wants= dev-spidev0.0.device.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=light
+Group=light
+SupplementaryGroups=gpio spi
+WorkingDirectory=/home/light/light-console
+Environment=PYTHONPATH=/home/light/light-console
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/true
+ExecStop=/usr/bin/python3 -m light_console.boot_splash shutting-down
+TimeoutStopSec=8
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shieldxl-shutdown
+
+[Install]
+WantedBy=multi-user.target

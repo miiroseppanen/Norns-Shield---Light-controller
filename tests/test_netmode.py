@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import time
+from pathlib import Path
+
 from light_console.display.components import draw_subordinate_status, draw_toggle
 from light_console.display.framebuffer import Framebuffer
 from light_console.display.layout import ROW, TOGGLE_LABEL_X, TOGGLE_X
@@ -9,18 +12,23 @@ from light_console.display.renderer import Renderer
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E2, K3
 from light_console.output.netmode import (
     AIR2DMX_MAC,
+    AP_CONNECTION_ID,
     DHCP_RANGE,
+    LinuxNetworkModeService,
     MODE_NETWORK,
     MODE_STANDALONE,
     PRODUCTION_PI_IP,
     SSID_LIGHT_CONTROL,
     SSID_WIZ_LIGHTS,
+    _guard_light_control,
     dhcp_range_excludes_reserved,
     light_control_role,
+    net_helper_argv,
     network_page_records,
     parse_network_mode,
     should_auto_failover,
     toggle_filled,
+    validate_net_helper_argv,
 )
 from light_console.output.network import NetIface
 from light_console.output.pages import pack_network_pages
@@ -32,7 +40,7 @@ from light_console.ui.pages import (
     SYSTEM_QLC_TOGGLE,
     SYSTEM_ROW_COUNT,
     SYSTEM_SHUTDOWN_ROW,
-    SYSTEM_WIZ_TOGGLE,
+    SYSTEM_VERSION,
     system_slots,
 )
 from light_console.ui.vocab import FAILED, NETWORK, STANDALONE, SWITCHING
@@ -78,12 +86,12 @@ def test_system_network_mode_is_one_block():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
     slots = system_slots(c.state)
-    assert [slot.kind for slot in slots] == ["qlc", "wiz", "net", "shutdown"]
-    assert slots[2].rows == 2
+    assert [slot.kind for slot in slots] == ["qlc", "net", "version", "shutdown"]
+    assert slots[1].rows == 2
     assert SYSTEM_ROW_COUNT == 4
     c.state.system_index = SYSTEM_NET_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
+    assert c.state.system_index == SYSTEM_VERSION
 
 
 def test_no_network_mode_detail_page():
@@ -97,7 +105,7 @@ def test_toggle_filled_network_outline_standalone():
     assert toggle_filled(MODE_STANDALONE) is False
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
-    net = system_slots(c.state)[2]
+    net = system_slots(c.state)[1]
     r = Renderer()
     r.force_dirty()
     fb = r.render(c.state)
@@ -116,7 +124,7 @@ def test_toggle_filled_network_outline_standalone():
 def test_subordinate_switching_and_failed():
     c = make_controller()
     c.state.screen = ScreenId.SYSTEM
-    net = system_slots(c.state)[2]
+    net = system_slots(c.state)[1]
     c.state.network_mode_observed = SWITCHING
     r = Renderer()
     r.force_dirty()
@@ -163,7 +171,7 @@ def test_e2_does_not_mutate_network_mode():
     c.inject_cooked(EncoderEvent(E2, 1))
     assert c.net_service.commands == []
     assert c.state.network_mode == MODE_NETWORK
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
+    assert c.state.system_index == SYSTEM_VERSION
 
 
 def test_standalone_and_network_page_roles():
@@ -193,6 +201,10 @@ def test_standalone_and_network_page_roles():
     assert SSID_WIZ_LIGHTS in titles
     assert SSID_LIGHT_CONTROL in titles
     assert light_control_role(MODE_STANDALONE) == "AP"
+    wiz_item = next(item for item in wiz_page[0].items if item.title == SSID_WIZ_LIGHTS)
+    assert wiz_item.status == "AP"
+    lc_item = next(item for item in wiz_page[0].items if item.title == SSID_LIGHT_CONTROL)
+    assert lc_item.status == "AP"
 
 
 def test_busy_lock_and_rollback_standalone_to_network():
@@ -261,9 +273,119 @@ def test_qlc_wiz_shutdown_still_work():
     c.state.system_index = SYSTEM_QLC_TOGGLE
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.qlc_service.commands[-1] == "stop"
-    c.state.system_index = SYSTEM_WIZ_TOGGLE
+    c.state.screen = ScreenId.WIZ_CONTROL
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.wiz_enabled is True
+    c.state.screen = ScreenId.SYSTEM
     c.state.system_index = SYSTEM_SHUTDOWN_ROW
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.SHUTTING_DOWN
+
+
+def _wait_net(svc: LinuxNetworkModeService, timeout: float = 2.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not svc.busy:
+            return
+        time.sleep(0.01)
+    raise AssertionError("network mode stayed busy")
+
+
+def test_net_helper_argv_is_exact():
+    assert net_helper_argv("standalone") == (
+        "/usr/bin/sudo",
+        "-n",
+        "/usr/sbin/light-console-net",
+        "standalone",
+    )
+    assert net_helper_argv("network")[-1] == "network"
+    try:
+        net_helper_argv("nmcli")
+    except Exception as exc:
+        assert "unsupported" in str(exc)
+    else:
+        raise AssertionError("generic net helper action must fail")
+    assert validate_net_helper_argv(["light-console-net", "standalone"]) == "standalone"
+    try:
+        validate_net_helper_argv(["light-console-net", "standalone", "wlan1"])
+    except Exception:
+        pass
+    else:
+        raise AssertionError("extra argv must fail")
+
+
+def test_net_helper_never_mentions_wiz_or_wlan1():
+    root = Path(__file__).resolve().parents[1]
+    helper = (root / "packaging/light-console-net").read_text(encoding="utf-8")
+    sudoers = (root / "packaging/sudoers.d/light-console-net").read_text(encoding="utf-8")
+    installer = (root / "packaging/install-netmode.sh").read_text(encoding="utf-8")
+    assert "shell=True" not in helper
+    assert "WIZ-LIGHTS" not in helper
+    assert "wlan1" not in helper
+    assert "192.168.88.248" not in helper
+    assert "nmcli" not in sudoers
+    assert "NOPASSWD: ALL" not in sudoers
+    assert "standalone" in sudoers
+    assert "network" in sudoers
+    assert "systemctl restart" not in installer
+    assert "master.qxw" not in installer
+
+
+def test_guard_refuses_wiz_lights_and_wlan1():
+    try:
+        _guard_light_control(name="WIZ-LIGHTS")
+    except RuntimeError as exc:
+        assert "WIZ-LIGHTS" in str(exc)
+    else:
+        raise AssertionError("WIZ-LIGHTS name must be refused")
+    try:
+        _guard_light_control(iface="wlan1")
+    except RuntimeError as exc:
+        assert "wlan1" in str(exc)
+    else:
+        raise AssertionError("wlan1 must be refused")
+    _guard_light_control(name=AP_CONNECTION_ID, iface="wlan0")
+
+
+def test_linux_standalone_uses_helper_without_active_wlan0():
+    ops: list[str] = []
+
+    def run(action: str) -> int:
+        ops.append(action)
+        return 0
+
+    svc = LinuxNetworkModeService(mode=MODE_NETWORK, run_helper=run)
+    assert svc.set_desired(MODE_STANDALONE) is True
+    _wait_net(svc)
+    assert ops == ["standalone"]
+    assert svc.mode == MODE_STANDALONE
+    assert svc.observed == STANDALONE
+    assert svc.probed_hosts == []
+
+
+def test_linux_helper_failure_is_fail_closed_and_leaves_wiz():
+    ops: list[str] = []
+
+    def run(action: str) -> int:
+        ops.append(action)
+        return 1
+
+    svc = LinuxNetworkModeService(mode=MODE_NETWORK, run_helper=run)
+    svc.set_desired(MODE_STANDALONE)
+    _wait_net(svc)
+    assert ops == ["standalone"]
+    assert svc.mode == MODE_NETWORK
+    assert svc.observed == FAILED
+
+
+def test_apply_standalone_never_requires_active_sta():
+    src = Path(__file__).resolve().parents[1] / "light_console/output/netmode.py"
+    text = src.read_text(encoding="utf-8")
+    body = text.split("def _apply_standalone()", 1)[1].split("\ndef ", 1)[0]
+    assert "_sta_connection()" in body
+    assert "show --active" not in body
+    assert "WIZ-LIGHTS" not in body
+    assert "wlan1" not in body or "_guard_light_control" in body
+    restore = text.split("def _restore_wifi(", 1)[1].split("\ndef ", 1)[0]
+    assert "_protected_wifi_names" in restore
+

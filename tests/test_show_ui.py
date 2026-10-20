@@ -31,7 +31,7 @@ def _merged_controller(tmp_path: Path):
     return c
 
 
-def test_scenes_e1_k3_go_shared_with_play():
+def test_scenes_e1_k3_go():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.screen = ScreenId.SCENES
@@ -56,17 +56,33 @@ def test_chasers_e1_k3_go():
     assert c.qlc.function_sends[-1] == (c.state.chaser_function_ids[1], 1)
 
 
-def test_play_k2_scene_go_k3_chaser_go():
+def test_play_k2_resets_sat_k3_resets_hue():
     c = make_controller()
+    c.state.master = 80
+    c.state.saturation = 40
+    c.state.hue_shift = 90
     c.qlc.function_sends.clear()
     c.inject_cooked(ButtonEvent(K2, "press"))
-    assert c.qlc.function_sends[-1] == (c.state.scene_function_ids[0], 1)
+    assert c.state.saturation == 100
+    assert c.state.hue_shift == 90
+    assert c.state.master == 80
+    assert c.qlc.function_sends == []
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.qlc.function_sends[-1] == (c.state.chaser_function_ids[0], 1)
+    assert c.state.hue_shift == 0
+    assert c.state.saturation == 100
+    assert c.state.master == 80
+    assert c.qlc.function_sends == []
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.inject_cooked(ButtonEvent(K3, "press"))
+    assert c.state.saturation == 100
+    assert c.state.hue_shift == 0
+    assert c.state.master == 80
     c.inject_cooked(EncoderEvent(E2, 1))
     c.inject_cooked(EncoderEvent(E3, 1))
-    assert c.state.current_scene == c.state.scenes[1]
-    assert c.state.current_chaser == c.state.chasers[1]
+    assert c.state.current_scene == c.state.scenes[0]
+    assert c.state.current_chaser == c.state.chasers[0]
+    assert c.state.saturation == 101
+    assert c.state.hue_shift == 1
 
 
 def test_offline_go_does_not_replay_after_reconnect():
@@ -74,9 +90,11 @@ def test_offline_go_does_not_replay_after_reconnect():
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
     c.qlc.function_sends.clear()
-    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.state.screen = ScreenId.SCENES
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.go_status == "QLC OFFLINE"
+    c.state.screen = ScreenId.CHASERS
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.qlc.function_sends == []
     c.qlc.simulate_link(True)
     c.tick(now=2.0)
@@ -89,7 +107,8 @@ def test_go_disabled_without_project():
     c.qlc._project = False
     c.tick(now=1.0)
     c.qlc.function_sends.clear()
-    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.state.screen = ScreenId.SCENES
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.go_status == "NO PROJECT"
     assert c.qlc.function_sends == []
 
@@ -133,7 +152,8 @@ def test_go_refuses_when_engine_ids_differ(tmp_path):
     merge_files(shows / "master.qxw", SHOW_A, show_id="show-a", show_name="SHOW A", apply=True)
     c = make_controller(shows_dir=shows)
     c.qlc.function_sends.clear()
-    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.state.screen = ScreenId.SCENES
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.go_status == "ID MISMATCH"
     assert c.qlc.function_sends == []
 
@@ -142,7 +162,8 @@ def test_go_refuses_when_live_name_differs(tmp_path):
     c = _merged_controller(tmp_path)
     c.qlc.replace_functions([QlcFunction(100, "Not Warm", "Scene")])
     c.qlc.function_sends.clear()
-    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.state.screen = ScreenId.SCENES
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.go_status == "ID MISMATCH"
     assert c.qlc.function_sends == []
 
@@ -150,6 +171,7 @@ def test_go_refuses_when_live_name_differs(tmp_path):
 def test_go_sends_when_engine_matches_parsed_ids(tmp_path):
     c = _merged_controller(tmp_path)
     c.qlc.function_sends.clear()
-    c.inject_cooked(ButtonEvent(K2, "press"))
+    c.state.screen = ScreenId.SCENES
+    c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.go_status == "GO"
     assert c.qlc.function_sends[-1] == (c.state.scene_function_ids[0], 1)

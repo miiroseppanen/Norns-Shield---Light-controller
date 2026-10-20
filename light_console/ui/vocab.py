@@ -11,8 +11,12 @@ ACTIVE = "ACTIVE"
 IDLE = "IDLE"
 SEEN = "SEEN"
 LOST = "LOST"
+NEW = "NEW"
+UNKNOWN = "UNKNOWN"
 OFFLINE = "OFFLINE"
 FAILED = "FAILED"
+READY = "READY"
+DOWN = "DOWN"
 DISCONNECTED = "DISCONNECTED"
 APPLYING = "APPLYING"
 STANDALONE = "STANDALONE"
@@ -31,8 +35,12 @@ OBSERVED = frozenset(
         IDLE,
         SEEN,
         LOST,
+        NEW,
+        UNKNOWN,
         OFFLINE,
         FAILED,
+        READY,
+        DOWN,
         DISCONNECTED,
         APPLYING,
         STANDALONE,

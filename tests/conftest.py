@@ -13,6 +13,9 @@ from light_console.ui.controller import Controller
 def make_controller(
     shows_dir: Path | None = None,
     prefs_path: Path | None = None,
+    wiz_map_path: Path | None = None,
+    wiz_observed_path: Path | None = None,
+    wiz_service=None,
     **state_kw,
 ) -> Controller:
     config = load_config()
@@ -48,4 +51,14 @@ def make_controller(
     qlc.replace_functions(funcs)
     qlc.simulate_link(True)
     hw = HeadlessBackend()
-    return Controller(config, state, hw, qlc, shows_dir=shows_dir, prefs_path=prefs_path)
+    return Controller(
+        config,
+        state,
+        hw,
+        qlc,
+        shows_dir=shows_dir,
+        prefs_path=prefs_path,
+        wiz_map_path=wiz_map_path,
+        wiz_observed_path=wiz_observed_path,
+        wiz_service=wiz_service,
+    )

@@ -1,5 +1,5 @@
 """Shield XL Light Console — UI/orchestration layer. QLC+ remains the show engine."""
 
-__version__ = "0.4.0"
+from light_console.version import VERSION
 
-VERSION = __version__
+__version__ = VERSION

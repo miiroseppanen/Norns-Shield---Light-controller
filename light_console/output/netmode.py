@@ -14,12 +14,22 @@ import time
 from abc import ABC, abstractmethod
 
 from light_console.output.network import KIND_LOOPBACK, KIND_ONBOARD, KIND_USB, NetIface
+from light_console.output.wiz_ap import (
+    WIZ_AP_CONNECTION_ID,
+    WIZ_AP_IFACE,
+    is_wiz_lights_profile,
+    restore_wifi_plan,
+)
 from light_console.ui.vocab import FAILED, NETWORK, STANDALONE, SWITCHING
 
 LOG = logging.getLogger("light-console")
 
 MODE_NETWORK = "network"
 MODE_STANDALONE = "standalone"
+
+NET_HELPER = "/usr/sbin/light-console-net"
+SUDO = "/usr/bin/sudo"
+NET_HELPER_ACTIONS = (MODE_STANDALONE, MODE_NETWORK)
 
 SSID_LIGHT_CONTROL = "LIGHT-CONTROL"
 SSID_WIZ_LIGHTS = "WIZ-LIGHTS"
@@ -39,6 +49,35 @@ RESERVED_HOSTS = (
 )
 PRODUCTION_PI_IP = "192.168.88.248"
 AIR2DMX_MAC = "3c:61:05:97:e1:93"
+
+
+class NetHelperError(ValueError):
+    """Invalid LIGHT-CONTROL helper argv."""
+
+
+def net_helper_argv(action: str) -> tuple[str, ...]:
+    """Exact sudo argv. Connection/iface names are not caller-supplied."""
+    if action not in NET_HELPER_ACTIONS:
+        raise NetHelperError(f"unsupported net helper action {action!r}")
+    return (SUDO, "-n", NET_HELPER, action)
+
+
+def validate_net_helper_argv(argv: list[str] | tuple[str, ...]) -> str:
+    args = [str(part) for part in argv]
+    if len(args) != 2 or args[1] not in NET_HELPER_ACTIONS:
+        raise NetHelperError("usage: light-console-net standalone|network")
+    return args[1]
+
+
+def apply_network_mode(target: str) -> None:
+    """Root helper entry. LIGHT-CONTROL / wlan0 only. Never WIZ-LIGHTS."""
+    if target == MODE_STANDALONE:
+        _apply_standalone()
+        return
+    if target == MODE_NETWORK:
+        _apply_network()
+        return
+    raise NetHelperError(f"unsupported network mode {target!r}")
 
 
 def parse_network_mode(raw: object) -> str:
@@ -107,6 +146,10 @@ def usb_wifi(ifaces: tuple[NetIface, ...]) -> NetIface | None:
         if iface.kind == KIND_USB:
             return iface
     return None
+
+
+def wiz_lights_role() -> str:
+    return "AP"
 
 
 def light_control_role(mode: str) -> str:
@@ -184,9 +227,9 @@ class MockNetworkModeService(NetworkModeService):
 
 
 class LinuxNetworkModeService(NetworkModeService):
-    """nmcli LIGHT-CONTROL STA/AP switch. Never reads or logs Wi-Fi secrets."""
+    """Root helper LIGHT-CONTROL STA/AP switch. Never reads or logs Wi-Fi secrets."""
 
-    def __init__(self, mode: str = MODE_NETWORK) -> None:
+    def __init__(self, mode: str = MODE_NETWORK, *, run_helper: object | None = None) -> None:
         self.mode = parse_network_mode(mode)
         self.desired = self.mode
         self.observed = oled_mode_word(self.mode)
@@ -195,6 +238,7 @@ class LinuxNetworkModeService(NetworkModeService):
         self._fail_since = 0.0
         self.workspace_writes = 0
         self.probed_hosts: list[str] = []
+        self._run_helper = run_helper or _sudo_net_helper
 
     def set_desired(self, mode: str) -> bool:
         target = parse_network_mode(mode)
@@ -220,12 +264,10 @@ class LinuxNetworkModeService(NetworkModeService):
             return self.observed
 
     def _run(self, target: str) -> None:
-        snapshot = _active_wifi_connections()
         try:
-            if target == MODE_STANDALONE:
-                _apply_standalone()
-            else:
-                _apply_network()
+            rc = int(self._run_helper(target))
+            if rc != 0:
+                raise RuntimeError(f"network mode {target} helper rc={rc}")
             with self._lock:
                 self.mode = target
                 self.desired = target
@@ -235,15 +277,35 @@ class LinuxNetworkModeService(NetworkModeService):
             LOG.info("network mode applied %s", target)
         except Exception as exc:
             LOG.warning("network mode switch failed: %s", exc)
-            try:
-                _restore_wifi(snapshot)
-            except Exception:
-                LOG.warning("network mode rollback failed", exc_info=True)
             with self._lock:
                 self.desired = self.mode
                 self.busy = False
                 self.observed = FAILED
                 self._fail_since = time.monotonic()
+
+
+def _sudo_net_helper(action: str) -> int:
+    argv = net_helper_argv(action)
+    LOG.info("net helper: %s", " ".join(argv))
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        LOG.exception("net helper spawn failed")
+        return 1
+    if proc.returncode != 0:
+        LOG.warning(
+            "net helper rc=%s %s",
+            proc.returncode,
+            (proc.stderr or proc.stdout or "").strip(),
+        )
+    return int(proc.returncode)
+
+
+def _guard_light_control(*, name: str = "", iface: str = "") -> None:
+    if name and (name == WIZ_AP_CONNECTION_ID or is_wiz_lights_profile(name, "")):
+        raise RuntimeError("refusing WIZ-LIGHTS in LIGHT-CONTROL switch")
+    if iface and iface == WIZ_AP_IFACE:
+        raise RuntimeError("refusing wlan1 in LIGHT-CONTROL switch")
 
 
 def _nmcli(args: list[str], timeout: float = 20.0) -> tuple[int, str, str]:
@@ -310,6 +372,7 @@ def _sta_connection() -> str:
     for name in _connections():
         ssid, mode = _ssid_and_mode(name)
         if ssid == SSID_LIGHT_CONTROL and mode in {"", "infrastructure"}:
+            _guard_light_control(name=name)
             return name
     raise RuntimeError("LIGHT-CONTROL station profile missing")
 
@@ -319,6 +382,8 @@ def _ap_exists() -> bool:
 
 
 def _ensure_ap_profile(sta: str, iface: str) -> None:
+    _guard_light_control(name=sta, iface=iface)
+    _guard_light_control(name=AP_CONNECTION_ID)
     if not _ap_exists():
         _nmcli_ok(["connection", "clone", sta, AP_CONNECTION_ID])
     _nmcli_ok(
@@ -365,14 +430,17 @@ def _active_wifi_connections() -> list[str]:
 
 
 def _down(name: str) -> None:
+    _guard_light_control(name=name)
     _nmcli(["connection", "down", name], timeout=15.0)
 
 
 def _up(name: str) -> None:
+    _guard_light_control(name=name)
     _nmcli_ok(["connection", "up", name], timeout=25.0)
 
 
 def _wait_ipv4(iface: str, timeout: float = 20.0) -> None:
+    _guard_light_control(iface=iface)
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         rc, out, _err = _nmcli(["-t", "-f", "IP4.ADDRESS", "device", "show", iface])
@@ -409,8 +477,10 @@ def _onboard_ifname() -> str:
                 continue
             onboard.append(name)
     if onboard:
+        _guard_light_control(iface=onboard[0])
         return onboard[0]
     if wifi:
+        _guard_light_control(iface=wifi[0])
         return wifi[0]
     raise RuntimeError("no wifi device")
 
@@ -419,7 +489,9 @@ def _apply_standalone() -> None:
     if not dhcp_range_excludes_reserved():
         raise RuntimeError("dhcp range overlaps reserved addresses")
     sta = _sta_connection()
+    _guard_light_control(name=sta)
     iface = _onboard_ifname()
+    _guard_light_control(iface=iface)
     _ensure_ap_profile(sta, iface)
     _down(sta)
     _up(AP_CONNECTION_ID)
@@ -428,21 +500,32 @@ def _apply_standalone() -> None:
 
 def _apply_network() -> None:
     sta = _sta_connection()
+    _guard_light_control(name=sta)
+    iface = _onboard_ifname()
+    _guard_light_control(iface=iface)
     if _ap_exists():
         _down(AP_CONNECTION_ID)
     _up(sta)
-    iface = _onboard_ifname()
     _wait_ipv4(iface)
+
+
+def _protected_wifi_names() -> set[str]:
+    """WIZ-LIGHTS must survive LIGHT-CONTROL NETWORK/STANDALONE rollback."""
+    names = {WIZ_AP_CONNECTION_ID}
+    for name in _connections():
+        ssid, _mode = _ssid_and_mode(name)
+        if is_wiz_lights_profile(name, ssid):
+            names.add(name)
+    return names
 
 
 def _restore_wifi(snapshot: list[str]) -> None:
     active = _active_wifi_connections()
-    for name in active:
-        if name not in snapshot:
-            _down(name)
-    for name in snapshot:
-        if name not in active:
-            _up(name)
+    downs, ups = restore_wifi_plan(snapshot, active, _protected_wifi_names())
+    for name in downs:
+        _down(name)
+    for name in ups:
+        _up(name)
 
 
 def network_page_records(
@@ -465,10 +548,10 @@ def network_page_records(
     wiz = wiz_lights_iface(ifaces)
     if wiz is not None:
         used.add(wiz.name)
-        detail = [SSID_WIZ_LIGHTS, "CLIENT", wiz.name]
+        detail = [SSID_WIZ_LIGHTS, "AP", wiz.name]
         if wiz.ipv4:
             detail.append(wiz.ipv4)
-        rows.append((SSID_WIZ_LIGHTS, "CLIENT", tuple(detail)))
+        rows.append((SSID_WIZ_LIGHTS, "AP", tuple(detail)))
     for iface in shown:
         if iface.name in used:
             continue

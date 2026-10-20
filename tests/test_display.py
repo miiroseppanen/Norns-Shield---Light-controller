@@ -12,7 +12,8 @@ def test_play_screen_has_pixels():
     r = Renderer()
     r.render(state)
     ascii_art = r.fb.to_ascii()
-    assert any(c == "#" for c in ascii_art.splitlines()[0])
+    band = ascii_art.splitlines()[:16]
+    assert any("#" in line for line in band)
     assert r.fb.to_ppm()[:2] == b"P6"
 
 

@@ -13,6 +13,8 @@ LC_SRC="$ROOT/packaging/systemd/light-console.service"
 LC_DST="/etc/systemd/system/light-console.service"
 OLED_SRC="$ROOT/packaging/systemd/shieldxl-oled-starting.service"
 OLED_DST="/etc/systemd/system/shieldxl-oled-starting.service"
+OLED_STOP_SRC="$ROOT/packaging/systemd/shieldxl-oled-shutdown.service"
+OLED_STOP_DST="/etc/systemd/system/shieldxl-oled-shutdown.service"
 QLC_SRC="$ROOT/packaging/systemd/qlcplus.service"
 QLC_DST="/etc/systemd/system/qlcplus.service"
 START_SRC="$ROOT/packaging/systemd/qlc-startup-chaser.service"
@@ -66,13 +68,14 @@ install_unit() {
 }
 
 install_unit "$OLED_SRC" "$OLED_DST"
+install_unit "$OLED_STOP_SRC" "$OLED_STOP_DST"
 install_unit "$LC_SRC" "$LC_DST"
 install_unit "$QLC_SRC" "$QLC_DST"
 install_unit "$START_SRC" "$START_DST"
 
 systemctl daemon-reload
-systemctl reset-failed qlcplus.service qlc-startup-chaser.service light-console.service shieldxl-oled-starting.service || true
-systemctl enable shieldxl-oled-starting.service light-console.service qlcplus.service qlc-startup-chaser.service
+systemctl reset-failed qlcplus.service qlc-startup-chaser.service light-console.service shieldxl-oled-starting.service shieldxl-oled-shutdown.service || true
+systemctl enable shieldxl-oled-starting.service shieldxl-oled-shutdown.service light-console.service qlcplus.service qlc-startup-chaser.service
 systemctl restart qlcplus.service
 systemctl restart light-console.service
 # oneshot After=qlcplus; start it so RemainAfterExit tracks this boot.

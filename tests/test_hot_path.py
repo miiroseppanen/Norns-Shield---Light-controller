@@ -47,6 +47,9 @@ def test_tick_and_refresh_source_has_no_shell_collectors():
     assert "iwgetid" not in src
     assert "fetch_config_html" not in src
     assert "/config" not in src
+    live = (ROOT / "light_console/output/live_path.py").read_text(encoding="utf-8")
+    assert "subprocess" not in live
+    assert "nmcli" not in live
     ws = (ROOT / "light_console/qlc/ws_client.py").read_text(encoding="utf-8")
     assert "DRAIN_MAX_MSG" in ws
     assert "while True:" not in ws.split("def _drain")[1].split("def ")[0]

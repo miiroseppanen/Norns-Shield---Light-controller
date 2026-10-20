@@ -6,6 +6,7 @@ from light_console.status.network import apply_upstream
 from light_console.status.wiz import apply_wiz_online
 
 from light_console.ui.menu import menu_index_of
+from light_console.ui.pages import wiz_setting_detail
 
 from tests.conftest import make_controller
 
@@ -16,14 +17,15 @@ def test_wiz_count_not_hardcoded_six():
     c._finish()
     assert c.state.wiz_online == 4
     assert c.state.wiz_expected == 9
-    assert any("WIZ 4/9" in w for w in c.state.warnings)
+    assert not any("WIZ 4/9" in w for w in c.state.warnings)
 
 
-def test_wiz_zero_wait():
+def test_wiz_zero_devices_is_not_a_fault():
     c = make_controller(wiz_ap_up=True, wiz_online=0, wiz_expected=6, wiz_enabled=True)
     c._finish()
-    assert c.state.wiz_waiting
-    assert any("WAIT" in w for w in c.state.warnings)
+    assert wiz_setting_detail(c.state) == "NO DEVICES"
+    assert not c.state.wiz_waiting
+    assert not any("WAIT" in w for w in c.state.warnings)
 
 
 def test_missing_launchpad_warning_show_continues():
@@ -81,8 +83,8 @@ def test_blackout_is_local_state_not_a_stuck_output_loop():
     c = make_controller()
     c.inject_cooked(ButtonEvent(1, "press"))
     c.state.screen = ScreenId.PARAMS
-    c.state.param_index = 2
-    c.params.index = 2
+    c.state.param_index = 4
+    c.params.index = 4
     c.inject_cooked(ButtonEvent(3, "press"))
     assert c.state.blackout is True
     assert c.qlc.blackout is True

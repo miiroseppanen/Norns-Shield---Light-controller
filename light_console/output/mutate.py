@@ -1,7 +1,8 @@
-"""Surgical QLC workspace Art-Net destination edits.
+"""Surgical QLC workspace Art-Net destination and universe-capacity edits.
 
-Changes only the managed universe (QLC UI U2 / XML ID 1) Art-Net Output
-line/UID/Name and PluginParameters outputIP. Unrelated XML is preserved.
+Managed-universe patches change only QLC UI U2 / XML ID 1 Art-Net Output
+line/UID/Name and PluginParameters outputIP. UniverseChannels edits are a
+separate helper and must not change outputIP or routing.
 """
 
 from __future__ import annotations
@@ -11,10 +12,11 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
-from light_console.output.routing import parse_output_routes
+from light_console.output.routing import is_loopback_ip, parse_output_routes
 from light_console.output.targets import (
     MANAGED_QLC_UNIVERSE,
     MANAGED_XML_UNIVERSE_ID,
+    PROD_PI,
     ApplyPlan,
     is_forbidden_apply_host,
 )
@@ -29,6 +31,7 @@ _ARTNET_OUTPUT = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _OUTPUT_IP = re.compile(r'\boutputIP="[^"]*"')
+_UNIVERSE_CHANNELS = re.compile(r'\bUniverseChannels="[^"]*"')
 
 
 class RoutePatchError(ValueError):
@@ -40,6 +43,133 @@ def universe_block(xml: str, universe_id: int) -> str | None:
         if int(match.group(2)) == universe_id:
             return match.group(0)
     return None
+
+
+def set_artnet_universe_channels(xml: str, xml_universe_id: int, channels: int) -> str:
+    """Set Art-Net UniverseChannels on one universe. Leaves outputIP/routing intact."""
+    if not isinstance(channels, int) or channels < 1 or channels > 512:
+        raise RoutePatchError("UniverseChannels must be 1..512")
+    found = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal found
+        if int(match.group(2)) != xml_universe_id:
+            return match.group(0)
+        found += 1
+        body = _set_output_channels(match.group(3), channels)
+        return f"{match.group(1)}{body}{match.group(4)}"
+
+    patched = _UNIVERSE.sub(repl, xml)
+    if found == 0:
+        raise RoutePatchError(f"universe ID {xml_universe_id} is missing")
+    if found > 1:
+        raise RoutePatchError(f"universe ID {xml_universe_id} is ambiguous")
+    if PROD_PI in patched:
+        raise RoutePatchError("production Pi address present")
+    return patched
+
+
+def _set_output_channels(body: str, channels: int) -> str:
+    matches = list(_ARTNET_OUTPUT.finditer(body))
+    if len(matches) != 1:
+        raise RoutePatchError("Art-Net output is missing or ambiguous")
+
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(4)
+        if _UNIVERSE_CHANNELS.search(inner):
+            inner = _UNIVERSE_CHANNELS.sub(f'UniverseChannels="{channels}"', inner, count=1)
+        else:
+            inner = _insert_universe_channels(inner, channels)
+        return f"{match.group(1)}{match.group(2)}{match.group(3)}{inner}{match.group(5)}"
+
+    return _ARTNET_OUTPUT.sub(repl, body, count=1)
+
+
+def _insert_universe_channels(inner: str, channels: int) -> str:
+    def insert(match: re.Match[str]) -> str:
+        opening, attrs, close = match.group(1), match.group(2), match.group(3)
+        if "UniverseChannels=" in attrs:
+            return match.group(0)
+        return f'{opening}{attrs} UniverseChannels="{channels}"{close}'
+
+    patched, n = re.subn(
+        r"(<PluginParameters\b)([^>]*)(/?>)",
+        insert,
+        inner,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    if n != 1:
+        raise RoutePatchError("PluginParameters missing on Art-Net output")
+    return patched
+
+
+def universe_channels(xml: str, xml_universe_id: int) -> int | None:
+    block = universe_block(xml, xml_universe_id)
+    if block is None:
+        return None
+    match = _UNIVERSE_CHANNELS.search(block)
+    if match is None:
+        return None
+    raw = match.group(0).split("=", 1)[1].strip().strip('"')
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def validate_universe_channels_patch(
+    original: str, patched: str, xml_universe_id: int, channels: int
+) -> None:
+    """Routing, outputIP, and unrelated universes must stay identical."""
+    _parse_workspace(patched)
+    if PROD_PI in patched:
+        raise RoutePatchError("production Pi address present")
+    before = parse_output_routes(original)
+    after = parse_output_routes(patched)
+    if before != after:
+        raise RoutePatchError("output routing changed")
+    for match in _UNIVERSE.finditer(original):
+        uid = int(match.group(2))
+        if uid == xml_universe_id:
+            continue
+        if universe_block(original, uid) != universe_block(patched, uid):
+            raise RoutePatchError(f"universe ID {uid} changed")
+    block = universe_block(patched, xml_universe_id)
+    if block is None:
+        raise RoutePatchError(f"universe ID {xml_universe_id} is missing")
+    if universe_channels(patched, xml_universe_id) != channels:
+        raise RoutePatchError("UniverseChannels mismatch")
+    orig_ip = _OUTPUT_IP.search(universe_block(original, xml_universe_id) or "")
+    new_ip = _OUTPUT_IP.search(block)
+    if (orig_ip.group(0) if orig_ip else "") != (new_ip.group(0) if new_ip else ""):
+        raise RoutePatchError("outputIP changed")
+
+
+def apply_universe_channels(path: Path, xml_universe_id: int, channels: int) -> bool:
+    """Atomically set UniverseChannels. Returns False when already at target."""
+    original = path.read_text(encoding="utf-8")
+    if universe_channels(original, xml_universe_id) == channels:
+        validate_universe_channels_patch(original, original, xml_universe_id, channels)
+        return False
+    patched = set_artnet_universe_channels(original, xml_universe_id, channels)
+    validate_universe_channels_patch(original, patched, xml_universe_id, channels)
+    tmp = path.with_name(f".{path.name}.next")
+    tmp.write_text(patched, encoding="utf-8")
+    try:
+        text = tmp.read_text(encoding="utf-8")
+        validate_universe_channels_patch(original, text, xml_universe_id, channels)
+        _parse_workspace(text)
+        if PROD_PI in text:
+            raise RoutePatchError("production Pi address present")
+    except Exception:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+    os.replace(tmp, path)
+    return True
 
 
 def patch_managed_artnet(xml: str, plan: ApplyPlan) -> str:
@@ -175,3 +305,40 @@ def parse_ok(path: Path) -> None:
         parse_output_routes(path.read_text(encoding="utf-8"))
     except (OSError, QxwError) as exc:
         raise RoutePatchError(str(exc)) from exc
+
+
+def preserve_managed_universe(prepared: str, current: str) -> str:
+    """Copy current Shield U2 Art-Net onto a prepare_for_shield workspace.
+
+    WiZ / QLC U1 (XML ID 0) stays as prepared (loopback). Current U2
+    (XML ID 1) is transplanted verbatim. Never writes the operator source.
+    """
+    if PROD_PI in prepared or PROD_PI in current:
+        raise RoutePatchError("production Pi address present")
+    cur_block = universe_block(current, MANAGED_XML_UNIVERSE_ID)
+    prep_block = universe_block(prepared, MANAGED_XML_UNIVERSE_ID)
+    wiz_prep = universe_block(prepared, 0)
+    if cur_block is None or prep_block is None or wiz_prep is None:
+        raise RoutePatchError("U1/U2 universe block missing")
+    routes = parse_output_routes(current)
+    managed = [
+        route
+        for route in routes
+        if route.qlc_universe == MANAGED_QLC_UNIVERSE and route.plugin == "ARTNET"
+    ]
+    if len(managed) != 1:
+        raise RoutePatchError("current Shield master has no unique U2 Art-Net")
+    dest = (managed[0].output_ip or "").strip()
+    if dest and is_forbidden_apply_host(dest):
+        raise RoutePatchError(f"refusing forbidden U2 destination {dest}")
+    out = prepared if cur_block == prep_block else prepared.replace(prep_block, cur_block, 1)
+    if universe_block(out, 0) != wiz_prep:
+        raise RoutePatchError("WiZ loopback routing changed")
+    if universe_block(out, MANAGED_XML_UNIVERSE_ID) != cur_block:
+        raise RoutePatchError("U2 routing was not preserved")
+    if PROD_PI in out:
+        raise RoutePatchError("production Pi address present after preserve")
+    wiz = [route for route in parse_output_routes(prepared) if route.qlc_universe == 1]
+    if not wiz or not is_loopback_ip(wiz[0].output_ip or ""):
+        raise RoutePatchError("prepared workspace lost WiZ loopback")
+    return out

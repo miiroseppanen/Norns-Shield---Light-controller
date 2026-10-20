@@ -208,6 +208,9 @@ def test_status_file_tracks_output_and_master(tmp_path, monkeypatch):
     text = path.read_text()
     assert "qlc=CONNECTED" in text
     assert "master=80" in text
+    assert "sat=100" in text
+    assert "hue=0" in text
+    assert "wiz=off" in text
     c.qlc.simulate_link(False)
     c.tick(now=1.0)
     text = path.read_text()

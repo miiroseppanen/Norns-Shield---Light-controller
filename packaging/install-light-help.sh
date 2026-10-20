@@ -6,6 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HELP_SRC="$ROOT/packaging/light-help"
+WRAP_SRC="$ROOT/packaging/light-help.wrapper"
 PROFILE_SRC="$ROOT/packaging/profile.d/light-help.sh"
 CHECK_SRC="$ROOT/packaging/light-appliance-check"
 HELP_DST="/usr/local/bin/light-help"
@@ -21,13 +22,15 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 [[ -f "$HELP_SRC" ]] || { echo "FAIL: missing $HELP_SRC" >&2; exit 1; }
+[[ -f "$WRAP_SRC" ]] || { echo "FAIL: missing $WRAP_SRC" >&2; exit 1; }
 [[ -f "$PROFILE_SRC" ]] || { echo "FAIL: missing $PROFILE_SRC" >&2; exit 1; }
 [[ -f "$CHECK_SRC" ]] || { echo "FAIL: missing $CHECK_SRC" >&2; exit 1; }
 [[ -f "$SEED_QXW" ]] || { echo "FAIL: missing $SEED_QXW" >&2; exit 1; }
 
-install -m 755 -o root -g root "$HELP_SRC" "$HELP_DST"
+install -m 755 -o root -g root "$WRAP_SRC" "$HELP_DST"
 install -m 644 -o root -g root "$PROFILE_SRC" "$PROFILE_DST"
 install -m 755 -o root -g root "$CHECK_SRC" "$CHECK_DST"
+chmod 755 "$HELP_SRC"
 
 install -d -o light -g light -m 755 "$SHOWS_DIR"
 if [[ ! -e "$SHOWS_DIR/$SEED_NAME" ]]; then

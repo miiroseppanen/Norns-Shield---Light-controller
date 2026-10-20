@@ -19,6 +19,14 @@ class MenuItem:
 MENU_ITEMS: tuple[MenuItem, ...] = (
     MenuItem("status", "STATUS", action="play"),
     MenuItem("output", "OUTPUT", page_id=ScreenId.OUTPUT.value),
+    MenuItem(
+        "wiz",
+        "WIZ",
+        children=(
+            MenuItem("wiz-control", "CONTROL", page_id=ScreenId.WIZ_CONTROL.value),
+            MenuItem("wiz-devices", "DEVICES", page_id=ScreenId.WIZ_DEVICES.value),
+        ),
+    ),
     MenuItem("system", "SYSTEM", page_id=ScreenId.SYSTEM.value),
 )
 

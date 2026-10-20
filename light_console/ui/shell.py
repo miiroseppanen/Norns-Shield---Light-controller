@@ -8,7 +8,7 @@ Show functions are not here — screens talk to parameters, parameters mutate Ap
 
 from __future__ import annotations
 
-from light_console.controls.encoders import wrap_index
+from light_console.controls.encoders import clamp_index
 from light_console.display.framebuffer import Framebuffer
 from light_console.hardware.events import E1, K1, K2, K3
 from light_console.power import MockPowerService, PowerService
@@ -33,7 +33,7 @@ class NornsUIShell:
         self.power = power or MockPowerService()
         self.actions = actions
         self.screens = build_screens()
-        state.menu_count = len(self.nav.current_items())
+        self.nav.sync_menu_view(state)
         state.param_count = len(self.params)
         state.system_count = SYSTEM_ROW_COUNT
         self.params.sync_index_to_state(state)
@@ -64,7 +64,7 @@ class NornsUIShell:
             if n == E1:
                 items = self.nav.current_items()
                 if items:
-                    self.state.menu_index = wrap_index(
+                    self.state.menu_index = clamp_index(
                         self.state.menu_index, delta, len(items)
                     )
                     self.state.menu_count = len(items)

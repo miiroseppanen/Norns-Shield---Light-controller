@@ -28,18 +28,32 @@ from light_console.display.layout import (
 )
 from light_console.display.marquee import field_offset
 from light_console.display.viewport import ListViewport
+from light_console.controls.encoders import bound_index
 from light_console.display.lifecycle import (
     STARTING_UP_TEXT,
     SHUTTING_DOWN_TEXT,
     draw_lifecycle,
 )
 from light_console.display.widgets import CELL_W, text, text_clipped
+from light_console.display.wordmark import (
+    HUE_Y,
+    MASTER_Y,
+    META_Y,
+    OUTPUT_Y,
+    QLC_Y,
+    SAT_Y,
+    draw_wordmark,
+)
+from light_console.live_color import format_hue, format_percent
 from light_console.output.pages import OutputItem, build_output_pages_from_state
+from light_console.output.summary import play_output_summary
 from light_console.output.targets import APPLYABLE_TARGETS, last_octet
 from light_console.state import AppState, ScreenId
 from light_console.ui.menu import MENU_ITEMS, MenuItem
 from light_console.output.netmode import oled_mode_word, toggle_filled
-from light_console.ui.vocab import IDLE, LOST, OFF, OFFLINE, OK, RUNNING, STOPPED
+from light_console.ui.vocab import IDLE, NEW, OFF, OFFLINE, RUNNING, STOPPED
+from light_console.wiz.device_map import format_dmx_span
+from light_console.wiz.view import list_label
 
 
 def qlc_output_label(state: AppState) -> str:
@@ -64,11 +78,18 @@ def play_qlc_word(state: AppState) -> str:
 
 
 def wiz_status_word(state: AppState) -> str:
+    from light_console.output.wiz_lifecycle import oled_wiz_detail
+
     if not state.wiz_enabled:
         return OFF
-    if state.wiz_online >= state.wiz_expected and state.wiz_expected > 0:
-        return OK
-    return LOST
+    detail = oled_wiz_detail(
+        desired=True,
+        ap=state.wiz_ap_state,
+        bridge=state.wiz_bridge_state,
+        busy=state.wiz_lifecycle_busy,
+        online=state.wiz_online,
+    )
+    return detail or OFF
 
 
 def viewport_for(total: int, focused: int, offset: int, visible: int = CONTENT_ROWS) -> ListViewport:
@@ -124,25 +145,43 @@ def draw_list(
 
 
 def draw_play(fb: Framebuffer, state: AppState) -> None:
-    draw_page_header(fb, "LIGHT CONSOLE")
-    qlc = play_qlc_word(state)
-    startup = startup_oled_word(state)
-    midi = OK if state.launchpad_connected else OFFLINE
-    output = (state.output_mode or "SAFE")[:9]
-    live = dmx_output_active(state.dmx_by_universe)
     now = state.ui_now
-    draw_status_row(fb, ROW * 1, "QLC", qlc, now=now)
-    draw_status_row(fb, ROW * 2, "SHOW", "MASTER", now=now)
-    draw_status_row(fb, ROW * 3, "STARTUP", startup, warn=False, now=now)
-    draw_status_row(fb, ROW * 4, "MIDI", midi, now=now)
-    draw_status_row(fb, ROW * 5, "OUTPUT", output, activity=live, now=now)
-    draw_status_row(fb, ROW * 6, "MASTER", f"{state.master}%", warn=False, now=now)
+    draw_wordmark(fb)
+    live = dmx_output_active(state.dmx_by_universe)
+    draw_status_row(fb, MASTER_Y, "MASTER", format_percent(state.master), warn=False, now=now)
+    draw_status_row(fb, SAT_Y, "SAT", format_percent(state.saturation), warn=False, now=now)
+    draw_status_row(fb, HUE_Y, "HUE", format_hue(state.hue_shift), warn=False, now=now)
+    draw_status_row(
+        fb,
+        OUTPUT_Y,
+        "OUTPUT",
+        play_output_summary(state),
+        activity=live,
+        now=now,
+    )
+    draw_status_row(fb, QLC_Y, "QLC", play_qlc_word(state), now=now)
+    if not state.launchpad_connected:
+        draw_status_row(fb, META_Y, "MIDI", OFFLINE, now=now)
+    else:
+        draw_status_row(
+            fb,
+            META_Y,
+            "STARTUP",
+            startup_oled_word(state),
+            warn=False,
+            now=now,
+        )
 
 
 def draw_menu(fb: Framebuffer, state: AppState, items: tuple[MenuItem, ...] | None = None) -> None:
-    draw_page_header(fb, "MENU")
-    rows = items if items is not None else MENU_ITEMS
-    labels = [item.label for item in rows]
+    title = state.menu_title or "MENU"
+    if items is not None:
+        labels = [item.label for item in items]
+    elif state.menu_labels:
+        labels = list(state.menu_labels)
+    else:
+        labels = [item.label for item in MENU_ITEMS]
+    draw_page_header(fb, title)
     draw_list(
         fb,
         labels,
@@ -157,7 +196,9 @@ def draw_params(fb: Framebuffer, state: AppState, params=None) -> None:
     draw_page_header(fb, "PARAMS")
     if params is None:
         labels = [
-            f"Master       {state.master}%",
+            f"Master       {format_percent(state.master)}",
+            f"Sat          {format_percent(state.saturation)}",
+            f"Hue          {format_hue(state.hue_shift)}",
             f"Speed        {state.speed}",
             f"Blackout     {'On' if state.blackout else 'Off'}",
             f"Scene        {state.current_scene}",
@@ -322,11 +363,11 @@ def draw_output(fb: Framebuffer, state: AppState) -> None:
         draw_page_header(fb, "OUTPUT")
         draw_empty_state(fb, "NO DEVICES")
         return
-    index = state.output_page % len(pages)
+    index = bound_index(state.output_page, len(pages))
     page = pages[index]
     now = state.ui_now
     if state.output_detail and page.items:
-        item = page.items[state.output_focus % len(page.items)]
+        item = page.items[bound_index(state.output_focus, len(page.items))]
         if item.target_id:
             draw_page_header(fb, item.title[:16])
             _draw_node_detail(fb, item, state)
@@ -337,15 +378,14 @@ def draw_output(fb: Framebuffer, state: AppState) -> None:
         return
     draw_page_header(fb, page.title[:16])
     if page.kind == "universe":
-        from light_console.display.universe_map import draw_universe_raster
+        from light_console.display.universe_map import draw_universe_overview
 
-        uni = page.universe or 1
-        buf = state.dmx_by_universe.get(uni - 1, ())
-        draw_universe_raster(
+        draw_universe_overview(
             fb,
-            universe_id=uni - 1,
+            universes=page.universes or state.qlc_universes or (page.universe or 1,),
             fixtures=state.fixtures,
-            buf=buf,
+            dmx=state.dmx_by_universe,
+            start_universe=state.output_universe or page.universe or 1,
             now=now,
         )
         return
@@ -452,51 +492,192 @@ def draw_system(fb: Framebuffer, state: AppState) -> None:
     from light_console.ui.pages import (
         SYSTEM_ROW_COUNT,
         system_slots,
-        wiz_setting_detail,
+        system_visible_count,
     )
 
     draw_page_header(fb, "SYSTEM")
-    if state.system_index >= SYSTEM_ROW_COUNT:
-        state.system_index %= SYSTEM_ROW_COUNT
-    vp = viewport_for(SYSTEM_ROW_COUNT, state.system_index, state.scroll_offset, SYSTEM_ROW_COUNT)
+    state.system_index = bound_index(state.system_index, SYSTEM_ROW_COUNT)
+    visible = system_visible_count(state)
+    vp = viewport_for(SYSTEM_ROW_COUNT, state.system_index, state.scroll_offset, visible)
     draw_scrollbar(fb, vp.total, vp.visible, vp.offset)
-    wiz_detail = wiz_setting_detail(state)
+    y = CONTENT_Y
+    window = set(vp.window())
     for slot in system_slots(state):
+        if slot.index not in window:
+            continue
         focused = slot.index == vp.focused
         if slot.kind == "qlc":
             draw_toggle_row(
                 fb,
-                slot.y,
+                y,
                 "QLC SERVICE",
                 state.qlc_desired,
                 focused=focused,
                 rail_h=slot.rows * ROW,
             )
-            draw_subordinate_status(fb, slot.y + ROW, play_qlc_word(state))
-        elif slot.kind == "wiz":
-            draw_toggle_row(
-                fb,
-                slot.y,
-                "WIZ CONTROL",
-                state.wiz_enabled,
-                focused=focused,
-                rail_h=slot.rows * ROW,
-            )
-            if wiz_detail:
-                draw_subordinate_status(fb, slot.y + ROW, wiz_detail)
+            draw_subordinate_status(fb, y + ROW, play_qlc_word(state))
         elif slot.kind == "net":
             draw_toggle_row(
                 fb,
-                slot.y,
+                y,
                 "NETWORK MODE",
                 toggle_filled(state.network_mode),
                 focused=focused,
                 rail_h=slot.rows * ROW,
             )
             word = (state.network_mode_observed or oled_mode_word(state.network_mode)).strip()
-            draw_subordinate_status(fb, slot.y + ROW, word)
+            draw_subordinate_status(fb, y + ROW, word)
+        elif slot.kind == "version":
+            draw_action_row(fb, y, "VERSION", focused=focused, x=TOGGLE_LABEL_X)
         elif slot.kind == "shutdown":
-            draw_action_row(fb, slot.y, "SHUTDOWN", focused=focused, x=TOGGLE_LABEL_X)
+            draw_action_row(fb, y, "SHUTDOWN", focused=focused, x=TOGGLE_LABEL_X)
+        y += slot.rows * ROW
+
+
+def draw_wiz_control(fb: Framebuffer, state: AppState) -> None:
+    from light_console.ui.pages import wiz_setting_detail
+
+    draw_page_header(fb, "WIZ CONTROL")
+    detail = wiz_setting_detail(state)
+    rows = 2 if detail else 1
+    draw_toggle_row(
+        fb,
+        CONTENT_Y,
+        "WIZ",
+        state.wiz_enabled,
+        focused=True,
+        rail_h=rows * ROW,
+    )
+    if detail:
+        draw_subordinate_status(fb, CONTENT_Y + ROW, detail)
+
+
+def draw_version(fb: Framebuffer, state: AppState) -> None:
+    draw_page_header(fb, "VERSION")
+    draw_text_row(fb, CONTENT_Y, "LIGHT CTRL")
+    draw_status_row(fb, CONTENT_Y + ROW, "VERSION", state.version or "--")
+    rev = (state.build_revision or "").strip()
+    if rev:
+        draw_status_row(fb, CONTENT_Y + ROW * 2, "REV", rev[:7])
+
+
+def _draw_wiz_device_detail(fb: Framebuffer, state: AppState) -> None:
+    rows = state.wiz_device_rows
+    if not rows:
+        draw_empty_state(fb, "NO DEVICES")
+        return
+    row = rows[bound_index(state.wiz_device_index, len(rows))]
+    if row.kind == "new" or row.slot is None:
+        draw_page_header(fb, "NEW WIZ DEVICE")
+        lines = (
+            f"MAC {row.id}",
+            f"IP {row.observed_ip or '--'}",
+            f"STATE {NEW}",
+            "NOT MAPPED",
+        )
+    else:
+        draw_page_header(fb, "WIZ DEVICE")
+        span = format_dmx_span(row.slot)
+        lines = (
+            f"SLOT {row.slot:02d} {span}",
+            f"MAC {row.id}",
+            f"STATE {row.state}",
+            f"IP {row.observed_ip or '--'}",
+        )
+    for i, line in enumerate(lines):
+        draw_text_row(fb, CONTENT_Y + i * ROW, line)
+
+
+def _draw_wiz_prompt(fb: Framebuffer, state: AppState) -> None:
+    prompt = state.wiz_prompt
+    mac = (state.wiz_prompt_mac or "").strip()
+    short = mac[-6:].upper() if len(mac) >= 6 else mac.upper()
+    if prompt == "add":
+        draw_page_header(fb, "ADD DEVICE")
+        lines = (f"MAC {short or mac}", f"SLOT {state.wiz_prompt_slot:02d}")
+    elif prompt == "move":
+        draw_page_header(fb, "MOVE")
+        lines = (f"SLOT {state.wiz_prompt_target:02d}",)
+    elif prompt == "swap":
+        draw_page_header(fb, "SWAP")
+        lines = (f"{state.wiz_prompt_slot:02d} <-> {state.wiz_prompt_target:02d}",)
+    elif prompt == "disable":
+        draw_page_header(fb, "DISABLE")
+        lines = (f"SLOT {state.wiz_prompt_slot:02d}",)
+    elif prompt == "enable":
+        draw_page_header(fb, "ENABLE")
+        lines = (f"SLOT {state.wiz_prompt_slot:02d}",)
+    elif prompt == "full":
+        draw_page_header(fb, "ADD DEVICE")
+        lines = ("FULL",)
+    elif prompt == "fail":
+        draw_page_header(fb, "WIZ DEVICES")
+        lines = ((state.wiz_prompt_error or "WRITE FAIL")[:16],)
+    elif prompt == "actions":
+        draw_page_header(fb, "WIZ DEVICE")
+        rows = state.wiz_device_rows
+        row = rows[bound_index(state.wiz_device_index, len(rows))] if rows else None
+        enable = bool(row is not None and not row.enabled)
+        labels = ("MOVE", "ENABLE" if enable else "DISABLE")
+        for i, label in enumerate(labels):
+            draw_action_row(
+                fb,
+                CONTENT_Y + i * ROW,
+                label,
+                focused=state.wiz_action_index == i,
+                x=LABEL_X,
+            )
+        return
+    else:
+        draw_page_header(fb, "WIZ DEVICES")
+        lines = (prompt.upper()[:16],)
+    for i, line in enumerate(lines):
+        draw_text_row(fb, CONTENT_Y + i * ROW, line)
+
+
+def draw_wiz_devices(fb: Framebuffer, state: AppState) -> None:
+    from light_console.ui.pages import wiz_devices_viewport
+
+    if state.wiz_prompt:
+        _draw_wiz_prompt(fb, state)
+        return
+    if state.wiz_device_detail:
+        _draw_wiz_device_detail(fb, state)
+        return
+    draw_page_header(fb, "WIZ DEVICES")
+    note = (state.wiz_devices_note or "").strip()
+    y0 = CONTENT_Y
+    if note:
+        draw_subordinate_status(fb, y0, note)
+        y0 += ROW
+    rows = state.wiz_device_rows
+    if not rows:
+        draw_empty_state(fb, "NO DEVICES")
+        return
+    vp = wiz_devices_viewport(state)
+    draw_scrollbar(
+        fb,
+        vp.total,
+        vp.visible,
+        vp.offset,
+        y=y0,
+        h=vp.visible * ROW,
+    )
+    now = state.ui_now
+    for i, idx in enumerate(vp.window()):
+        y = y0 + i * ROW
+        if y + ROW > CONTENT_Y + CONTENT_ROWS * ROW:
+            break
+        row = rows[idx]
+        draw_status_row(
+            fb,
+            y,
+            list_label(row),
+            row.state,
+            focused=idx == vp.focused,
+            activity=row.dmx_active,
+            now=now,
+        )
 
 
 SHUTTING_DOWN_LINES = (SHUTTING_DOWN_TEXT,)
@@ -522,6 +703,9 @@ DRAWERS = {
     ScreenId.LOAD_SHOW: draw_load_show,
     ScreenId.OUTPUT: draw_output,
     ScreenId.SYSTEM: draw_system,
+    ScreenId.WIZ_CONTROL: draw_wiz_control,
+    ScreenId.WIZ_DEVICES: draw_wiz_devices,
+    ScreenId.VERSION: draw_version,
     ScreenId.STARTING_UP: draw_starting_up,
     ScreenId.SHUTTING_DOWN: draw_shutting_down,
 }

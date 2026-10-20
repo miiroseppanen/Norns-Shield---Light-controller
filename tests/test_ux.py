@@ -30,7 +30,7 @@ from light_console.display.layout import (
 )
 from light_console.display.renderer import Renderer
 from light_console.display.viewport import ListViewport, scrollbar_metrics
-from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, K3
+from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, K2, K3
 from light_console.output.dmx import empty_universe
 from light_console.output.fixtures import PatchedFixture, fixture_activity
 from light_console.output.network import NetIface
@@ -45,7 +45,7 @@ from light_console.ui.pages import (
     SYSTEM_QLC_TOGGLE,
     SYSTEM_ROW_COUNT,
     SYSTEM_SHUTDOWN_ROW,
-    SYSTEM_WIZ_TOGGLE,
+    SYSTEM_VERSION,
     system_slots,
     wiz_setting_detail,
 )
@@ -172,7 +172,7 @@ def test_viewport_empty_one_exact_fit_and_overflow():
     assert scrollbar_metrics(8, 7, 1, 56) is not None
 
 
-def test_viewport_long_lists_and_wrap_snap_to_top():
+def test_viewport_long_lists_clamp_at_ends():
     vp = ListViewport(total=40, focused=0, offset=0, visible=7)
     vp.move(20)
     assert vp.focused == 20
@@ -183,6 +183,12 @@ def test_viewport_long_lists_and_wrap_snap_to_top():
     vp.reveal()
     assert vp.offset == 33
     vp.move(1)
+    assert vp.focused == 39
+    assert vp.offset == 33
+    vp.move(20)
+    assert vp.focused == 39
+    assert vp.offset == 33
+    vp.move(-100)
     assert vp.focused == 0
     assert vp.offset == 0
     huge = scrollbar_metrics(400, 7, 393, 56)
@@ -337,12 +343,15 @@ def test_activity_ignores_focus_and_marquee_time():
 
 
 def test_qlc_running_and_wiz_enabled_do_not_animate_alone():
+    from light_console.display.wordmark import OUTPUT_Y, QLC_Y
+
     c = make_controller(qlc_observed=RUNNING, wiz_enabled=True, wiz_tx_active=False)
     c.state.dmx_by_universe = {}
     c.state.screen = ScreenId.PLAY
     r = Renderer()
     fb = r.render(c.state)
-    assert region_on_count(fb, ACTIVITY_X, ROW, ACTIVITY_W, ROW) == 0
+    assert region_on_count(fb, ACTIVITY_X, OUTPUT_Y, ACTIVITY_W, ROW) == 0
+    assert region_on_count(fb, ACTIVITY_X, QLC_Y, ACTIVITY_W, ROW) == 0
     c.state.screen = ScreenId.SYSTEM
     r.force_dirty()
     fb = r.render(c.state)
@@ -430,18 +439,19 @@ def test_qlc_toggle_does_not_look_like_shutdown():
     assert c.state.screen == ScreenId.SYSTEM
     assert c.power.request_count == 0
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_WIZ_TOGGLE
+    assert c.state.system_index == SYSTEM_NET_TOGGLE
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.qlc_service.commands == ["stop"]
     assert c.state.screen == ScreenId.SYSTEM
     assert c.power.request_count == 0
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_NET_TOGGLE
+    assert c.state.system_index == SYSTEM_VERSION
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert c.state.screen == ScreenId.SYSTEM
+    assert c.state.screen == ScreenId.VERSION
     assert c.power.request_count == 0
-    c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
+    c.inject_cooked(ButtonEvent(K2, "press"))
+    assert c.state.screen == ScreenId.SYSTEM
+    c.state.system_index = SYSTEM_SHUTDOWN_ROW
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.SHUTTING_DOWN
 
@@ -452,15 +462,18 @@ def test_system_focus_order_is_four_actions():
     c.state.system_index = SYSTEM_QLC_TOGGLE
     assert SYSTEM_ROW_COUNT == 4
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_WIZ_TOGGLE
-    c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_NET_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
+    assert c.state.system_index == SYSTEM_VERSION
+    c.inject_cooked(EncoderEvent(E2, 1))
     assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_QLC_TOGGLE
-    c.inject_cooked(EncoderEvent(E2, -1))
     assert c.state.system_index == SYSTEM_SHUTDOWN_ROW
+    c.inject_cooked(EncoderEvent(E2, -1))
+    assert c.state.system_index == SYSTEM_VERSION
+    c.state.system_index = SYSTEM_QLC_TOGGLE
+    c.inject_cooked(EncoderEvent(E2, -1))
+    assert c.state.system_index == SYSTEM_QLC_TOGGLE
 
 
 def test_system_qlc_state_is_not_separately_focusable():
@@ -468,13 +481,13 @@ def test_system_qlc_state_is_not_separately_focusable():
     c.state.screen = ScreenId.SYSTEM
     c.state.system_index = SYSTEM_QLC_TOGGLE
     c.inject_cooked(EncoderEvent(E2, 1))
-    assert c.state.system_index == SYSTEM_WIZ_TOGGLE
+    assert c.state.system_index == SYSTEM_NET_TOGGLE
     slots = system_slots(c.state)
     assert slots[0].kind == "qlc"
     assert slots[0].rows == 2
-    assert slots[1].kind == "wiz"
-    assert slots[2].kind == "net"
-    assert slots[2].rows == 2
+    assert slots[1].kind == "net"
+    assert slots[2].kind == "version"
+    assert slots[2].rows == 1
     assert slots[3].kind == "shutdown"
 
 
@@ -485,15 +498,15 @@ def test_system_layout_has_no_scrollbar_and_groups_settings():
     slots = system_slots(c.state)
     assert [slot.index for slot in slots] == [
         SYSTEM_QLC_TOGGLE,
-        SYSTEM_WIZ_TOGGLE,
         SYSTEM_NET_TOGGLE,
+        SYSTEM_VERSION,
         SYSTEM_SHUTDOWN_ROW,
     ]
-    qlc, wiz, net, shutdown = slots
+    qlc, net, version, shutdown = slots
     assert qlc.y == CONTENT_Y
-    assert wiz.y == qlc.y + qlc.rows * ROW
-    assert net.y == wiz.y + wiz.rows * ROW
-    assert shutdown.y == net.y + net.rows * ROW
+    assert net.y == qlc.y + qlc.rows * ROW
+    assert version.y == net.y + net.rows * ROW
+    assert shutdown.y == version.y + version.rows * ROW
     assert _toggle_match(fb, qlc.y, False)
     assert _toggle_match(fb, net.y, True)
     assert not _toggle_match(fb, shutdown.y, True)
@@ -506,12 +519,14 @@ def test_system_layout_has_no_scrollbar_and_groups_settings():
 def test_system_wiz_off_has_no_redundant_off_line():
     fb, c = _render_system(wiz_enabled=False, qlc_observed=STOPPED, qlc_desired=False)
     assert wiz_setting_detail(c.state) is None
-    wiz = system_slots(c.state)[1]
-    net = system_slots(c.state)[2]
-    assert wiz.rows == 1
-    assert _toggle_match(fb, wiz.y, False)
-    assert net.kind == "net"
-    assert net.y == wiz.y + wiz.rows * ROW
+    kinds = [slot.kind for slot in system_slots(c.state)]
+    assert "wiz" not in kinds
+    assert "wiz_devices" not in kinds
+    assert kinds == ["qlc", "net", "version", "shutdown"]
+    fb_src = ROOT / "light_console/display/screens.py"
+    system_fn = fb_src.read_text(encoding="utf-8").split("def draw_system")[1].split("def draw_wiz_control")[0]
+    assert "WIZ CONTROL" not in system_fn
+    assert "WIZ DEVICES" not in system_fn
     c._finish()
 
 
@@ -546,10 +561,10 @@ def test_wiz_default_off_is_not_a_fault_and_does_not_animate():
     r = Renderer()
     r.render(c.state)
     assert activity_frame(c.state.ui_now, False) is None
-    c.state.screen = ScreenId.SYSTEM
+    c.state.screen = ScreenId.WIZ_CONTROL
     r.force_dirty()
     fb = r.render(c.state)
-    wiz_y = system_slots(c.state)[1].y
+    wiz_y = CONTENT_Y
     off = Framebuffer()
     draw_toggle(off, TOGGLE_X, wiz_y, False)
     assert region_on_count(fb, TOGGLE_X, wiz_y, TOGGLE_D, TOGGLE_D) == region_on_count(
@@ -561,14 +576,15 @@ def test_wiz_enabled_idle_does_not_animate_lost_does_not_animate():
     assert activity_frame(0.4, False) is None
     c = make_controller(wiz_enabled=True, wiz_online=6, wiz_tx_active=False)
     assert c.state.wiz_enabled is True
-    assert wiz_setting_detail(c.state) == "6/6 ONLINE"
+    assert wiz_setting_detail(c.state) == "READY"
     assert activity_frame(c.state.ui_now, c.state.wiz_tx_active) is None
     c.state.wiz_tx_active = True
     assert activity_frame(0.0, True) == 0
     c.state.wiz_tx_active = False
     c.state.wiz_online = 0
     c._finish()
-    assert any("WIZ" in w for w in c.state.warnings)
+    assert wiz_setting_detail(c.state) == "NO DEVICES"
+    assert not any("WAIT" in w for w in c.state.warnings)
     assert activity_frame(0.3, False) is None
 
 

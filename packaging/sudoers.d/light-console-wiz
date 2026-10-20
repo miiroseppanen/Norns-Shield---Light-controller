@@ -1,0 +1,7 @@
+# Narrow WIZ CONTROL helper. visudo -cf before install.
+# Hardcoded WIZ-LIGHTS / wlan1 / wizbridge only. No generic network or unit commands.
+
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-wiz ap-up
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-wiz ap-down
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-wiz bridge-start
+light ALL=(root) NOPASSWD: /usr/sbin/light-console-wiz bridge-stop

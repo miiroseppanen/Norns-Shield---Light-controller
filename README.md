@@ -1,5 +1,13 @@
 # Shield XL Light Console
 
+```
+//      //  ////  // // /////     ////  ///// ////
+//      // //     // //   //     //      //   // //
+//      // // //  /////   //     //      //   ////
+//      // //  // // //   //     //      //   // //
+//////  //  ////  // //   //      ////   //   //  //
+```
+
 Standalone lighting console UI for **Raspberry Pi 4 + Denki Oto shieldXL**. QLC+ is the show engine. This repository is **new and separate** from the production wiz-bridge Pi and from the Norns Shield SD card.
 
 **Milestone 0.5** — QLC+ 5.2.2 runs as `qlcplus.service` (`-w`). Light Console stays up if QLC is stopped. PLAY E1 MASTER → `GM_VALUE`. Physically verified. Tag `v0.5.0`.

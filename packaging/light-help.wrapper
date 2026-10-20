@@ -1,0 +1,12 @@
+#!/bin/sh
+# Installed as /usr/local/bin/light-help. Follow the deployed tree so rsync
+# updates login help without a second sudo install.
+TARGET=/home/light/light-console/packaging/light-help
+if [ -x "$TARGET" ]; then
+  exec "$TARGET"
+fi
+if [ -f "$TARGET" ]; then
+  exec /bin/sh "$TARGET"
+fi
+echo "light-help: missing $TARGET" >&2
+exit 1

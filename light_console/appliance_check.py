@@ -21,7 +21,7 @@ from light_console.startup_chaser import _function_list, _function_status
 
 MASTER = Path("/home/light/shows/master.qxw")
 EXPECTED_ARGV = ["/usr/bin/qlcplus-qml", "-w", "-o", "/home/light/shows/master.qxw"]
-EXPECTED_FUNCTIONS = 100
+EXPECTED_FUNCTIONS = 109
 LC_STATUS = Path("/tmp/light-console.status")
 STARTUP_STATUS = Path("/tmp/qlc-startup.status")
 WS_URL = "ws://127.0.0.1:9999/qlcplusWS"

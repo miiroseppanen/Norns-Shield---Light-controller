@@ -8,7 +8,11 @@ from pathlib import Path
 
 from light_console.config import AppConfig
 from light_console.controls.buttons import ButtonTracker
-from light_console.controls.encoders import fold_encoder_stream, is_nav_encoder, nav_steps
+from light_console.controls.encoders import fold_encoder_stream, is_nav_encoder, nav_steps, bound_index
+from light_console.display.lifecycle import (
+    consume_starting_mark,
+    hold_starting_up_visible,
+)
 from light_console.display.renderer import Renderer
 from light_console.display.screens import qlc_output_label
 from light_console.hardware.base import HardwareBackend
@@ -22,6 +26,11 @@ from light_console.output.netmode import (
     NetworkModeService,
     oled_mode_word,
     parse_network_mode,
+)
+from light_console.output.wiz_lifecycle import (
+    LinuxWizLifecycleService,
+    MockWizLifecycleService,
+    WizLifecycleService,
 )
 from light_console.output.apply import (
     APPLYING,
@@ -54,18 +63,40 @@ from light_console.qlc.runtime import (
 )
 from light_console.qlc.service import LinuxQlcService, MockQlcService, QlcService
 from light_console.qxw import QxwError
-from light_console.ui.vocab import FAILED, SWITCHING
+from light_console.ui.vocab import FAILED, READY, SWITCHING
 from light_console.shows import ShowCatalog
 from light_console.showdef import ShowDefinition
 from light_console.state import AppState, ScreenId, UiMode
 from light_console.status.dmx import apply_dmx
 from light_console.status.midi import apply_launchpad
 from light_console.status.network import apply_upstream, apply_wiz_ap
-from light_console.status.wiz import bump_wiz
+from light_console.status.wiz import apply_wiz_observed, bump_wiz
 from light_console.ui.nav import Navigation
 from light_console.ui.pages import SYSTEM_ROW_COUNT
 from light_console.ui.params import bind_console_params
 from light_console.ui.shell import NornsUIShell
+from light_console.wiz.device_map import (
+    WizDeviceMap,
+    WizMapCorruptError,
+    WizMapError,
+    WizMapValidationError,
+    load_map,
+    parse_legacy_file,
+    save_map,
+)
+from light_console.wiz.edit import (
+    add_device,
+    lowest_unused_slot,
+    move_device,
+    set_enabled,
+    swap_devices,
+)
+from light_console.wiz.observe import (
+    WizObservedDevice,
+    empty_observed_snapshot,
+    read_observed_status,
+)
+from light_console.wiz.view import ROW_NEW, join_wiz_devices
 
 LOG = logging.getLogger("light-console")
 STATUS_PATH = Path("/tmp/light-console.status")
@@ -94,7 +125,10 @@ class Controller:
         prefs_path: Path | None = None,
         qlc_service: QlcService | None = None,
         net_service: NetworkModeService | None = None,
+        wiz_service: WizLifecycleService | None = None,
         live_diag: bool | None = None,
+        wiz_map_path: Path | None = None,
+        wiz_observed_path: Path | None = None,
     ) -> None:
         self.config = config
         self.state = state
@@ -129,6 +163,13 @@ class Controller:
         self.state.network_mode = self.net_service.mode
         self.state.network_mode_observed = self.net_service.poll()
         self.state.network_mode_busy = self.net_service.busy
+        self.wiz_service = wiz_service or MockWizLifecycleService(
+            desired=bool(prefs.wiz_enabled)
+        )
+        if isinstance(self.wiz_service, LinuxWizLifecycleService):
+            self.wiz_service.status_path = STATUS_PATH
+            self.wiz_service.set_desired(bool(prefs.wiz_enabled))
+        self._sync_wiz_runtime()
         self.nav = Navigation()
         self.params = bind_console_params(state)
         self.binding = QlcBinding(qlc)
@@ -155,6 +196,15 @@ class Controller:
         self._route_ping = icmp_reachable
         self._route_arp: dict[str, str] | None = None
         self.state.system_count = SYSTEM_ROW_COUNT
+        self._wiz_map_path = wiz_map_path
+        self._wiz_observed_path = wiz_observed_path
+        self._wiz_observed_mtime: float | None = None
+        self._wiz_map: WizDeviceMap | None = None
+        self._wiz_map_error = ""
+        self._wiz_observations: tuple[WizObservedDevice, ...] = ()
+        self._load_wiz_cache()
+        self._poll_wiz_observed()
+        self._sync_wiz_view()
         if not self.state.hostname:
             try:
                 self.state.hostname = socket.gethostname()
@@ -184,6 +234,16 @@ class Controller:
             return
         if self.state.screen != ScreenId.STARTING_UP:
             return
+        t0 = getattr(self.hardware, "starting_up_at", None)
+        marked = consume_starting_mark()
+        slept = hold_starting_up_visible(t0, enabled=marked)
+        elapsed = (time.monotonic() - t0) if t0 is not None else 0.0
+        if marked:
+            LOG.info(
+                "STARTING UP reveal after %.2fs (held %.2fs)",
+                elapsed,
+                slept,
+            )
         self.state.mode = UiMode.PLAY
         self.state.screen = ScreenId.PLAY
         self.state.reset_list_window()
@@ -193,6 +253,7 @@ class Controller:
         if self.state.shutdown_requested and self.power.shutdown_requested:
             return
         self.nav.begin_shutdown(self.state)
+        self._write_status()
         try:
             self.renderer.force_dirty()
             self.renderer.render(self.state)
@@ -316,6 +377,7 @@ class Controller:
         if not self.state.route_busy:
             self.state.qlc_desired = self.qlc_service.desired_on
         self._sync_network_mode()
+        self._sync_wiz_runtime()
         if self.state.dmx_by_universe and self.state.fixtures:
             update_seen(self.state.fixtures, self.state.dmx_by_universe, self.state.dmx_seen_ids)
         if not self.qlc.connected():
@@ -412,8 +474,14 @@ class Controller:
         self._save_prefs()
 
     def set_wiz_enabled(self, on: bool) -> None:
+        if self.wiz_service.busy or self.state.wiz_lifecycle_busy:
+            return
+        if not self.wiz_service.set_desired(on):
+            return
         self.state.wiz_enabled = on
         self._save_prefs()
+        self._sync_wiz_runtime()
+        self._sync_wiz_view()
 
     def set_network_mode(self, mode: str) -> None:
         if self.net_service.busy or self.state.network_mode_busy:
@@ -434,6 +502,15 @@ class Controller:
         self.state.network_mode_observed = observed
         if not self.net_service.busy and observed not in {SWITCHING, FAILED}:
             self.state.network_mode_observed = oled_mode_word(applied)
+
+    def _sync_wiz_runtime(self) -> None:
+        snap = self.wiz_service.snapshot()
+        self.state.wiz_lifecycle_busy = snap.busy
+        self.state.wiz_ap_state = snap.ap
+        self.state.wiz_bridge_state = snap.bridge
+        self.state.wiz_tx_armed = snap.tx_armed
+        self.state.wiz_ap_up = snap.ap == READY
+        self.state.wiz_bridge_available = snap.bridge == READY
 
     def _save_prefs(self) -> None:
         save_prefs(
@@ -499,7 +576,7 @@ class Controller:
         """Select the active logical show. Does not load or restart QLC."""
         if self.catalog is None or not state.show_ids:
             return
-        show_id = state.show_ids[state.show_index % len(state.show_ids)]
+        show_id = state.show_ids[bound_index(state.show_index, len(state.show_ids))]
         try:
             show = self.catalog.activate(show_id)
         except Exception as exc:
@@ -535,6 +612,194 @@ class Controller:
             return
         self._apply_show(current)
 
+    def apply_wiz_snapshot(
+        self,
+        device_map: WizDeviceMap | None = None,
+        observations: tuple[WizObservedDevice, ...] = (),
+        *,
+        bridge_available: bool = False,
+        error: str = "",
+    ) -> None:
+        """Tests / observe-only cache. Never sends WiZ traffic."""
+        self._wiz_map = device_map
+        self._wiz_observations = observations
+        self._wiz_map_error = error
+        self.state.wiz_bridge_available = bridge_available
+        self._sync_wiz_view()
+
+    def _selected_wiz_row(self):
+        rows = self.state.wiz_device_rows
+        if not rows:
+            return None
+        return rows[bound_index(self.state.wiz_device_index, len(rows))]
+
+    def open_wiz_device(self) -> None:
+        row = self._selected_wiz_row()
+        if row is None:
+            return
+        self.state.wiz_prompt_error = ""
+        self.state.wiz_prompt_swap = ""
+        if row.kind == ROW_NEW:
+            slot = lowest_unused_slot(self._wiz_map)
+            if slot is None:
+                self.state.wiz_prompt = "full"
+                self.state.wiz_prompt_error = "FULL"
+                return
+            self.state.wiz_prompt = "add"
+            self.state.wiz_prompt_mac = row.id
+            self.state.wiz_prompt_slot = slot
+            return
+        self.state.wiz_prompt = "actions"
+        self.state.wiz_prompt_mac = row.id
+        self.state.wiz_prompt_slot = int(row.slot or 0)
+        self.state.wiz_action_index = 0
+
+    def confirm_wiz_prompt(self) -> None:
+        prompt = self.state.wiz_prompt
+        if prompt in {"full", "fail"}:
+            self.state.wiz_prompt = ""
+            self.state.wiz_prompt_error = ""
+            return
+        if prompt == "actions":
+            if self.state.wiz_action_index == 0:
+                self.state.wiz_prompt = "move"
+                self.state.wiz_prompt_target = max(1, int(self.state.wiz_prompt_slot or 1))
+                return
+            row = self._selected_wiz_row()
+            self.state.wiz_prompt = "enable" if row is not None and not row.enabled else "disable"
+            return
+        if prompt == "add":
+            slot = lowest_unused_slot(self._wiz_map)
+            if slot is None:
+                self.state.wiz_prompt = "full"
+                self.state.wiz_prompt_error = "FULL"
+                return
+            self._commit_wiz_map(lambda current: add_device(current, self.state.wiz_prompt_mac, slot))
+            return
+        if prompt == "move":
+            target = int(self.state.wiz_prompt_target)
+            mac = self.state.wiz_prompt_mac
+            current = self._wiz_map
+            if current is None:
+                self._fail_wiz_prompt("NO MAP")
+                return
+            occupant = next((item for item in current.devices if item.slot == target), None)
+            if occupant is not None and occupant.id != mac:
+                self.state.wiz_prompt = "swap"
+                self.state.wiz_prompt_swap = occupant.id
+                return
+            self._commit_wiz_map(lambda device_map: move_device(device_map, mac, target))
+            return
+        if prompt == "swap":
+            self._commit_wiz_map(
+                lambda device_map: swap_devices(
+                    device_map, self.state.wiz_prompt_mac, self.state.wiz_prompt_swap
+                )
+            )
+            return
+        if prompt == "disable":
+            self._commit_wiz_map(
+                lambda device_map: set_enabled(device_map, self.state.wiz_prompt_mac, False)
+            )
+            return
+        if prompt == "enable":
+            self._commit_wiz_map(
+                lambda device_map: set_enabled(device_map, self.state.wiz_prompt_mac, True)
+            )
+
+    def _fail_wiz_prompt(self, word: str) -> None:
+        self.state.wiz_prompt = "fail"
+        self.state.wiz_prompt_error = word[:16]
+
+    def _commit_wiz_map(self, mutate) -> None:
+        path = self._wiz_map_path
+        if path is None:
+            self._fail_wiz_prompt("NO MAP")
+            return
+        try:
+            updated = mutate(self._wiz_map)
+            save_map(path, updated)
+            self._wiz_map = load_map(path)
+            self._wiz_map_error = ""
+            self.state.wiz_prompt = ""
+            self.state.wiz_prompt_error = ""
+            self.state.wiz_prompt_swap = ""
+            self._sync_wiz_view()
+        except (WizMapValidationError, WizMapCorruptError, WizMapError, OSError) as exc:
+            LOG.warning("WiZ map edit failed: %s", exc)
+            self._fail_wiz_prompt("WRITE FAIL")
+
+    def _poll_wiz_observed(self) -> None:
+        """Local status file only. Missing/malformed fail closed. Never probes."""
+        path = self._wiz_observed_path
+        if path is None:
+            return
+        try:
+            try:
+                mtime = path.stat().st_mtime
+            except OSError:
+                self._wiz_observed_mtime = None
+                apply_wiz_observed(self.state, empty_observed_snapshot(error="missing"))
+                self._wiz_observations = ()
+                return
+            if mtime == self._wiz_observed_mtime:
+                return
+            snapshot = read_observed_status(path)
+            self._wiz_observed_mtime = mtime
+            apply_wiz_observed(self.state, snapshot)
+            self._wiz_observations = snapshot.observations
+        except Exception:
+            LOG.debug("wiz observed poll failed", exc_info=True)
+            self._wiz_observed_mtime = None
+            apply_wiz_observed(self.state, empty_observed_snapshot(error="malformed"))
+            self._wiz_observations = ()
+
+    def _load_wiz_cache(self) -> None:
+        self._wiz_map = None
+        self._wiz_map_error = ""
+        path = self._wiz_map_path
+        if path is None:
+            return
+        if path.is_file():
+            try:
+                self._wiz_map = load_map(path)
+            except (WizMapCorruptError, WizMapValidationError) as exc:
+                self._wiz_map_error = "MAP CORRUPT"
+                LOG.warning("WiZ map unreadable: %s", exc)
+            except (OSError, WizMapError):
+                LOG.debug("WiZ map load failed", exc_info=True)
+            return
+        legacy = path.with_name("fixtures.json")
+        if not legacy.is_file():
+            return
+        try:
+            self._wiz_map = parse_legacy_file(legacy)
+        except (WizMapError, OSError):
+            LOG.debug("legacy WiZ fixtures preview failed", exc_info=True)
+
+    def _sync_wiz_view(self) -> None:
+        view = join_wiz_devices(
+            self._wiz_map,
+            self._wiz_observations,
+            wiz_enabled=self.state.wiz_enabled,
+            bridge_available=self.state.wiz_bridge_available,
+            error=self._wiz_map_error,
+        )
+        self.state.wiz_device_rows = view.rows
+        self.state.wiz_devices_note = view.note
+        self.state.wiz_map_extended = view.extended
+        self.state.wiz_device_count = len(view.rows)
+        if (
+            self.state.screen == ScreenId.WIZ_DEVICES
+            and not self.state.wiz_prompt
+            and not self.state.wiz_device_detail
+        ):
+            from light_console.ui.pages import wiz_devices_viewport
+
+            vp = wiz_devices_viewport(self.state)
+            self.state.wiz_device_index = vp.focused
+            self.state.scroll_offset = vp.offset
+
     def _finish(self) -> None:
         self.state.clamp_indices()
         self.params.store_index(self.state)
@@ -542,6 +807,9 @@ class Controller:
         self._refresh_startup_runtime()
         if self.catalog is not None:
             self._refresh_show_state()
+        self._sync_wiz_runtime()
+        self._poll_wiz_observed()
+        self._sync_wiz_view()
         self.state.rebuild_warnings()
         self._write_status()
 
@@ -574,17 +842,44 @@ class Controller:
             self.state, live_running=live, file_status=file_status
         )
 
+    def _sync_identify(self) -> None:
+        """Publish the selected WIZ DEVICES MAC as transient identify intent.
+
+        The local status file is the only Light Console → bridge control path.
+        Rendering a frame must not call this.
+        """
+        mac = ""
+        if (
+            self.state.wiz_tx_armed
+            and not self.state.shutdown_requested
+            and self.state.screen == ScreenId.WIZ_DEVICES
+        ):
+            row = self._selected_wiz_row()
+            ident = (row.id if row is not None else "").strip().lower()
+            if len(ident) == 12:
+                try:
+                    int(ident, 16)
+                except ValueError:
+                    ident = ""
+                mac = ident
+        self.state.wiz_identify_mac = mac
+
     def _write_status(self) -> None:
+        self._sync_identify()
         screen = self.state.screen.value if hasattr(self.state.screen, "value") else str(self.state.screen)
         body = (
             f"screen={screen}\n"
             f"master={self.state.master}\n"
+            f"sat={self.state.saturation}\n"
+            f"hue={self.state.hue_shift}\n"
             f"qlc_state={self.state.qlc_state}\n"
             f"qlc={qlc_output_label(self.state)}\n"
             f"qlc_observed={self.state.qlc_observed}\n"
             f"startup={self.state.startup_status}\n"
             f"network_mode={self.state.network_mode}\n"
             f"network_observed={self.state.network_mode_observed}\n"
+            f"wiz={'on' if self.state.wiz_tx_armed else 'off'}\n"
+            f"identify={self.state.wiz_identify_mac}\n"
         )
         if body == self._status_body:
             return

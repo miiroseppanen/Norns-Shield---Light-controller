@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from light_console.controls.encoders import wrap_index
+from light_console.controls.encoders import bound_index, clamp_index
+from light_console.live_color import format_hue, format_percent
 from light_console.state import AppState
 
 
@@ -68,8 +69,26 @@ class NumberParameter(Parameter):
         return self._formatter(self.get())
 
     def delta(self, d: int) -> None:
-        nxt = self.get() + d * self.step
-        nxt = max(self.min, min(self.max, nxt))
+        self.set(self.get() + d * self.step)
+
+    def set(self, value: int) -> None:
+        nxt = max(self.min, min(self.max, int(value)))
+        if nxt != self.get():
+            self._set(nxt)
+            if self._on_change:
+                self._on_change()
+
+
+class WrapNumberParameter(NumberParameter):
+    """Circular integer, used for hue degrees."""
+
+    def delta(self, d: int) -> None:
+        self.set(self.get() + d * self.step)
+
+    def set(self, value: int) -> None:
+        from light_console.live_color import wrap_hue_deg
+
+        nxt = wrap_hue_deg(int(value))
         if nxt != self.get():
             self._set(nxt)
             if self._on_change:
@@ -113,7 +132,7 @@ class OptionParameter(Parameter):
             idx = opts.index(self.get())
         except ValueError:
             idx = 0
-        nxt = opts[wrap_index(idx, d, len(opts))]
+        nxt = opts[clamp_index(idx, d, len(opts))]
         if nxt != self.get():
             self._set(nxt)
             if self._on_change:
@@ -217,16 +236,16 @@ class Params:
     def selected(self) -> Parameter:
         if not self._items:
             raise IndexError("no parameters")
-        return self._items[self.index % len(self._items)]
+        return self._items[bound_index(self.index, len(self._items))]
 
     def select_delta(self, d: int) -> None:
         if not self._items:
             return
-        self.index = wrap_index(self.index, d, len(self._items))
+        self.index = clamp_index(self.index, d, len(self._items))
 
     def sync_index_to_state(self, state: AppState) -> None:
         if self._items:
-            self.index = state.param_index % len(self._items)
+            self.index = bound_index(state.param_index, len(self._items))
             state.param_index = self.index
             state.param_count = len(self._items)
 
@@ -236,7 +255,7 @@ class Params:
 
 
 def bind_console_params(state: AppState) -> Params:
-    """Master/speed/blackout/scene — one object each, used by PLAY and PARAMS."""
+    """Master/sat/hue plus PARAMS extras. PLAY maps E1/E2/E3 onto the first three."""
 
     def set_scene(name: str) -> None:
         state.current_scene = name
@@ -254,7 +273,27 @@ def bind_console_params(state: AppState) -> Params:
                 minimum=0,
                 maximum=100,
                 step=1,
-                formatter=lambda v: f"{v}%",
+                formatter=format_percent,
+            ),
+            NumberParameter(
+                "sat",
+                "Sat",
+                getter=lambda: state.saturation,
+                setter=lambda v: setattr(state, "saturation", v),
+                minimum=0,
+                maximum=200,
+                step=1,
+                formatter=format_percent,
+            ),
+            WrapNumberParameter(
+                "hue",
+                "Hue",
+                getter=lambda: state.hue_shift,
+                setter=lambda v: setattr(state, "hue_shift", v),
+                minimum=-180,
+                maximum=180,
+                step=1,
+                formatter=format_hue,
             ),
             NumberParameter(
                 "speed",

@@ -1,232 +1,71 @@
 #!/bin/sh
-# Operator cheat sheet. Static text only — no probes, no service calls.
+# Operator quick reference. Static text only — no probes, no service calls.
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+VERSION=""
+if [ -f "$ROOT/light_console/version.py" ]; then
+  VERSION=$(sed -n 's/^VERSION = "\([^"]*\)"/\1/p' "$ROOT/light_console/version.py" | head -n 1)
+fi
 cat <<'EOF'
-============================================================
-                 SHIELD XL LIGHT CONSOLE
-============================================================
+//      //  ////  // // /////     ////  ///// ////
+//      // //     // //   //     //      //   // //
+//      // // //  /////   //     //      //   ////
+//      // //  // // //   //     //      //   // //
+//////  //  ////  // //   //      ////   //   //  //
+EOF
+if [ -n "$VERSION" ]; then
+  printf '%s\n' "$VERSION"
+fi
+cat <<'EOF'
 
-CONNECTIONS
+STATUS
+  lc     systemctl status light-console --no-pager
+  qlc    systemctl status qlcplus --no-pager
+  wiz    systemctl status wizbridge --no-pager
+  iso    systemctl status shieldxl-wiz-isolation --no-pager
+  net    nmcli device status
 
-SSH:
-  ssh light@shieldxl-light.local
+RESTART
+  LC     sudo systemctl restart light-console
+  QLC    sudo systemctl restart qlcplus
 
-Known LIGHT-CONTROL address:
-  192.168.88.246
+LOGS
+  LC     journalctl -u light-console -n 80 --no-pager
+  QLC    journalctl -u qlcplus -n 80 --no-pager
+  WIZ    journalctl -u wizbridge -n 80 --no-pager
 
-QLC WEB:
-  http://shieldxl-light.local:9999
-  http://192.168.88.246:9999
+QLC
+  web    http://shieldxl-light.local:9999
+  file   /home/light/shows/master.qxw
 
+NETWORK
+  wlan0  LIGHT-CONTROL  192.168.88.246
+  wlan1  WIZ-LIGHTS AP  10.42.0.1
+  menu   WIZ -> CONTROL / DEVICES
 
-------------------------------------------------------------
-LIGHT CONSOLE
-------------------------------------------------------------
+UPDATE / CODE
+  from Mac repo:
+    cd /Users/miiroseppanen/shieldxl-light-console && rsync -az \
+      --exclude '.venv' \
+      --exclude '.git' \
+      --exclude '__pycache__' \
+      --exclude '.pytest_cache' \
+      --exclude '*.pyc' \
+      --exclude '.cursor' \
+      ./ light@shieldxl-light.local:~/light-console/
 
-STATUS:
-  systemctl status light-console --no-pager
+UPDATE / STARTUP SHOW
+  never copy onto /home/light/shows/master.qxw
+  from Mac repo:
+    ./scripts/import-production-workspace.sh --install \
+      "/Users/miiroseppanen/Library/CloudStorage/Dropbox/Valot/Showt/\
+siirtyma-startup.qxw"
 
-RESTART:
-  sudo systemctl restart light-console
-
-LOG:
-  journalctl -u light-console -n 100 --no-pager
-
-
-------------------------------------------------------------
-QLC+
-------------------------------------------------------------
-
-STATUS:
-  systemctl status qlcplus --no-pager
-
-STOP:
-  sudo systemctl stop qlcplus
-
-START:
-  sudo systemctl start qlcplus
-
-RESTART:
-  sudo systemctl restart qlcplus
-
-LOG:
-  journalctl -u qlcplus -n 100 --no-pager
-
-WEB:
-  http://shieldxl-light.local:9999
-
-Runtime is qlcplus.service:
-
-  /usr/bin/qlcplus-qml -w -o /home/light/shows/master.qxw
-
-That is the production Pi pattern. -o is a flag; the path is positional.
-WebAccess can take several minutes after a large workspace loads.
-Do not SIGTERM during Refresh 2D view.
-Do not use -9 or POST /loadProject.
-
-SHOWS remain logical groups. Interactive show control is deferred.
-
-If qlcplus.service is stopped:
-
-  sudo bash /home/light/light-console/scripts/restore-qlc.sh
-
-or:
-
-  sudo systemctl start qlcplus
-
-
-------------------------------------------------------------
-APPLIANCE CHECK
-------------------------------------------------------------
-
-Read-only. Does not start, stop, or restart services.
-
-  cd /home/light/light-console
-  python3 -m light_console.appliance_check
-
-or:
-
-  /home/light/light-console/packaging/light-appliance-check
-
-
-------------------------------------------------------------
-SHOW PROJECTS
-------------------------------------------------------------
-
-Canonical master workspace (content), not loaded automatically:
-
-  /home/light/shows/master.qxw
-
-Logical show metadata:
-
-  ls -l /home/light/shows/*.yaml
-
-OLED:
-
-  MENU -> STATUS
-  MENU -> OUTPUT
-  MENU -> SYSTEM
-
-OUTPUT E1 cycles NETWORK / ROUTING / live DMX. Read-only.
-It does not change outputs.
-
-------------------------------------------------------------
-IMPORT SHOW FROM MAC
-------------------------------------------------------------
-
-Run on the Mac, not inside Shield SSH:
-
-  cd /Users/miiroseppanen/shieldxl-light-console
-
-  ./scripts/import-show.sh --name "SHOW A" --dry-run "/path/to/show.qxw"
-
-Dry-run prints SOURCE -> MASTER ID mapping and does not write master.qxw.
-
-
-------------------------------------------------------------
-MANUAL FILE COPY
-------------------------------------------------------------
-
-These scp commands are run from the Mac terminal.
-
-FROM MAC TO SHIELD:
-
-  scp "/path/to/file.qxw" \
-    light@shieldxl-light.local:/home/light/
-
-For show projects, prefer ./scripts/import-show.sh --dry-run instead of
-copying directly into /home/light/shows/ or onto current.qxw.
-
-FROM SHIELD TO MAC:
-
-  scp light@shieldxl-light.local:/home/light/<file> .
-
-
-------------------------------------------------------------
-PROJECT / REPOSITORY
-------------------------------------------------------------
-
-Runtime/deploy path:
-  /home/light/light-console
-
-The deployed tree is an rsync copy, not a Git checkout.
-
-  cd /home/light/light-console
-  python3 -c "from light_console import VERSION; print(VERSION)"
-
-Mac repository:
-  /Users/miiroseppanen/shieldxl-light-console
-
-  cd /Users/miiroseppanen/shieldxl-light-console
-  git describe --tags --always
-  git rev-parse --short HEAD
-
-
-------------------------------------------------------------
 POWER
-------------------------------------------------------------
-
-Preferred shutdown:
-use the OLED:
-  SYSTEM -> SHUTDOWN -> K3
-
-That begins halt immediately. OLED shows SHUTTING DOWN.
-When the green LED stops blinking, power can be removed.
-
-Terminal fallback:
-
+  OLED SYSTEM -> SHUTDOWN -> K3
   sudo /usr/sbin/shutdown -h now
 
-The sudoers rule intentionally allows only this shutdown
-command passwordlessly, not general sudo.
-
-
-------------------------------------------------------------
-IMPORTANT
-------------------------------------------------------------
-
-- Production Pi is a separate machine:
-  valot@192.168.88.248
-
-- Do not copy production .qxw directly over active Shield files.
-  Use the Shield upload/import workflow.
-
-- Do not run multiple Shield light-console instances.
-  systemd owns the runtime instance.
-
-- Real lighting outputs are currently disabled/not configured
-  during Milestone 0.6 unless later milestones explicitly change this.
-
-
-------------------------------------------------------------
-LAUNCHPAD
-------------------------------------------------------------
-
-Expected device:
-  USB 1235:0036
-  ALSA name: Launchpad Mini MIDI 1
-
-STATUS:
-  lsusb
-  aconnect -l
-
-QLC 5.2.2 does not hotplug-rescan MIDI devices.
-Connect the Launchpad before QLC starts. qlcplus.service waits a
-short bounded time for it, then starts anyway if it is missing.
-
-If the Launchpad was attached after QLC was already running:
-
-  sudo systemctl restart qlcplus
-
-That restart needs the light user password (sudoers does not
-allow passwordless systemctl). It does not restart light-console.
-
-Do not match the pad by ALSA client number; that number changes.
-
-
-------------------------------------------------------------
-Show this help anytime:
+SAFETY
+  192.168.88.248 -- DO NOT CONTACT
 
   light-help
-
-============================================================
 EOF

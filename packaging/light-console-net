@@ -1,0 +1,35 @@
+#!/usr/bin/python3
+"""Narrow root helper for LIGHT-CONTROL NETWORK/STANDALONE.
+
+Hardcoded actions only. Never targets the USB radio or its hotspot.
+"""
+from __future__ import annotations
+
+import sys
+
+_ROOT = "/home/light/light-console"
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from light_console.output.netmode import apply_network_mode, validate_net_helper_argv
+
+
+def main(argv: list[str]) -> int:
+    try:
+        action = validate_net_helper_argv(argv)
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        apply_network_mode(action)
+    except Exception as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv))
+    except KeyboardInterrupt:
+        raise SystemExit(1)

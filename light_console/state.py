@@ -8,6 +8,8 @@ from light_console.output.network import NetIface
 from light_console.output.nodes import KNOWN_ARTNET_NODES, ArtNetNode
 from light_console.output.routing import OutputRoute
 from light_console.ui.vocab import FAILED, NETWORK, RUNNING, STARTING, STOPPED
+from light_console.version import VERSION
+from light_console.wiz.view import WizDeviceRow
 
 
 class UiMode(str, Enum):
@@ -27,6 +29,9 @@ class ScreenId(str, Enum):
     LOAD_SHOW = "load_show"
     OUTPUT = "output"
     SYSTEM = "system"
+    WIZ_CONTROL = "wiz_control"
+    WIZ_DEVICES = "wiz_devices"
+    VERSION = "version"
     STARTING_UP = "starting_up"
     SHUTTING_DOWN = "shutting_down"
 
@@ -62,6 +67,10 @@ class AppState:
     launchpad_connected: bool = False
     wiz_enabled: bool = False
     wiz_ap_up: bool = False
+    wiz_ap_state: str = "DOWN"
+    wiz_bridge_state: str = "STOPPED"
+    wiz_tx_armed: bool = False
+    wiz_lifecycle_busy: bool = False
     wiz_expected: int = 6
     wiz_online: int = 0
     upstream_connected: bool = False
@@ -107,6 +116,8 @@ class AppState:
     current_chaser: str = "SLOW"
     active_function: str | None = None
     master_dimmer: int = 100
+    saturation: int = 100
+    hue_shift: int = 0
     bpm: int = 124
     blackout: bool = False
     special_armed: bool = False
@@ -115,13 +126,31 @@ class AppState:
     mode: UiMode = UiMode.PLAY
     screen: ScreenId = ScreenId.PLAY
     menu_index: int = 0
-    menu_count: int = 3
+    menu_count: int = 4
+    menu_title: str = "MENU"
+    menu_labels: tuple[str, ...] = ()
     param_index: int = 0
-    param_count: int = 4
+    param_count: int = 6
     system_index: int = 0
-    system_count: int = 3
+    system_count: int = 4
+    wiz_device_index: int = 0
+    wiz_device_count: int = 0
+    wiz_device_detail: bool = False
+    wiz_prompt: str = ""
+    wiz_prompt_mac: str = ""
+    wiz_prompt_slot: int = 0
+    wiz_prompt_target: int = 1
+    wiz_prompt_error: str = ""
+    wiz_prompt_swap: str = ""
+    wiz_action_index: int = 0
+    wiz_device_rows: tuple[WizDeviceRow, ...] = ()
+    wiz_identify_mac: str = ""
+    wiz_devices_note: str = ""
+    wiz_map_extended: bool = False
+    wiz_bridge_available: bool = False
     shutdown_requested: bool = False
-    version: str = "0.4.0"
+    version: str = VERSION
+    build_revision: str = ""
     hostname: str = ""
     uptime_s: int = 0
     marquee_key: str = ""
@@ -148,7 +177,7 @@ class AppState:
     def selected_function(self) -> str:
         if not self.functions:
             return "—"
-        return self.functions[self.selected_index % len(self.functions)]
+        return self.functions[max(0, min(len(self.functions) - 1, self.selected_index))]
 
     @property
     def qlc_lost(self) -> bool:
@@ -160,31 +189,46 @@ class AppState:
 
     @property
     def wiz_waiting(self) -> bool:
-        return self.wiz_enabled and self.wiz_ap_up and self.wiz_online == 0
+        return bool(
+            self.wiz_enabled
+            and (
+                self.wiz_lifecycle_busy
+                or self.wiz_ap_state == STARTING
+                or self.wiz_bridge_state == STARTING
+            )
+        )
 
     @property
     def ready(self) -> bool:
         return self.qlc_connected and self.qlc_project_loaded and not self.startup_running
 
     def clamp_indices(self) -> None:
+        from light_console.controls.encoders import bound_index
+
         if self.scenes:
-            self.scene_index %= len(self.scenes)
+            self.scene_index = bound_index(self.scene_index, len(self.scenes))
             self.current_scene = self.scenes[self.scene_index]
         if self.chasers:
-            self.chaser_index %= len(self.chasers)
+            self.chaser_index = bound_index(self.chaser_index, len(self.chasers))
             self.current_chaser = self.chasers[self.chaser_index]
         if self.show_ids:
-            self.show_index %= len(self.show_ids)
+            self.show_index = bound_index(self.show_index, len(self.show_ids))
             self.show_count = len(self.show_ids)
         elif self.show_files:
-            self.show_index %= len(self.show_files)
+            self.show_index = bound_index(self.show_index, len(self.show_files))
             self.show_count = len(self.show_files)
         if self.functions:
-            self.selected_index %= len(self.functions)
-        self.menu_index %= max(1, self.menu_count)
-        self.param_index %= max(1, self.param_count)
-        self.system_index %= max(1, self.system_count)
+            self.selected_index = bound_index(self.selected_index, len(self.functions))
+        self.menu_index = bound_index(self.menu_index, max(1, self.menu_count))
+        self.param_index = bound_index(self.param_index, max(1, self.param_count))
+        self.system_index = bound_index(self.system_index, max(1, self.system_count))
+        self.wiz_device_count = len(self.wiz_device_rows)
+        self.wiz_device_index = bound_index(self.wiz_device_index, self.wiz_device_count)
         self.master_dimmer = max(0, min(100, self.master_dimmer))
+        self.saturation = max(0, min(200, self.saturation))
+        from light_console.live_color import wrap_hue_deg
+
+        self.hue_shift = wrap_hue_deg(self.hue_shift)
         self.bpm = max(20, min(240, self.bpm))
         self.wiz_online = max(0, min(self.wiz_expected, self.wiz_online))
         if self.qlc_universes and self.output_universe not in self.qlc_universes:
@@ -198,6 +242,10 @@ class AppState:
         self.scroll_offset = 0
         self.output_focus = 0
         self.output_detail = False
+        self.wiz_device_index = 0
+        self.wiz_device_detail = False
+        self.wiz_prompt = ""
+        self.wiz_action_index = 0
         self.marquee_key = ""
         self.marquee_t0 = 0.0
 
@@ -208,11 +256,11 @@ class AppState:
                 warnings.append("QLC FAILED")
             elif self.qlc_observed != STARTING and not self.qlc_connected:
                 warnings.append("QLC LOST")
-        if self.wiz_enabled and self.wiz_ap_up and self.wiz_online < self.wiz_expected:
-            if self.wiz_online == 0:
-                warnings.append(f"! WIZ 0/{self.wiz_expected} WAIT")
-            else:
-                warnings.append(f"! WIZ {self.wiz_online}/{self.wiz_expected}")
+        if self.wiz_enabled:
+            if self.wiz_ap_state == FAILED:
+                warnings.append("WIZ AP FAILED")
+            elif self.wiz_bridge_state == FAILED:
+                warnings.append("WIZ BRIDGE FAILED")
         if not self.launchpad_connected:
             warnings.append("MIDI LP --")
         if self.dmx_net_ok and not self.dmx_node_reachable:
@@ -248,10 +296,12 @@ def demo_live_state(wiz_expected: int = 6) -> AppState:
         current_chaser="SLOW",
         active_function="WASH",
         master_dimmer=100,
+        saturation=100,
+        hue_shift=0,
         bpm=124,
         mode=UiMode.PLAY,
         screen=ScreenId.PLAY,
-        version="0.4.0",
+        version=VERSION,
     )
     state.rebuild_warnings()
     return state

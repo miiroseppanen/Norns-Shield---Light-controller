@@ -12,10 +12,18 @@ def apply_encoder_delta(current: int, delta: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, current + delta))
 
 
-def wrap_index(index: int, delta: int, count: int) -> int:
+def bound_index(index: int, count: int) -> int:
+    """Keep an index inside a finite list. Empty list → 0."""
     if count <= 0:
         return 0
-    return (index + delta) % count
+    return apply_encoder_delta(index, 0, 0, count - 1)
+
+
+def clamp_index(index: int, delta: int, count: int) -> int:
+    """Finite list navigation. Burst deltas stop at the first or last item."""
+    if count <= 0:
+        return 0
+    return apply_encoder_delta(index, delta, 0, count - 1)
 
 
 def scale_encoder_event(event: EncoderEvent, gain: int = 1) -> EncoderEvent:
@@ -60,7 +68,7 @@ def is_nav_encoder(screen: ScreenId, encoder: int) -> bool:
     """Discrete list/menu motion, not continuous parameter edit."""
     if screen in {ScreenId.STARTING_UP, ScreenId.SHUTTING_DOWN}:
         return False
-    if screen == ScreenId.PLAY and encoder == E1:
+    if screen == ScreenId.PLAY and encoder in {E1, E2, E3}:
         return False
     if screen == ScreenId.PARAMS and encoder == E3:
         return False

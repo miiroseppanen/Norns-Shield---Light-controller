@@ -1,0 +1,15 @@
+[Unit]
+Description=Shield XL WIZ-LIGHTS isolation (block LIGHT-CONTROL from wlan1)
+Documentation=file:///home/light/light-console/docs/networking.md
+After=NetworkManager.service
+Wants=NetworkManager.service
+# Independent of wizbridge. Do not start or require wizbridge.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/shieldxl-wiz-lights.nft
+ExecStop=/usr/sbin/nft delete table inet shieldxl_wiz_lights
+
+[Install]
+WantedBy=multi-user.target

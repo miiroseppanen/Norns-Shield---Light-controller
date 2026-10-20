@@ -30,7 +30,7 @@ from light_console.display.layout import (
 from light_console.display.viewport import scrollbar_metrics
 from light_console.display.widgets import CELL_W, clip_text, text, text_center, text_clipped, text_right
 
-WARN_STATES = frozenset({"FAILED", "LOST", "OFFLINE"})
+WARN_STATES = frozenset({"FAILED", "LOST", "OFFLINE", "AP FAILED", "BRIDGE FAILED"})
 
 _CIRCLE_FILL = (
     0b0011100,
@@ -144,7 +144,7 @@ def draw_subordinate_status(
     warn: bool | None = None,
 ) -> None:
     """Observed state under an editable setting. Not a focus target."""
-    text_word = clip_text(word, 12)
+    text_word = clip_text(word, 13)
     if warn is None:
         warn = text_word in WARN_STATES
     x = TOGGLE_LABEL_X

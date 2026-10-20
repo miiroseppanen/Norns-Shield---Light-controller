@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from light_console.controls.encoders import fold_encoder_stream, is_nav_encoder, nav_steps
+from light_console.controls.encoders import (
+    bound_index,
+    clamp_index,
+    fold_encoder_stream,
+    is_nav_encoder,
+    nav_steps,
+)
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1
 from light_console.output.fixtures import PatchedFixture
 from light_console.output.pages import build_output_pages_from_state
@@ -11,6 +17,21 @@ from light_console.display.layout import CONTENT_ROWS
 from light_console.display.viewport import ListViewport
 
 from tests.conftest import make_controller
+
+
+def test_clamp_index_stops_at_ends_and_never_modulos_delta():
+    assert clamp_index(0, -1, 5) == 0
+    assert clamp_index(4, 1, 5) == 4
+    assert clamp_index(0, 1, 5) == 1
+    assert clamp_index(3, 1, 5) == 4
+    assert clamp_index(4, 20, 10) == 9
+    assert clamp_index(4, -20, 10) == 0
+    assert clamp_index(0, 1, 1) == 0
+    assert clamp_index(0, -3, 1) == 0
+    assert clamp_index(7, 1, 0) == 0
+    assert bound_index(-4, 5) == 0
+    assert bound_index(99, 5) == 4
+    assert bound_index(0, 0) == 0
 
 
 def _burst(encoder: int, n: int, step: int = 1) -> tuple[EncoderEvent, ...]:
@@ -60,7 +81,7 @@ def test_slow_and_normal_menu_detents_stay_precise():
     c.tick(now=1.2)
     assert c.state.menu_index == 2
     c.inject_cooked(EncoderEvent(E1, 2))
-    assert c.state.menu_index == 1  # wrap 3 items: 2+2 -> 1
+    assert c.state.menu_index == 3  # 4 items: 2+2 lands on last
 
 
 def test_rapid_menu_rotation_is_about_half_as_aggressive():
@@ -112,22 +133,22 @@ def test_parameter_controls_are_not_halved():
     assert c.state.master_dimmer == min(100, before + 10)
 
 
-def test_play_scene_nav_is_scaled_but_bounds_wrap():
+def test_play_sat_is_not_halved():
     c = make_controller()
-    names = list(c.state.scenes)
     c.state.screen = ScreenId.PLAY
     c.hardware.push(*_burst(E2, 10))
     c.tick(now=6.0)
-    assert c.state.scene_index == nav_steps(10) % len(names)
+    assert c.state.saturation == 110
 
 
-def test_is_nav_encoder_excludes_master_and_param_value():
+def test_is_nav_encoder_excludes_play_live_controls_and_param_value():
     assert is_nav_encoder(ScreenId.PLAY, E1) is False
+    assert is_nav_encoder(ScreenId.PLAY, E2) is False
+    assert is_nav_encoder(ScreenId.PLAY, E3) is False
     assert is_nav_encoder(ScreenId.PARAMS, E3) is False
     assert is_nav_encoder(ScreenId.MENU, E1) is True
     assert is_nav_encoder(ScreenId.SYSTEM, E2) is True
     assert is_nav_encoder(ScreenId.OUTPUT, E2) is True
-    assert is_nav_encoder(ScreenId.PLAY, E2) is True
     assert is_nav_encoder(ScreenId.PARAMS, E2) is True
 
 

@@ -36,6 +36,10 @@ def test_unit_is_light_user_shield_only():
     assert keys["WantedBy"] == "multi-user.target"
     assert "PYTHONPATH=/home/light/light-console" in text
     assert "qlcplus" not in keys["ExecStart"]
+    assert "NetworkManager.service" in keys["After"]
+    assert "network-online.target" not in keys["After"]
+    live = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+    assert not any("network-online" in ln for ln in live)
     assert not any(ln.startswith("After=dev-spidev") or ln.startswith("Wants=dev-spidev") for ln in text.splitlines())
     unit_section, rest = text.split("\n[Service]\n", 1)
     service_section = rest.split("\n[Install]\n", 1)[0]
@@ -116,11 +120,85 @@ def test_sudoers_qlc_start_stop_only():
     appliance = APPLIANCE.read_text()
     assert "light-console-qlc" in appliance
     assert "shieldxl-oled-starting.service" in appliance
+    assert "shieldxl-oled-shutdown.service" in appliance
 
 
-def test_appliance_install_does_not_enable_wiz():
+def test_oled_lifecycle_install_does_not_touch_qlc_or_master():
+    path = ROOT / "packaging/install-oled-lifecycle.sh"
+    text = path.read_text()
+    assert "shieldxl-oled-shutdown.service" in text
+    assert "master.qxw" not in text
+    assert "qlcplus" not in text
+    assert "wizbridge" not in text
+    assert "NetworkManager" not in text
+    assert "systemctl restart light-console" not in text
+    assert "systemctl restart qlcplus" not in text
+
+
+def test_wiz_lifecycle_install_does_not_enable_or_start_bridge():
+    path = ROOT / "packaging/install-wiz-lifecycle.sh"
+    text = path.read_text()
+    unit = (ROOT / "packaging/systemd/wizbridge.service").read_text()
+    sudoers = (ROOT / "packaging/sudoers.d/light-console-wiz").read_text()
+    helper = (ROOT / "packaging/light-console-wiz").read_text()
+    assert "systemctl enable wizbridge" not in text
+    assert "systemctl start wizbridge" not in text
+    assert "systemctl disable wizbridge.service" in text
+    assert "WantedBy=" not in unit
+    assert "master.qxw" not in text
+    assert "qlcplus.service" not in text
+    assert "NOPASSWD: ALL" not in sudoers
+    assert "nmcli" not in sudoers
+    assert "wlan0" not in helper
+    assert "setPilot" not in helper
+    appliance = APPLIANCE.read_text()
+    assert "systemctl enable wizbridge" not in appliance
     text = APPLIANCE.read_text()
     assert "siirtyma-shield.qxw" in text
     assert "qlc-startup-chaser.service" in text
     assert "systemctl enable wizbridge" not in text
     assert "systemctl start wizbridge" not in text
+
+
+def test_wiz_lights_install_is_wlan1_shared_and_no_wizbridge():
+    path = ROOT / "packaging/install-wiz-lights.sh"
+    text = path.read_text()
+    nft = (ROOT / "packaging/nftables/shieldxl-wiz-lights.nft").read_text()
+    unit = (ROOT / "packaging/systemd/shieldxl-wiz-isolation.service").read_text()
+    assert "wlan1" in text
+    assert 'IFACE="wlan1"' in text
+    assert "connection.interface-name" not in text or "wlan1" in text
+    assert "systemctl enable wizbridge" not in text
+    assert "systemctl start wizbridge" not in text
+    assert "hostapd.service" not in text
+    assert "-f connection.filename" not in text
+    assert "master.qxw" not in text
+    assert "10.42.0.0/24" in nft
+    assert "192.168.88.0/24" in nft
+    assert "tcp dport" not in nft
+    assert "Wants=wizbridge" not in unit
+    assert "dispatcher" not in text.lower()
+
+
+def test_netmode_helper_install_is_light_control_only():
+    helper = (ROOT / "packaging/light-console-net").read_text()
+    sudoers = (ROOT / "packaging/sudoers.d/light-console-net").read_text()
+    installer = (ROOT / "packaging/install-netmode.sh").read_text()
+    lines = [
+        ln.strip()
+        for ln in sudoers.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
+    assert lines == [
+        "light ALL=(root) NOPASSWD: /usr/sbin/light-console-net standalone",
+        "light ALL=(root) NOPASSWD: /usr/sbin/light-console-net network",
+    ]
+    assert "nmcli" not in sudoers
+    assert "NOPASSWD: ALL" not in sudoers
+    assert "wlan1" not in helper
+    assert "WIZ-LIGHTS" not in helper
+    assert "192.168.88.248" not in helper
+    assert "systemctl restart" not in installer
+    assert "master.qxw" not in installer
+    assert "light-console.service" in installer or "did not modify" in installer
+

@@ -1,9 +1,14 @@
 [Unit]
 Description=Shield XL Light Console (OLED + K1-K3 + E1-E3)
 Documentation=file:///home/light/light-console/docs/boot.md
-After=local-fs.target shieldxl-oled-starting.service
-Wants=shieldxl-oled-starting.service
-# Splash is Wants=, not Requires=: OLED failure must not block the UI.
+After=local-fs.target shieldxl-oled-starting.service shieldxl-oled-shutdown.service NetworkManager.service
+Wants=shieldxl-oled-shutdown.service NetworkManager.service
+# After NetworkManager.service so WIZ CONTROL restore can talk to nmcli.
+# Do not After=network-online.target: that waits for wlan0/LIGHT-CONTROL.
+# Boot splash is WantedBy=multi-user.target, not Wants= here. Pulling the
+# oneshot (RemainAfterExit=no) from Light Console would re-run STARTING UP
+# and hold the splash on ordinary systemctl restart.
+# Do not Requires= the splash: OLED failure must not block the UI.
 # Do not After=/Wants= dev-spidev0.0.device. On Raspberry Pi OS the
 # systemd .device unit can stay inactive while /dev/spidev0.0 exists,
 # which leaves this service as a pending job and the OLED blank.

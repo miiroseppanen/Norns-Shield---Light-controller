@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from light_console.state import AppState, ScreenId, UiMode
 from light_console.ui.menu import MENU_ITEMS, ROOT, MenuItem
+from light_console.controls.encoders import bound_index
 
 
 class Navigation:
@@ -33,8 +34,8 @@ class Navigation:
         state.screen = ScreenId.MENU
         self.stack = [ROOT.id]
         state.menu_index = 0
-        state.menu_count = len(self.current_items())
         state.reset_list_window()
+        self.sync_menu_view(state)
 
     def current_node(self) -> MenuItem:
         node = ROOT
@@ -51,11 +52,30 @@ class Navigation:
             return node.children
         return MENU_ITEMS
 
+    def sync_menu_view(self, state: AppState) -> None:
+        """Publish the current MENU listing so OLED draw_menu matches nav."""
+        node = self.current_node()
+        if not node.children:
+            return
+        items = node.children
+        state.menu_title = node.label
+        state.menu_labels = tuple(item.label for item in items)
+        state.menu_count = len(items)
+
+    def _restore_child(self, state: AppState, child_id: str) -> None:
+        items = self.current_items()
+        state.menu_index = 0
+        for i, item in enumerate(items):
+            if item.id == child_id:
+                state.menu_index = i
+                break
+        self.sync_menu_view(state)
+
     def forward(self, state: AppState) -> None:
         items = self.current_items()
         if not items:
             return
-        item = items[state.menu_index % len(items)]
+        item = items[bound_index(state.menu_index, len(items))]
         if item.action == "play":
             self.go_play(state)
             return
@@ -63,7 +83,7 @@ class Navigation:
             self.stack.append(item.id)
             state.menu_index = 0
             state.screen = ScreenId.MENU
-            state.menu_count = len(item.children)
+            self.sync_menu_view(state)
             return
         if item.page_id:
             self.stack.append(item.id)
@@ -87,18 +107,35 @@ class Navigation:
         if state.screen == ScreenId.LOAD_SHOW:
             state.screen = ScreenId.SHOWS
             return
+        if state.screen == ScreenId.VERSION:
+            state.screen = ScreenId.SYSTEM
+            state.reset_list_window()
+            return
+        if state.screen == ScreenId.WIZ_DEVICES:
+            if state.wiz_prompt:
+                state.wiz_prompt = ""
+                state.wiz_prompt_error = ""
+                state.wiz_device_detail = False
+                state.scroll_offset = 0
+                return
+            if state.wiz_device_detail:
+                state.wiz_device_detail = False
+                state.scroll_offset = 0
+                return
+            if not self.stack:
+                state.screen = ScreenId.SYSTEM
+                state.reset_list_window()
+                return
         if state.screen != ScreenId.MENU:
-            if self.stack:
-                self.stack.pop()
+            child_id = self.stack.pop() if self.stack else ""
             state.screen = ScreenId.MENU
-            state.menu_count = len(self.current_items())
+            self._restore_child(state, child_id)
             state.reset_list_window()
             return
         if len(self.stack) <= 1:
             return
-        self.stack.pop()
-        state.menu_index = 0
-        state.menu_count = len(self.current_items())
+        child_id = self.stack.pop()
+        self._restore_child(state, child_id)
 
     def at_root(self) -> bool:
         return len(self.stack) <= 1 and True

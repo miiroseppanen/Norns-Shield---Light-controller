@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from light_console import VERSION
+from light_console.version import read_build_revision
 from light_console.config import AppConfig, example_config_path, load_config
 from light_console.display.renderer import Renderer
 from light_console.hardware.base import HardwareBackend
@@ -15,6 +16,8 @@ from light_console.logutil import LOG, setup_logging
 from light_console.qlc.client import MockQLCClient
 from light_console.state import AppState, ScreenId, demo_live_state
 from light_console.ui.controller import Controller
+from light_console.wiz.device_map import default_map_path
+from light_console.wiz.observe import default_observed_path
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -52,6 +55,7 @@ def build_state(config: AppConfig, boot: bool, live: bool = True) -> AppState:
         state.special_name = config.controls.special_name
         state.version = VERSION
         state.hostname = _hostname()
+    state.build_revision = read_build_revision() or ""
     state.rebuild_warnings()
     return state
 
@@ -85,10 +89,14 @@ def run_loop(controller: Controller, hardware: HardwareBackend) -> int:
     def _usr2(_signum: int, _frame: object) -> None:
         pending_qlc_on["go"] = True
 
+    def _term(_signum: int, _frame: object) -> None:
+        controller.running = False
+
     if hasattr(signal, "SIGUSR1"):
         signal.signal(signal.SIGUSR1, _usr1)
     if hasattr(signal, "SIGUSR2"):
         signal.signal(signal.SIGUSR2, _usr2)
+    signal.signal(signal.SIGTERM, _term)
     try:
         while controller.running:
             delta = pending_e1["delta"]
@@ -166,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     prefs_path = None
     qlc_service = None
     net_service = None
+    wiz_service = None
     if args.shield:
         from light_console.hardware.shieldxl import ShieldXLBackend
         from light_console.instance import InstanceLock, InstanceLockHeld
@@ -175,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
             MODE_STANDALONE,
             parse_network_mode,
         )
+        from light_console.output.wiz_lifecycle import LinuxWizLifecycleService
         from light_console.prefs import default_prefs_path, load_prefs
         from light_console.qlc.service import LinuxQlcService
         from light_console.qlc.ws_client import QlcWebSocketClient
@@ -200,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
         net_service = LinuxNetworkModeService(mode=boot_mode)
         if boot_mode == MODE_STANDALONE:
             net_service.set_desired(MODE_STANDALONE)
-        print(f"light-console {VERSION}  shield  PLAY  Ctrl-C to quit", flush=True)
+        wiz_service = LinuxWizLifecycleService(desired=False)
     else:
         from light_console.power import MockPowerService
         from light_console.qlc.service import MockQlcService
@@ -231,7 +241,12 @@ def main(argv: list[str] | None = None) -> int:
         prefs_path=prefs_path,
         qlc_service=qlc_service,
         net_service=net_service,
+        wiz_service=wiz_service,
+        wiz_map_path=default_map_path() if args.shield else None,
+        wiz_observed_path=default_observed_path() if args.shield else None,
     )
+    if args.shield:
+        print(f"light-console {VERSION}  shield  PLAY  Ctrl-C to quit", flush=True)
     LOG.info("light-console %s", VERSION)
     try:
         return run_loop(controller, hardware)

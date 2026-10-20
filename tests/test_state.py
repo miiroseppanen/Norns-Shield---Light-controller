@@ -31,18 +31,30 @@ def test_k1_toggles_play_menu():
     assert c.state.blackout is False
 
 
-def test_k2_on_play_is_contextual():
+def test_k2_on_play_resets_sat():
     c = make_controller()
+    c.state.saturation = 30
+    c.state.hue_shift = 12
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.PLAY
     assert c.state.blackout is False
+    assert c.state.saturation == 100
+    assert c.state.hue_shift == 12
 
 
-def test_k3_on_play_is_chaser_go():
+def test_k3_on_play_resets_hue():
     c = make_controller()
+    c.state.hue_shift = 40
+    c.state.saturation = 80
+    before = c.state.active_function
+    c.qlc.function_sends.clear()
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.PLAY
-    assert c.state.active_function == c.state.current_chaser
+    assert c.state.hue_shift == 0
+    assert c.state.saturation == 80
+    assert c.state.master == 100
+    assert c.state.active_function == before
+    assert c.qlc.function_sends == []
 
 
 def test_hardware_hold_k1_opens_menu():

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -62,9 +63,12 @@ class ShieldXLBackend(HardwareBackend):
         self._EdgeEvent = EdgeEvent
         self._Value = Value
         self._oled = Ssd1322(hz=spi_hz)
+        self.starting_up_at: float | None = None
         self._oled.init()
         try:
             self._oled.show_framebuffer(render_lifecycle(STARTING_UP_TEXT))
+            self.starting_up_at = time.monotonic()
+            LOG.info("STARTING UP painted")
         except Exception:
             LOG.exception("STARTING UP paint failed")
         self._closed = False

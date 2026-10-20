@@ -1,0 +1,8 @@
+#!/usr/sbin/nft -f
+destroy table inet shieldxl_wiz_lights
+table inet shieldxl_wiz_lights {
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+    iifname "wlan1" ip saddr 10.42.0.0/24 ip daddr 192.168.88.0/24 drop
+  }
+}
