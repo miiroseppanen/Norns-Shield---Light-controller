@@ -77,6 +77,46 @@ def move_device(device_map: WizDeviceMap, mac: str, slot: int) -> WizDeviceMap:
     return _replace(device_map, tuple(out))
 
 
+def remap_slots(device_map: WizDeviceMap, slot_to: dict[int, int]) -> WizDeviceMap:
+    """Move mapped devices from current slots to new slots in one validate.
+
+    Keys are current slots. Unmentioned slots stay. Destinations must be unique.
+    A destination that is occupied by a device that is not itself moving is an error.
+    """
+    mapping = {int(src): int(dst) for src, dst in slot_to.items()}
+    if not mapping:
+        return validate_map(device_map)
+    destinations = list(mapping.values())
+    if len(set(destinations)) != len(destinations):
+        raise WizMapValidationError("remap destinations must be unique")
+    for dst in destinations:
+        if dst < 1 or dst > UI_SLOTS:
+            raise WizMapValidationError(f"slot {dst} outside 1..{UI_SLOTS}")
+    by_slot = {item.slot: item for item in device_map.devices}
+    missing = sorted(src for src in mapping if src not in by_slot)
+    if missing:
+        raise WizMapValidationError(f"unknown slot {missing[0]}")
+    moving = set(mapping)
+    for dst in destinations:
+        occupant = by_slot.get(dst)
+        if occupant is not None and occupant.slot not in moving:
+            raise WizMapValidationError("target slot occupied")
+    out: list[WizMappedDevice] = []
+    for item in device_map.devices:
+        if item.slot in mapping:
+            out.append(
+                WizMappedDevice(
+                    id=item.id,
+                    slot=mapping[item.slot],
+                    enabled=item.enabled,
+                    label=item.label,
+                )
+            )
+        else:
+            out.append(item)
+    return _replace(device_map, tuple(out))
+
+
 def swap_devices(device_map: WizDeviceMap, mac_a: str, mac_b: str) -> WizDeviceMap:
     a = normalize_mac(mac_a)
     b = normalize_mac(mac_b)

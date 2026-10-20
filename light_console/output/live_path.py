@@ -20,9 +20,10 @@ direct sender to AIR2DMX). That is not armed here.
 WiZ
 ---
 transform_wiz_channels then build_on_params. wiz_enabled=False emits nothing.
-The Art-Net bridge reads sat/hue/wiz/identify from /tmp/light-console.status
-(mtime cache) and applies the same functions before setPilot. identify is a
-transient 12-hex MAC; the bridge is the sole WiZ UDP sender.
+The Art-Net bridge reads sat/hue/wiz/identify/discover from
+/tmp/light-console.status (mtime cache) and applies the same functions
+before setPilot. identify is a transient 12-hex MAC. discover=1 is a
+one-shot rediscover pulse. The bridge is the sole WiZ UDP sender.
 """
 
 from __future__ import annotations
@@ -72,6 +73,7 @@ def parse_live_controls(text: str) -> LiveControls:
     master = MASTER_DEFAULT
     wiz_enabled = True
     identify_mac = ""
+    discover = False
     for raw in text.splitlines():
         if "=" not in raw:
             continue
@@ -97,12 +99,15 @@ def parse_live_controls(text: str) -> LiveControls:
             wiz_enabled = value.lower() in {"on", "true", "1", "yes"}
         elif key == "identify":
             identify_mac = parse_identify_mac(value)
+        elif key == "discover":
+            discover = value.lower() in {"1", "on"}
     return LiveControls(
         master=master,
         sat=sat,
         hue=hue,
         wiz_enabled=wiz_enabled,
         identify_mac=identify_mac,
+        discover=discover,
     )
 
 

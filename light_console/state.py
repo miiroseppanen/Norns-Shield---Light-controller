@@ -31,10 +31,13 @@ class ScreenId(str, Enum):
     SYSTEM = "system"
     WIZ_CONTROL = "wiz_control"
     WIZ_DEVICES = "wiz_devices"
+    WIZ_INFO = "wiz_info"
     VERSION = "version"
     SHUTDOWN_CONFIRM = "shutdown_confirm"
+    RESTART_CONFIRM = "restart_confirm"
     STARTING_UP = "starting_up"
     SHUTTING_DOWN = "shutting_down"
+    RESTARTING = "restarting"
 
 
 PLACEHOLDER_SCENES = (
@@ -129,13 +132,16 @@ class AppState:
     mode: UiMode = UiMode.PLAY
     screen: ScreenId = ScreenId.PLAY
     menu_index: int = 0
-    menu_count: int = 6
+    menu_count: int = 7
     menu_title: str = "MENU"
     menu_labels: tuple[str, ...] = ()
     param_index: int = 0
     param_count: int = 6
     system_index: int = 0
     system_count: int = 4
+    wiz_control_index: int = 0
+    wiz_control_count: int = 2
+    wiz_discover_until: float = 0.0
     wiz_device_index: int = 0
     wiz_device_count: int = 0
     wiz_device_detail: bool = False
@@ -152,6 +158,7 @@ class AppState:
     wiz_map_extended: bool = False
     wiz_bridge_available: bool = False
     shutdown_requested: bool = False
+    restart_requested: bool = False
     version: str = VERSION
     build_revision: str = ""
     hostname: str = ""
@@ -205,6 +212,16 @@ class AppState:
     def ready(self) -> bool:
         return self.qlc_connected and self.qlc_project_loaded and not self.startup_running
 
+    def host_stopping(self) -> bool:
+        return self.shutdown_requested or self.restart_requested
+
+    def input_locked(self) -> bool:
+        return self.host_stopping() or self.screen in {
+            ScreenId.STARTING_UP,
+            ScreenId.SHUTTING_DOWN,
+            ScreenId.RESTARTING,
+        }
+
     def clamp_indices(self) -> None:
         from light_console.controls.encoders import bound_index
 
@@ -225,6 +242,9 @@ class AppState:
         self.menu_index = bound_index(self.menu_index, max(1, self.menu_count))
         self.param_index = bound_index(self.param_index, max(1, self.param_count))
         self.system_index = bound_index(self.system_index, max(1, self.system_count))
+        self.wiz_control_index = bound_index(
+            self.wiz_control_index, max(1, self.wiz_control_count)
+        )
         self.wiz_device_count = len(self.wiz_device_rows)
         self.wiz_device_index = bound_index(self.wiz_device_index, self.wiz_device_count)
         self.master_dimmer = max(0, min(100, self.master_dimmer))

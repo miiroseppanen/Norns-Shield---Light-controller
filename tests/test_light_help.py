@@ -10,7 +10,7 @@ PROFILE = ROOT / "packaging/profile.d/light-help.sh"
 INSTALL = ROOT / "packaging/install-light-help.sh"
 VERSION_PY = ROOT / "light_console/version.py"
 
-STARTUP_SHOW = "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+STARTUP_SHOW = "qlc/projects/Pirkkala.qxw"
 RSYNC_EXCLUDES = (
     "--exclude '.venv'",
     "--exclude '.git'",
@@ -76,12 +76,14 @@ def test_light_help_prints_compact_guide():
         "192.168.88.246",
         "WIZ-LIGHTS AP",
         "10.42.0.1",
-        "WIZ -> CONTROL / DEVICES",
+        "WIZ -> CONTROL SCAN / DEVICES / INFO",
         "cd /Users/miiroseppanen/shieldxl-light-console && rsync -az",
         "light@shieldxl-light.local:~/light-console/",
         "./scripts/import-production-workspace.sh --install",
         "never copy onto /home/light/shows/master.qxw",
-        "OLED MENU -> SHUTDOWN -> K3 HALT",
+        "OLED MENU -> RESTART -> K3",
+        "OLED MENU -> SHUTDOWN -> K3",
+        "sudo /usr/sbin/shutdown -r now",
         "sudo /usr/sbin/shutdown -h now",
         "192.168.88.248 -- DO NOT CONTACT",
         "light-help",

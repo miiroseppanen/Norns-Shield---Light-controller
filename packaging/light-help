@@ -40,7 +40,7 @@ QLC
 NETWORK
   wlan0  LIGHT-CONTROL  192.168.88.246
   wlan1  WIZ-LIGHTS AP  10.42.0.1
-  menu   WIZ -> CONTROL / DEVICES
+  menu   WIZ -> CONTROL SCAN / DEVICES / INFO
 
 UPDATE / CODE
   from Mac repo:
@@ -58,10 +58,12 @@ UPDATE / STARTUP SHOW
   never copy onto /home/light/shows/master.qxw
   from Mac repo:
     ./scripts/import-production-workspace.sh --install \
-      qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw
+      qlc/projects/Pirkkala.qxw
 
 POWER
-  OLED MENU -> SHUTDOWN -> K3 HALT
+  OLED MENU -> RESTART -> K3
+  OLED MENU -> SHUTDOWN -> K3
+  sudo /usr/sbin/shutdown -r now
   sudo /usr/sbin/shutdown -h now
 
 SAFETY

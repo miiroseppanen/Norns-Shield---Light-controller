@@ -44,7 +44,7 @@ def test_menu_clamps_at_first_and_last():
     c.inject_cooked(ButtonEvent(K1, "press"))
     assert c.state.screen == ScreenId.MENU
     count = len(MENU_ITEMS)
-    assert count == 6
+    assert count == 7
     assert c.state.menu_index == 0
     c.inject_cooked(EncoderEvent(E1, -1))
     assert c.state.menu_index == 0
@@ -71,6 +71,10 @@ def test_system_clamps_at_version():
     c.inject_cooked(EncoderEvent(E2, 20))
     assert c.state.system_index == SYSTEM_VERSION
     c.inject_cooked(EncoderEvent(E2, 1))
+    assert c.state.system_index == SYSTEM_VERSION
+    c.inject_cooked(EncoderEvent(E1, -1))
+    assert c.state.system_index == SYSTEM_VERSION - 1
+    c.inject_cooked(EncoderEvent(E1, 1))
     assert c.state.system_index == SYSTEM_VERSION
     _assert_window(
         c.state.system_index,
@@ -246,7 +250,7 @@ def test_shows_list_clamps():
     c.state.show_index = 4
     c.inject_cooked(EncoderEvent(E1, 20))
     assert c.state.show_index == 9
-    c.inject_cooked(EncoderEvent(E1, -20))
+    c.inject_cooked(EncoderEvent(E2, -20))
     assert c.state.show_index == 0
     _assert_window(c.state.show_index, c.state.scroll_offset, 10, CONTENT_ROWS)
 

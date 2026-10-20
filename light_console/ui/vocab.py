@@ -10,7 +10,6 @@ STOPPED = "STOPPED"
 ACTIVE = "ACTIVE"
 OPEN = "OPEN"
 LOAD = "LOAD"
-HALT = "HALT"
 IDLE = "IDLE"
 SEEN = "SEEN"
 LOST = "LOST"
@@ -25,6 +24,7 @@ APPLYING = "APPLYING"
 STANDALONE = "STANDALONE"
 SWITCHING = "SWITCHING"
 NETWORK = "NETWORK"
+SCANNING = "SCANNING"
 
 EDITABLE = frozenset({ON, OFF})
 OBSERVED = frozenset(
@@ -37,7 +37,6 @@ OBSERVED = frozenset(
         ACTIVE,
         OPEN,
         LOAD,
-        HALT,
         IDLE,
         SEEN,
         LOST,
@@ -52,5 +51,6 @@ OBSERVED = frozenset(
         STANDALONE,
         SWITCHING,
         NETWORK,
+        SCANNING,
     }
 )

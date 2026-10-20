@@ -12,9 +12,7 @@ SHOW_B = ROOT / "qlc/projects/show-b.qxw"
 
 
 def test_oled_workspace_label_is_uppercase_words():
-    assert oled_workspace_label("siirtyma-startup-wiz16-halloween-uv.qxw") == (
-        "SIIRTYMA STARTUP WIZ16 HALLOWEEN UV"
-    )
+    assert oled_workspace_label("Pirkkala.qxw") == "PIRKKALA"
     assert oled_workspace_label("master.qxw") == "MASTER"
 
 

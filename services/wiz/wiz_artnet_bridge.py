@@ -184,6 +184,46 @@ def identify_wanted():
         return ""
     return read_identify_mac()
 
+def parse_discover_requested(text):
+    """Fail closed: only explicit discover=1 or discover=on requests a scan."""
+    if not isinstance(text,str):
+        return False
+    found=False
+    value=""
+    for raw in text.splitlines():
+        if "=" not in raw:
+            continue
+        key,_,val=raw.partition("=")
+        if key.strip()=="discover":
+            found=True
+            value=val.strip().lower()
+    if not found:
+        return False
+    return value in ("1","on")
+
+def read_discover_requested():
+    path=_status_path()
+    try:
+        with open(path,encoding="utf-8") as f:
+            text=f.read()
+    except (OSError,UnicodeDecodeError):
+        return False
+    return parse_discover_requested(text)
+
+def discover_wanted():
+    """Operator rediscover only when WiZ TX is armed. Fail closed otherwise."""
+    return wiz_tx_allowed() and read_discover_requested()
+
+def _discovery_wait(interval):
+    remaining=max(0.0, float(interval))
+    while remaining>0 and not _loop_stop.is_set():
+        if discover_wanted():
+            return True
+        slice=min(remaining, OFF_POLL)
+        _loop_stop.wait(slice)
+        remaining-=slice
+    return discover_wanted()
+
 def _ipv4_in_light_control(ip):
     try:
         packed=struct.unpack("!I",socket.inet_aton(str(ip).strip()))[0]
@@ -811,8 +851,11 @@ def discovery_loop():
                 last_miss_log=now
                 print("[DISCOVERY] no WiZ replies; lamps not on WIZ-LIGHTS yet",flush=True)
         publish_observed_status()
-        interval=DISCOVERY_INTERVAL if all_known_found() else FAST_DISCOVERY_INTERVAL
-        _loop_stop.wait(interval)
+        if discover_wanted():
+            interval=0.0
+        else:
+            interval=DISCOVERY_INTERVAL if all_known_found() else FAST_DISCOVERY_INTERVAL
+        _discovery_wait(interval)
 
 def keepalive_once():
     if not wiz_tx_allowed():

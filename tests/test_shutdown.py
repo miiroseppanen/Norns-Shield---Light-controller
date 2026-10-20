@@ -2,14 +2,12 @@ from pathlib import Path
 
 from light_console.display.lifecycle import render_lifecycle
 from light_console.display.renderer import Renderer
-from light_console.display.screens import SHUTTING_DOWN_LINES
+from light_console.display.screens import SHUTDOWN_CONFIRM_LINES, SHUTTING_DOWN_LINES
 from light_console.hardware.events import ButtonEvent, EncoderEvent, E1, E2, E3, K1, K2, K3
 from light_console.power import LinuxPowerService, MockPowerService
 from light_console.state import ScreenId
 from light_console.ui.menu import menu_index_of
 from light_console.ui.pages import SYSTEM_VERSION
-from light_console.ui.vocab import HALT
-
 from tests.conftest import make_controller
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,12 +29,13 @@ def _start_shutdown(c):
     c.inject_cooked(ButtonEvent(K3, "press"))
 
 
-def test_menu_shutdown_is_last_and_needs_halt():
+def test_menu_shutdown_is_last_and_needs_right_button():
     from light_console.ui.menu import MENU_ITEMS
 
     labels = [item.label for item in MENU_ITEMS]
     assert labels[-1] == "SHUTDOWN"
-    assert labels[-2] == "SYSTEM"
+    assert labels[-2] == "RESTART"
+    assert labels[-3] == "SYSTEM"
     c = make_controller()
     _open_shutdown_confirm(c)
     assert c.power.request_count == 0
@@ -49,16 +48,18 @@ def test_menu_shutdown_is_last_and_needs_halt():
     from light_console.display.widgets import text
 
     want = Framebuffer()
-    text(want, LABEL_X, CONTENT_Y + ROW, HALT)
+    for i, line in enumerate(SHUTDOWN_CONFIRM_LINES):
+        text(want, LABEL_X, CONTENT_Y + ROW * (i + 1), line)
     found = False
     for y in range(fb.height):
         for x in range(fb.width):
             if not want.get(x, y):
                 continue
             if fb.get(x, y) != 1:
-                raise AssertionError("HALT missing")
+                raise AssertionError("shutdown confirm copy missing")
             found = True
     assert found
+    assert SHUTDOWN_CONFIRM_LINES == ("PRESS RIGHT BUTTON", "TO SHUT DOWN")
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
     assert c.power.request_count == 0
@@ -180,7 +181,7 @@ def test_mock_does_not_spawn_host_shutdown():
 
 def test_linux_power_spawns_argv_once():
     true = "/usr/bin/true"
-    svc = LinuxPowerService(argv=(true,))
+    svc = LinuxPowerService(argv=(true,), restart_cmd=(true,))
     assert svc.request_shutdown() is True
     assert svc.spawn_count == 1
     assert svc.request_count == 1

@@ -194,6 +194,11 @@ def test_status_controls_cache(tmp_path):
     assert ident.identify_mac == "9877d5aa4130"
     assert parse_live_controls("identify=not-a-mac\n").identify_mac == ""
     assert parse_live_controls("identify=\n").identify_mac == ""
+    assert parse_live_controls("wiz=on\ndiscover=1\n").discover is True
+    assert parse_live_controls("wiz=on\ndiscover=on\n").discover is True
+    assert parse_live_controls("wiz=on\ndiscover=\n").discover is False
+    assert parse_live_controls("wiz=on\ndiscover=yes\n").discover is False
+    assert parse_live_controls("wiz=on\n").discover is False
 
 
 def test_frame_processing_is_bounded():

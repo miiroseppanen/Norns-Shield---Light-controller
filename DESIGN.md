@@ -193,7 +193,7 @@ Doctrine: **STATIC CONTROL = what I chose. STATIC STATUS = what the system is. M
 
 ### Navigation (physical)
 - **K1:** PLAY ↔ MENU from any menu depth
-- **MENU:** E1 select, K3 enter, K2 back; E2/E3 do not move the cursor
+- **MENU:** E1/E2 select, K3 enter, K2 back; E3 does not move the cursor
 - **PLAY:** E1/E2/E3 are live parameters; no pointer, no hover
 
 ### Activity scan

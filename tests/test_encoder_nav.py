@@ -81,7 +81,7 @@ def test_slow_and_normal_menu_detents_stay_precise():
     c.hardware.push(EncoderEvent(E1, 1))
     c.tick(now=1.2)
     assert c.state.menu_index == 2
-    c.inject_cooked(EncoderEvent(E1, 3))
+    c.inject_cooked(EncoderEvent(E1, 4))
     assert c.state.menu_index == len(MENU_ITEMS) - 1
 
 
@@ -148,9 +148,16 @@ def test_is_nav_encoder_excludes_play_live_controls_and_param_value():
     assert is_nav_encoder(ScreenId.PLAY, E3) is False
     assert is_nav_encoder(ScreenId.PARAMS, E3) is False
     assert is_nav_encoder(ScreenId.MENU, E1) is True
+    assert is_nav_encoder(ScreenId.MENU, E2) is True
+    assert is_nav_encoder(ScreenId.SYSTEM, E1) is True
     assert is_nav_encoder(ScreenId.SYSTEM, E2) is True
     assert is_nav_encoder(ScreenId.OUTPUT, E2) is True
     assert is_nav_encoder(ScreenId.PARAMS, E2) is True
+    from light_console.controls.encoders import is_list_nav
+
+    assert is_list_nav(E1) is True
+    assert is_list_nav(E2) is True
+    assert is_list_nav(E3) is False
 
 
 def test_fast_output_nav_updates_focus_and_scrollbar_together():

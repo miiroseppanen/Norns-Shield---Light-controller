@@ -278,13 +278,13 @@ def test_wiz_devices_is_after_control_in_wiz_submenu():
     assert "wiz_devices" not in kinds
     assert "shutdown" not in kinds
     labels = [item.label for item in MENU_ITEMS]
-    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "SHUTDOWN"]
+    assert labels == ["STATUS", "SHOWS", "OUTPUT", "WIZ", "SYSTEM", "RESTART", "SHUTDOWN"]
     assert labels.index("WIZ") == labels.index("SYSTEM") - 1
     assert labels[-1] == "SHUTDOWN"
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = menu_index_of("WIZ")
     c.inject_cooked(ButtonEvent(K3, "press"))
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES"]
+    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
     c.state.menu_index = 1
     c.inject_cooked(ButtonEvent(K3, "press"))
     assert c.state.screen == ScreenId.WIZ_DEVICES
@@ -323,7 +323,7 @@ def test_k2_returns_and_k3_does_not_mutate(tmp_path: Path):
     assert path.read_bytes() == before
     c.inject_cooked(ButtonEvent(K2, "press"))
     assert c.state.screen == ScreenId.MENU
-    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES"]
+    assert [item.label for item in c.nav.current_items()] == ["CONTROL", "DEVICES", "INFO"]
 
 
 def test_detail_is_observe_only():
@@ -466,6 +466,17 @@ def test_draw_and_tick_do_not_touch_network_or_write_map(tmp_path: Path, monkeyp
     ctrl = CONTROLLER.read_text(encoding="utf-8")
     assert "wizbridge" not in ctrl
     assert "38899" not in ctrl
+
+
+def test_controller_reloads_map_when_file_changes(tmp_path: Path):
+    path = tmp_path / "map.json"
+    save_map(path, WizDeviceMap(devices=(_dev("aabbccddeeff", 1),)))
+    c = make_controller(wiz_map_path=path)
+    assert [row.slot for row in c.state.wiz_device_rows if row.slot] == [1]
+    save_map(path, WizDeviceMap(devices=(_dev("aabbccddeeff", 8),)))
+    path.touch()
+    c._finish()
+    assert [row.slot for row in c.state.wiz_device_rows if row.slot] == [8]
 
 
 def test_legacy_preview_is_read_only(tmp_path: Path):

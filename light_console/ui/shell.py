@@ -1,6 +1,6 @@
 """Global Norns UI shell: K1 PLAY↔MENU, menu stack, dispatch to the active screen.
 
-MENU (this shell): E1 select, K2 back, K3 enter. E2/E3 do not move the cursor.
+MENU (this shell): E1/E2 select, K2 back, K3 enter. E3 does not move the cursor.
 PLAY and PARAMS keep their own encoder maps.
 
 Show functions are not here — screens talk to parameters, parameters mutate AppState.
@@ -8,13 +8,20 @@ Show functions are not here — screens talk to parameters, parameters mutate Ap
 
 from __future__ import annotations
 
-from light_console.controls.encoders import clamp_index
+from light_console.controls.encoders import clamp_index, is_list_nav
 from light_console.display.framebuffer import Framebuffer
-from light_console.hardware.events import E1, K1, K2, K3
+from light_console.hardware.events import K1, K2, K3
 from light_console.power import MockPowerService, PowerService
 from light_console.state import AppState, ScreenId
 from light_console.ui.nav import Navigation
-from light_console.ui.pages import SYSTEM_ROW_COUNT, Screen, ScreenContext, _follow, build_screens
+from light_console.ui.pages import (
+    SYSTEM_ROW_COUNT,
+    WIZ_CONTROL_ROW_COUNT,
+    Screen,
+    ScreenContext,
+    _follow,
+    build_screens,
+)
 from light_console.ui.params import Params, bind_console_params
 
 
@@ -36,6 +43,7 @@ class NornsUIShell:
         self.nav.sync_menu_view(state)
         state.param_count = len(self.params)
         state.system_count = SYSTEM_ROW_COUNT
+        state.wiz_control_count = WIZ_CONTROL_ROW_COUNT
         self.params.sync_index_to_state(state)
 
     def ctx(self) -> ScreenContext:
@@ -48,11 +56,7 @@ class NornsUIShell:
         )
 
     def _input_locked(self) -> bool:
-        return (
-            self.state.shutdown_requested
-            or self.state.screen == ScreenId.SHUTTING_DOWN
-            or self.state.screen == ScreenId.STARTING_UP
-        )
+        return self.state.input_locked()
 
     def active_screen(self) -> Screen:
         return self.screens[self.state.screen]
@@ -61,7 +65,7 @@ class NornsUIShell:
         if self._input_locked():
             return
         if self.state.screen == ScreenId.MENU:
-            if n == E1:
+            if is_list_nav(n):
                 items = self.nav.current_items()
                 if items:
                     self.state.menu_index = clamp_index(

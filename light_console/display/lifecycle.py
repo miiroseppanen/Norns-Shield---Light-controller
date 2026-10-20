@@ -12,6 +12,7 @@ from light_console.display.widgets import text
 
 STARTING_UP_TEXT = "STARTING UP"
 SHUTTING_DOWN_TEXT = "SHUTTING DOWN"
+RESTARTING_TEXT = "RESTARTING"
 STARTUP_MIN_VISIBLE_S = 2.25
 # Written by the early boot helper; consumed once by Light Console.
 # Ordinary systemctl restart does not recreate this, so it must not hold.

@@ -148,7 +148,7 @@ def test_install_applies_locally_with_backup_and_u2(tmp_path):
 
 
 def test_dry_run_halloween_prefixed_source_does_not_write(tmp_path):
-    src = ROOT / "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+    src = ROOT / "qlc/projects/Pirkkala.qxw"
     before = src.read_bytes()
     dest = tmp_path / "siirtyma-shield.qxw"
     env = _env(tmp_path)
@@ -164,7 +164,7 @@ def test_dry_run_halloween_prefixed_source_does_not_write(tmp_path):
     assert "source (unchanged):" in out
     assert "192.168.88.248" in src.read_text(encoding="utf-8")
     assert "u1 channels:" in out
-    assert "-> 512" in out
+    assert "-> 120" in out
 
 
 def test_install_refuses_production_host(tmp_path):

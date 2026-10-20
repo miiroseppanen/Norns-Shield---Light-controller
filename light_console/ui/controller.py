@@ -77,7 +77,7 @@ from light_console.status.midi import apply_launchpad
 from light_console.status.network import apply_upstream, apply_wiz_ap
 from light_console.status.wiz import apply_wiz_observed, bump_wiz
 from light_console.ui.nav import Navigation
-from light_console.ui.pages import SYSTEM_ROW_COUNT
+from light_console.ui.pages import SYSTEM_ROW_COUNT, WIZ_CONTROL_ROW_COUNT, WIZ_DISCOVER_HOLD_S
 from light_console.ui.params import bind_console_params
 from light_console.ui.shell import NornsUIShell
 from light_console.wiz.device_map import (
@@ -202,13 +202,16 @@ class Controller:
         self._route_ping = icmp_reachable
         self._route_arp: dict[str, str] | None = None
         self.state.system_count = SYSTEM_ROW_COUNT
+        self.state.wiz_control_count = WIZ_CONTROL_ROW_COUNT
         self._wiz_map_path = wiz_map_path
         self._wiz_observed_path = wiz_observed_path
         self._wiz_observed_mtime: float | None = None
+        self._wiz_map_mtime: float | None = None
         self._wiz_map: WizDeviceMap | None = None
         self._wiz_map_error = ""
         self._wiz_observations: tuple[WizObservedDevice, ...] = ()
         self._load_wiz_cache()
+        self._note_wiz_map_mtime()
         self._poll_wiz_observed()
         self._sync_wiz_view()
         if not self.state.hostname:
@@ -237,7 +240,10 @@ class Controller:
 
     def reveal_normal_ui(self) -> None:
         """Leave appliance STARTING UP once this process can render a real page."""
-        if self.state.shutdown_requested or self.state.screen == ScreenId.SHUTTING_DOWN:
+        if self.state.host_stopping() or self.state.screen in {
+            ScreenId.SHUTTING_DOWN,
+            ScreenId.RESTARTING,
+        }:
             return
         if self.state.screen != ScreenId.STARTING_UP:
             return
@@ -257,9 +263,23 @@ class Controller:
 
     def begin_appliance_shutdown(self) -> None:
         """Paint SHUTTING DOWN, flush OLED, then halt. Not used for service restarts."""
-        if self.state.shutdown_requested and self.power.shutdown_requested:
+        if self.state.host_stopping():
             return
         self.nav.begin_shutdown(self.state)
+        self._flush_lifecycle_frame("SHUTTING DOWN")
+        self.power.request_shutdown()
+        self.state.shutdown_requested = self.power.shutdown_requested
+
+    def begin_appliance_restart(self) -> None:
+        """Paint RESTARTING, flush OLED, then reboot. Not used for service restarts."""
+        if self.state.host_stopping():
+            return
+        self.nav.begin_restart(self.state)
+        self._flush_lifecycle_frame("RESTARTING")
+        self.power.request_restart()
+        self.state.restart_requested = self.power.restart_requested
+
+    def _flush_lifecycle_frame(self, label: str) -> None:
         self._write_status()
         try:
             self.renderer.force_dirty()
@@ -267,9 +287,7 @@ class Controller:
             self.hardware.set_display(self.renderer.fb)
             self._last_draw = time.monotonic()
         except Exception:
-            LOG.exception("SHUTTING DOWN flush failed")
-        self.power.request_shutdown()
-        self.state.shutdown_requested = self.power.shutdown_requested
+            LOG.exception("%s flush failed", label)
 
     def handle_event(self, event: HardwareEvent, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now
@@ -486,9 +504,19 @@ class Controller:
         if not self.wiz_service.set_desired(on):
             return
         self.state.wiz_enabled = on
+        if not on:
+            self.state.wiz_discover_until = 0.0
         self._save_prefs()
         self._sync_wiz_runtime()
         self._sync_wiz_view()
+
+    def request_wiz_discover(self) -> None:
+        """Pulse discover=1 on the status file. Light Console never sends WiZ UDP."""
+        if self.state.host_stopping() or self.state.wiz_lifecycle_busy:
+            return
+        if not self.state.wiz_tx_armed:
+            return
+        self.state.wiz_discover_until = self.state.ui_now + WIZ_DISCOVER_HOLD_S
 
     def set_network_mode(self, mode: str) -> None:
         if self.net_service.busy or self.state.network_mode_busy:
@@ -799,6 +827,7 @@ class Controller:
             save_map(path, updated)
             self._wiz_map = load_map(path)
             self._wiz_map_error = ""
+            self._note_wiz_map_mtime()
             self.state.wiz_prompt = ""
             self.state.wiz_prompt_error = ""
             self.state.wiz_prompt_swap = ""
@@ -831,6 +860,32 @@ class Controller:
             self._wiz_observed_mtime = None
             apply_wiz_observed(self.state, empty_observed_snapshot(error="malformed"))
             self._wiz_observations = ()
+
+    def _note_wiz_map_mtime(self) -> None:
+        path = self._wiz_map_path
+        if path is None:
+            self._wiz_map_mtime = None
+            return
+        try:
+            self._wiz_map_mtime = path.stat().st_mtime
+        except OSError:
+            self._wiz_map_mtime = None
+
+    def _reload_wiz_map_if_changed(self) -> None:
+        path = self._wiz_map_path
+        if path is None:
+            return
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            if self._wiz_map_mtime is not None or self._wiz_map is not None:
+                self._wiz_map_mtime = None
+                self._load_wiz_cache()
+            return
+        if mtime == self._wiz_map_mtime:
+            return
+        self._wiz_map_mtime = mtime
+        self._load_wiz_cache()
 
     def _load_wiz_cache(self) -> None:
         self._wiz_map = None
@@ -887,6 +942,7 @@ class Controller:
             self._refresh_show_state()
         self._refresh_workspace_state()
         self._sync_wiz_runtime()
+        self._reload_wiz_map_if_changed()
         self._poll_wiz_observed()
         self._sync_wiz_view()
         self.state.rebuild_warnings()
@@ -930,7 +986,7 @@ class Controller:
         mac = ""
         if (
             self.state.wiz_tx_armed
-            and not self.state.shutdown_requested
+            and not self.state.host_stopping()
             and self.state.screen == ScreenId.WIZ_DEVICES
         ):
             row = self._selected_wiz_row()
@@ -946,6 +1002,11 @@ class Controller:
     def _write_status(self) -> None:
         self._sync_identify()
         screen = self.state.screen.value if hasattr(self.state.screen, "value") else str(self.state.screen)
+        discovering = (
+            self.state.wiz_tx_armed
+            and not self.state.host_stopping()
+            and self.state.wiz_discover_until > self.state.ui_now
+        )
         body = (
             f"screen={screen}\n"
             f"master={self.state.master}\n"
@@ -959,6 +1020,7 @@ class Controller:
             f"network_observed={self.state.network_mode_observed}\n"
             f"wiz={'on' if self.state.wiz_tx_armed else 'off'}\n"
             f"identify={self.state.wiz_identify_mac}\n"
+            f"discover={'1' if discovering else ''}\n"
         )
         if body == self._status_body:
             return

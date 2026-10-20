@@ -1,7 +1,7 @@
 """Norns-like screens: enc(n, delta), key(n, z), redraw(fb).
 
 n is E1/E2/E3 or K1/K2/K3 (1,2,3). z is 1 down/tap, 0 up.
-K1 PLAY↔MENU and MENU E1/K2/K3 are handled by NornsUIShell, not these screens.
+K1 PLAY↔MENU and MENU E1/E2/K2/K3 are handled by NornsUIShell, not these screens.
 """
 
 from __future__ import annotations
@@ -10,7 +10,12 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any
 
-from light_console.controls.encoders import apply_encoder_delta, bound_index, clamp_index
+from light_console.controls.encoders import (
+    apply_encoder_delta,
+    bound_index,
+    clamp_index,
+    is_list_nav,
+)
 from light_console.display.framebuffer import Framebuffer
 from light_console.display.screens import (
     draw_chasers,
@@ -21,11 +26,14 @@ from light_console.display.screens import (
     draw_play,
     draw_scenes,
     draw_shows,
+    draw_restart_confirm,
+    draw_restarting,
     draw_shutdown_confirm,
     draw_shutting_down,
     draw_starting_up,
     draw_system,
     draw_version,
+    draw_wiz_info,
     draw_wiz_control,
     draw_wiz_devices,
 )
@@ -39,7 +47,7 @@ from light_console.live_color import HUE_DEFAULT, SAT_DEFAULT
 from light_console.power import PowerService
 from light_console.state import AppState, ScreenId
 from light_console.wiz.device_map import WIZ_MAX_SLOTS
-from light_console.ui.vocab import LOAD, OPEN, SWITCHING
+from light_console.ui.vocab import LOAD, OPEN, SCANNING, SWITCHING
 from light_console.ui.nav import Navigation
 from light_console.ui.params import Params
 
@@ -48,6 +56,10 @@ SYSTEM_NET_TOGGLE = 1
 SYSTEM_VERSION = 2
 SYSTEM_ROW_COUNT = 3
 SYSTEM_EDITABLE_ROWS = frozenset({SYSTEM_QLC_TOGGLE, SYSTEM_NET_TOGGLE})
+WIZ_CONTROL_TOGGLE = 0
+WIZ_CONTROL_SCAN = 1
+WIZ_CONTROL_ROW_COUNT = 2
+WIZ_DISCOVER_HOLD_S = 4.0
 WIZ_DEVICES_VISIBLE = 6
 
 
@@ -88,6 +100,27 @@ def wiz_setting_detail(state: AppState) -> str | None:
         busy=state.wiz_lifecycle_busy,
         online=state.wiz_online,
     )
+
+
+def wiz_discovering(state: AppState) -> bool:
+    return bool(state.wiz_tx_armed) and state.wiz_discover_until > state.ui_now
+
+
+def wiz_control_slots(state: AppState) -> tuple[SystemSlot, ...]:
+    y = CONTENT_Y
+    toggle_rows = 2 if wiz_setting_detail(state) else 1
+    toggle = SystemSlot(WIZ_CONTROL_TOGGLE, "wiz", y, toggle_rows)
+    y += toggle.rows * ROW
+    scan_rows = 2 if wiz_discovering(state) else 1
+    scan = SystemSlot(WIZ_CONTROL_SCAN, "scan", y, scan_rows)
+    return (toggle, scan)
+
+
+def wiz_control_visible_count(state: AppState) -> int:
+    rows = sum(slot.rows for slot in wiz_control_slots(state))
+    if rows <= CONTENT_ROWS:
+        return WIZ_CONTROL_ROW_COUNT
+    return WIZ_CONTROL_ROW_COUNT - 1
 
 
 def system_slots(state: AppState) -> tuple[SystemSlot, ...]:
@@ -193,7 +226,7 @@ class ParamsScreen(Screen):
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
         ctx.params.sync_index_to_state(ctx.state)
-        if n == E2:
+        if is_list_nav(n):
             ctx.params.select_delta(delta)
             ctx.params.store_index(ctx.state)
             _follow(ctx.state, ctx.state.param_index, max(1, ctx.state.param_count))
@@ -218,7 +251,7 @@ class ShowsScreen(Screen):
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
         items = ctx.state.show_ids or ctx.state.show_files
-        if n == E1 and items:
+        if is_list_nav(n) and items:
             _move_list(ctx.state, "show_index", delta, len(items))
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
@@ -276,7 +309,7 @@ class ScenesScreen(Screen):
     title = "SCENES"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n == E1 and ctx.state.scenes:
+        if is_list_nav(n) and ctx.state.scenes:
             _move_list(ctx.state, "scene_index", delta, len(ctx.state.scenes))
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
@@ -293,7 +326,7 @@ class ChasersScreen(Screen):
     title = "CHASERS"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n == E1 and ctx.state.chasers:
+        if is_list_nav(n) and ctx.state.chasers:
             _move_list(ctx.state, "chaser_index", delta, len(ctx.state.chasers))
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
@@ -396,7 +429,7 @@ class SystemScreen(Screen):
     title = "SYSTEM"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n != E2:
+        if not is_list_nav(n):
             return
         ctx.state.system_count = SYSTEM_ROW_COUNT
         ctx.state.system_index = bound_index(ctx.state.system_index, SYSTEM_ROW_COUNT)
@@ -439,7 +472,7 @@ class WizDevicesScreen(Screen):
     title = "WIZ DEVICES"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        if n != E2:
+        if not is_list_nav(n):
             return
         if ctx.state.wiz_prompt == "move":
             ctx.state.wiz_prompt_target = bound_index(
@@ -492,7 +525,22 @@ class WizControlScreen(Screen):
     title = "WIZ CONTROL"
 
     def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
-        del n, delta, ctx
+        if not is_list_nav(n):
+            return
+        ctx.state.wiz_control_count = WIZ_CONTROL_ROW_COUNT
+        ctx.state.wiz_control_index = bound_index(
+            ctx.state.wiz_control_index, WIZ_CONTROL_ROW_COUNT
+        )
+        visible = wiz_control_visible_count(ctx.state)
+        vp = ListViewport(
+            WIZ_CONTROL_ROW_COUNT,
+            ctx.state.wiz_control_index,
+            ctx.state.scroll_offset,
+            visible,
+        )
+        vp.move(delta)
+        ctx.state.wiz_control_index = vp.focused
+        ctx.state.scroll_offset = vp.offset
 
     def key(self, n: int, z: int, ctx: ScreenContext) -> None:
         if z != 1 or n != K3:
@@ -501,6 +549,10 @@ class WizControlScreen(Screen):
         if actions is None:
             return
         if ctx.state.wiz_lifecycle_busy:
+            return
+        if ctx.state.wiz_control_index == WIZ_CONTROL_SCAN:
+            if hasattr(actions, "request_wiz_discover"):
+                actions.request_wiz_discover()
             return
         actions.set_wiz_enabled(not ctx.state.wiz_enabled)
 
@@ -530,6 +582,28 @@ class ShutdownConfirmScreen(Screen):
         draw_shutdown_confirm(fb, ctx.state)
 
 
+class RestartConfirmScreen(Screen):
+    id = ScreenId.RESTART_CONFIRM
+    title = "RESTART"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        del n, delta, ctx
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        if z != 1 or n != K3:
+            return
+        actions = ctx.actions
+        if actions is not None and hasattr(actions, "begin_appliance_restart"):
+            actions.begin_appliance_restart()
+            return
+        ctx.nav.begin_restart(ctx.state)
+        ctx.power.request_restart()
+        ctx.state.restart_requested = ctx.power.restart_requested
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_restart_confirm(fb, ctx.state)
+
+
 class VersionScreen(Screen):
     id = ScreenId.VERSION
     title = "VERSION"
@@ -542,6 +616,20 @@ class VersionScreen(Screen):
 
     def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
         draw_version(fb, ctx.state)
+
+
+class WizInfoScreen(Screen):
+    id = ScreenId.WIZ_INFO
+    title = "WIZ INFO"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        del n, delta, ctx
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        del n, z, ctx
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_wiz_info(fb, ctx.state)
 
 
 class StartingUpScreen(Screen):
@@ -572,6 +660,20 @@ class ShuttingDownScreen(Screen):
         draw_shutting_down(fb, ctx.state)
 
 
+class RestartingScreen(Screen):
+    id = ScreenId.RESTARTING
+    title = "RESTARTING"
+
+    def enc(self, n: int, delta: int, ctx: ScreenContext) -> None:
+        del n, delta, ctx
+
+    def key(self, n: int, z: int, ctx: ScreenContext) -> None:
+        del n, z, ctx
+
+    def redraw(self, fb: Framebuffer, ctx: ScreenContext) -> None:
+        draw_restarting(fb, ctx.state)
+
+
 def build_screens() -> dict[ScreenId, Screen]:
     screens: tuple[Screen, ...] = (
         PlayScreen(),
@@ -585,9 +687,12 @@ def build_screens() -> dict[ScreenId, Screen]:
         SystemScreen(),
         WizControlScreen(),
         WizDevicesScreen(),
+        WizInfoScreen(),
         VersionScreen(),
         ShutdownConfirmScreen(),
+        RestartConfirmScreen(),
         StartingUpScreen(),
         ShuttingDownScreen(),
+        RestartingScreen(),
     )
     return {s.id: s for s in screens}

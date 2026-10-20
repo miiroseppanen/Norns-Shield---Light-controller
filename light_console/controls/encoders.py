@@ -6,6 +6,12 @@ from light_console.state import ScreenId
 E1 = 1
 E2 = 2
 E3 = 3
+LIST_NAV_ENCODERS = frozenset({E1, E2})
+
+
+def is_list_nav(n: int) -> bool:
+    """E1 and E2 both wind list/menu cursors. E3 stays off that path."""
+    return n in LIST_NAV_ENCODERS
 
 
 def apply_encoder_delta(current: int, delta: int, lo: int, hi: int) -> int:
@@ -66,7 +72,7 @@ def nav_steps(delta: int) -> int:
 
 def is_nav_encoder(screen: ScreenId, encoder: int) -> bool:
     """Discrete list/menu motion, not continuous parameter edit."""
-    if screen in {ScreenId.STARTING_UP, ScreenId.SHUTTING_DOWN}:
+    if screen in {ScreenId.STARTING_UP, ScreenId.SHUTTING_DOWN, ScreenId.RESTARTING}:
         return False
     if screen == ScreenId.PLAY and encoder in {E1, E2, E3}:
         return False

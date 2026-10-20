@@ -96,6 +96,7 @@ class LiveControls:
 
     wiz_enabled: bool = True
     identify_mac: str = ""
+    discover: bool = False
 
     @property
     def identity(self) -> bool:

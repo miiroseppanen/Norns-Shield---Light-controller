@@ -12,11 +12,7 @@ class Navigation:
         self.stack: list[str] = []
 
     def go_play(self, state: AppState) -> None:
-        if (
-            state.shutdown_requested
-            or state.screen == ScreenId.SHUTTING_DOWN
-            or state.screen == ScreenId.STARTING_UP
-        ):
+        if state.input_locked():
             return
         state.mode = UiMode.PLAY
         state.screen = ScreenId.PLAY
@@ -24,11 +20,7 @@ class Navigation:
         state.reset_list_window()
 
     def enter_menu(self, state: AppState) -> None:
-        if (
-            state.shutdown_requested
-            or state.screen == ScreenId.SHUTTING_DOWN
-            or state.screen == ScreenId.STARTING_UP
-        ):
+        if state.input_locked():
             return
         state.mode = UiMode.MENU
         state.screen = ScreenId.MENU
@@ -94,15 +86,15 @@ class Navigation:
         state.screen = ScreenId.SHUTTING_DOWN
         state.shutdown_requested = True
 
+    def begin_restart(self, state: AppState) -> None:
+        state.screen = ScreenId.RESTARTING
+        state.restart_requested = True
+
     def open_load_show_confirm(self, state: AppState) -> None:
         state.screen = ScreenId.LOAD_SHOW
 
     def back(self, state: AppState) -> None:
-        if (
-            state.screen == ScreenId.SHUTTING_DOWN
-            or state.shutdown_requested
-            or state.screen == ScreenId.STARTING_UP
-        ):
+        if state.input_locked():
             return
         if state.screen == ScreenId.LOAD_SHOW:
             state.screen = ScreenId.SHOWS

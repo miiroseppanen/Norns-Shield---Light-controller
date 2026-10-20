@@ -38,7 +38,7 @@ Renderer          AppState → 128×64 framebuffer
 ## Two modes
 
 1. **PLAY** — live. E1/E2/E3 and K2/K3 belong to the play screen. K1 opens MENU.
-2. **MENU** — E1 select, K3 forward, K2 back (no-op at root), K1 returns PLAY. E2/E3 do not move the cursor.
+2. **MENU** — E1/E2 select, K3 forward, K2 back (no-op at root), K1 returns PLAY. E3 does not move the cursor.
 
 ## PLAY mapping (screen-local)
 

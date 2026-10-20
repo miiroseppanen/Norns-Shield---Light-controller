@@ -26,9 +26,11 @@ MENU_ITEMS: tuple[MenuItem, ...] = (
         children=(
             MenuItem("wiz-control", "CONTROL", page_id=ScreenId.WIZ_CONTROL.value),
             MenuItem("wiz-devices", "DEVICES", page_id=ScreenId.WIZ_DEVICES.value),
+            MenuItem("wiz-info", "INFO", page_id=ScreenId.WIZ_INFO.value),
         ),
     ),
     MenuItem("system", "SYSTEM", page_id=ScreenId.SYSTEM.value),
+    MenuItem("restart", "RESTART", page_id=ScreenId.RESTART_CONFIRM.value),
     MenuItem("shutdown", "SHUTDOWN", page_id=ScreenId.SHUTDOWN_CONFIRM.value),
 )
 

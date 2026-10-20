@@ -12,6 +12,8 @@ QLC+ Art-Net universe 0 → wizbridge → WiZ local UDP (`setPilot` / `getPilot`
 
 Diagnostics page: per-fixture OK / `--` and RSSI when known.
 
+WIZ → INFO: lamps join the AP slowly after boot and then show in DEVICES. If a lamp is still missing after 10 minutes, power-cycle it. K2 back.
+
 ## Cold boot
 
 See `docs/networking.md`. Show `WAIT` while AP is up but lamps have not joined. No automatic network restart.

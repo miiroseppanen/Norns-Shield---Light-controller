@@ -49,6 +49,7 @@ def test_production_menu_is_status_shows_output_system():
         "OUTPUT",
         "WIZ",
         "SYSTEM",
+        "RESTART",
         "SHUTDOWN",
     ]
     assert {item.label for item in DEFERRED_MENU_ITEMS} == {
@@ -64,6 +65,7 @@ def test_production_menu_is_status_shows_output_system():
         "OUTPUT",
         "WIZ",
         "SYSTEM",
+        "RESTART",
         "SHUTDOWN",
     ]
     c.state.menu_index = menu_index_of("OUTPUT")

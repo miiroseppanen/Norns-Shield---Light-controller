@@ -52,8 +52,9 @@ def test_menu_e1_navigates_menu_not_live_controls():
     assert c.state.current_scene == "WASH"
     assert c.state.scene_index == 0
     c.inject_cooked(EncoderEvent(E2, 1))
+    assert c.state.menu_index == 3
     c.inject_cooked(EncoderEvent(E3, 1))
-    assert c.state.menu_index == 2
+    assert c.state.menu_index == 3
     assert c.state.current_scene == "WASH"
 
 

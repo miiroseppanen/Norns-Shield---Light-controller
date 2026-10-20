@@ -33,13 +33,15 @@ def test_menu_e1_changes_selection():
     assert c.state.menu_index == 0
 
 
-def test_menu_e2_does_not_change_selection():
+def test_menu_e2_changes_selection_like_e1():
     c = make_controller()
     c.inject_cooked(ButtonEvent(K1, "press"))
     c.state.menu_index = 1
     c.inject_cooked(EncoderEvent(E2, 2))
-    assert c.state.menu_index == 1
+    assert c.state.menu_index == 3
     assert c.state.screen == ScreenId.MENU
+    c.inject_cooked(EncoderEvent(E2, -1))
+    assert c.state.menu_index == 2
 
 
 def test_menu_e3_does_not_change_selection():
@@ -87,6 +89,7 @@ def test_visit_all_menu_pages():
         ("SHOWS", ScreenId.SHOWS),
         ("OUTPUT", ScreenId.OUTPUT),
         ("SYSTEM", ScreenId.SYSTEM),
+        ("RESTART", ScreenId.RESTART_CONFIRM),
         ("SHUTDOWN", ScreenId.SHUTDOWN_CONFIRM),
     )
     for label, screen in expected:

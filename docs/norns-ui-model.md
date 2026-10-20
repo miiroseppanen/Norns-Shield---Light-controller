@@ -21,8 +21,8 @@ K1 is the shell PLAY ↔ MENU toggle. Show functions are not wired in the hardwa
 
 ### MENU
 
-- **E1** — selection
-- **E2 / E3** — no-op (do not move the cursor)
+- **E1 / E2** — selection
+- **E3** — no-op (does not move the cursor)
 - **K3** — forward / enter
 - **K2** — back (no-op at root)
 - **K1** — PLAY, from any menu depth
@@ -47,7 +47,7 @@ SHOWS lists named `.qxw` files on the appliance. K3 opens a confirm page (`LOAD`
 
 SYSTEM list: QLC SERVICE, NETWORK MODE, VERSION.
 
-MENU last row is SHUTDOWN. K3 opens a confirm page (`HALT`). K2 back. K3 on `HALT` begins halt. OLED stays on SHUTTING DOWN until Linux stops. After that K1/K2/K3 and E1/E2/E3 do nothing; `PowerService.request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -h now`. The simulator only sets a flag.
+MENU after SYSTEM is RESTART, then SHUTDOWN last. K3 opens a confirm page (`PRESS RIGHT BUTTON` / `TO RESTART` or `TO SHUT DOWN`). K2 back. K3 on the confirm page begins reboot or halt. OLED stays on RESTARTING or SHUTTING DOWN until Linux stops. After that K1/K2/K3 and E1/E2/E3 do nothing; `PowerService.request_restart()` or `request_shutdown()` runs once. The Shield backend may run `sudo /usr/sbin/shutdown -r now` or `-h now`. The simulator only sets a flag.
 
 ## Screens vs parameters
 

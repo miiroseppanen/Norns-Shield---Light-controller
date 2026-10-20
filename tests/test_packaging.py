@@ -9,14 +9,17 @@ APPLIANCE = ROOT / "packaging/install-appliance.sh"
 QXW = ROOT / "qlc/projects/light-console-test.qxw"
 
 
-def test_sudoers_allows_only_halt_now():
+def test_sudoers_allows_only_halt_and_restart_now():
     text = SUDOERS.read_text()
     lines = [
         ln.strip()
         for ln in text.splitlines()
         if ln.strip() and not ln.strip().startswith("#")
     ]
-    assert lines == ["light ALL=(root) NOPASSWD: /usr/sbin/shutdown -h now"]
+    assert lines == [
+        "light ALL=(root) NOPASSWD: /usr/sbin/shutdown -h now",
+        "light ALL=(root) NOPASSWD: /usr/sbin/shutdown -r now",
+    ]
     assert "NOPASSWD: ALL" not in text
     assert "/usr/bin/systemctl" not in text
     assert "reboot" not in text

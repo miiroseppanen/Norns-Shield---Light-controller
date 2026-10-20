@@ -21,6 +21,7 @@ from light_console.wiz.edit import (
     add_device,
     lowest_unused_slot,
     move_device,
+    remap_slots,
     set_enabled,
     swap_devices,
 )
@@ -77,6 +78,44 @@ def test_move_empty_and_swap_occupied():
     assert {(item.id, item.slot) for item in swapped.devices} == {
         (MAC5, 6),
         (MAC6, 5),
+    }
+
+
+def test_remap_slots_five_cycle():
+    mac7, mac8, mac9, mac10, mac11 = (
+        "9877d5b20a2a",
+        "9877d5be9c0c",
+        "9877d5aa2ece",
+        "9877d5aa4130",
+        "9877d5b4e4ec",
+    )
+    base = _map(
+        ("9877d5b205b8", 1),
+        (mac7, 7),
+        (mac8, 8),
+        (mac9, 9),
+        (mac10, 10),
+        (mac11, 11),
+    )
+    moved = remap_slots(base, {10: 8, 8: 9, 9: 7, 11: 10, 7: 11})
+    assert {(item.id, item.slot) for item in moved.devices} == {
+        ("9877d5b205b8", 1),
+        (mac9, 7),
+        (mac10, 8),
+        (mac8, 9),
+        (mac11, 10),
+        (mac7, 11),
+    }
+    with pytest.raises(WizMapValidationError, match="unique"):
+        remap_slots(base, {10: 8, 7: 8})
+    with pytest.raises(WizMapValidationError, match="occupied"):
+        remap_slots(base, {10: 1})
+    with pytest.raises(WizMapValidationError, match="unknown slot"):
+        remap_slots(base, {12: 13})
+    assert remap_slots(base, {}) is not None
+    same = remap_slots(base, {})
+    assert {(item.id, item.slot) for item in same.devices} == {
+        (item.id, item.slot) for item in base.devices
     }
 
 

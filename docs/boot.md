@@ -24,7 +24,7 @@ Do **not** order the unit after `dev-spidev0.0.device`. On Raspberry Pi OS that 
 
 A flock on `/tmp/light-console.instance.lock` prevents a second `--shield` from stealing GPIO/SPI.
 
-Halt: `/etc/sudoers.d/light-console-shutdown` is NOPASSWD for **only** `/usr/sbin/shutdown -h now`. Raspberry Pi OS still has password-required `(ALL) ALL`. After a reboot (or `sudo -k`), `sudo -n true` must fail; `sudo -n -l /usr/sbin/shutdown -h now` must list that command. Never prove sudo by executing `reboot` or `shutdown`. OLED: MENU → SHUTDOWN → K3 HALT starts halt and stays on SHUTTING DOWN.
+Halt/reboot: `/etc/sudoers.d/light-console-shutdown` is NOPASSWD for **only** `/usr/sbin/shutdown -h now` and `/usr/sbin/shutdown -r now`. Raspberry Pi OS still has password-required `(ALL) ALL`. After a reboot (or `sudo -k`), `sudo -n true` must fail; `sudo -n -l /usr/sbin/shutdown -h now` and `-r now` must list those commands. Never prove sudo by executing `reboot` or `shutdown`. OLED: MENU → RESTART → K3 starts reboot and stays on RESTARTING. MENU → SHUTDOWN → K3 starts halt and stays on SHUTTING DOWN.
 
 ## Milestone 0.8
 

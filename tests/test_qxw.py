@@ -229,9 +229,9 @@ def test_drop_elementtree_prefixes_and_prepare_prefixed_workspace():
 
 
 def test_prepare_halloween_wiz16_source():
-    src = ROOT / "qlc/projects/siirtyma-startup-wiz16-halloween-uv.qxw"
+    src = ROOT / "qlc/projects/Pirkkala.qxw"
     if not src.is_file():
-        pytest.skip("halloween workspace not in tree")
+        pytest.skip("Pirkkala workspace not in tree")
     original = src.read_text(encoding="utf-8")
     assert "192.168.88.248" in original
     patched = prepare_for_shield(original)
@@ -244,5 +244,6 @@ def test_prepare_halloween_wiz16_source():
     assert len(startup) == 1
     assert startup[0].type_name == "Chaser"
     covered = cover_universe_fixtures(patched, 0)
-    assert universe_channels(covered, 0) == 512
+    assert universe_channels(patched, 0) == 120
+    assert universe_channels(covered, 0) == 120
 

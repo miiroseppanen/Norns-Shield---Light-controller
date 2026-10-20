@@ -32,6 +32,7 @@ from light_console.controls.encoders import bound_index
 from light_console.display.lifecycle import (
     STARTING_UP_TEXT,
     SHUTTING_DOWN_TEXT,
+    RESTARTING_TEXT,
     draw_lifecycle,
 )
 from light_console.display.widgets import CELL_W, text, text_clipped
@@ -51,7 +52,7 @@ from light_console.output.targets import APPLYABLE_TARGETS, last_octet
 from light_console.state import AppState, ScreenId
 from light_console.ui.menu import MENU_ITEMS, MenuItem
 from light_console.output.netmode import oled_mode_word, toggle_filled
-from light_console.ui.vocab import HALT, IDLE, NEW, OFF, OFFLINE, RUNNING, STOPPED
+from light_console.ui.vocab import IDLE, NEW, OFF, OFFLINE, RUNNING, STOPPED
 from light_console.wiz.device_map import format_dmx_span
 from light_console.wiz.view import list_label
 
@@ -534,21 +535,62 @@ def draw_system(fb: Framebuffer, state: AppState) -> None:
 
 
 def draw_wiz_control(fb: Framebuffer, state: AppState) -> None:
-    from light_console.ui.pages import wiz_setting_detail
+    from light_console.ui.pages import (
+        WIZ_CONTROL_ROW_COUNT,
+        wiz_control_slots,
+        wiz_control_visible_count,
+        wiz_discovering,
+        wiz_setting_detail,
+    )
+    from light_console.ui.vocab import SCANNING
 
     draw_page_header(fb, "WIZ CONTROL")
-    detail = wiz_setting_detail(state)
-    rows = 2 if detail else 1
-    draw_toggle_row(
-        fb,
-        CONTENT_Y,
-        "WIZ",
-        state.wiz_enabled,
-        focused=True,
-        rail_h=rows * ROW,
-    )
-    if detail:
-        draw_subordinate_status(fb, CONTENT_Y + ROW, detail)
+    state.wiz_control_index = bound_index(state.wiz_control_index, WIZ_CONTROL_ROW_COUNT)
+    visible = wiz_control_visible_count(state)
+    vp = viewport_for(WIZ_CONTROL_ROW_COUNT, state.wiz_control_index, state.scroll_offset, visible)
+    draw_scrollbar(fb, vp.total, vp.visible, vp.offset)
+    y = CONTENT_Y
+    window = set(vp.window())
+    for slot in wiz_control_slots(state):
+        if slot.index not in window:
+            continue
+        focused = slot.index == vp.focused
+        if slot.kind == "wiz":
+            detail = wiz_setting_detail(state)
+            draw_toggle_row(
+                fb,
+                y,
+                "WIZ",
+                state.wiz_enabled,
+                focused=focused,
+                rail_h=slot.rows * ROW,
+            )
+            if detail:
+                draw_subordinate_status(fb, y + ROW, detail)
+        elif slot.kind == "scan":
+            draw_action_row(fb, y, "SCAN", focused=focused, x=TOGGLE_LABEL_X)
+            if wiz_discovering(state):
+                draw_subordinate_status(fb, y + ROW, SCANNING)
+        y += slot.rows * ROW
+
+
+WIZ_INFO_LINES = (
+    "AFTER BOOT WAIT.",
+    "LAMPS JOIN LATE.",
+    "THEY APPEAR IN",
+    "DEVICES.",
+    "",
+    "GONE 10 MIN:",
+    "POWER CYCLE IT.",
+)
+
+
+def draw_wiz_info(fb: Framebuffer, state: AppState) -> None:
+    del state
+    draw_page_header(fb, "WIZ INFO")
+    for i, line in enumerate(WIZ_INFO_LINES):
+        if line:
+            draw_text_row(fb, CONTENT_Y + i * ROW, line)
 
 
 def draw_version(fb: Framebuffer, state: AppState) -> None:
@@ -680,6 +722,9 @@ def draw_wiz_devices(fb: Framebuffer, state: AppState) -> None:
 
 
 SHUTTING_DOWN_LINES = (SHUTTING_DOWN_TEXT,)
+RESTARTING_LINES = (RESTARTING_TEXT,)
+SHUTDOWN_CONFIRM_LINES = ("PRESS RIGHT BUTTON", "TO SHUT DOWN")
+RESTART_CONFIRM_LINES = ("PRESS RIGHT BUTTON", "TO RESTART")
 
 
 def draw_starting_up(fb: Framebuffer, state: AppState) -> None:
@@ -687,15 +732,30 @@ def draw_starting_up(fb: Framebuffer, state: AppState) -> None:
     draw_lifecycle(fb, STARTING_UP_TEXT)
 
 
+def _draw_power_confirm(fb: Framebuffer, title: str, lines: tuple[str, ...]) -> None:
+    draw_page_header(fb, title)
+    for i, line in enumerate(lines):
+        text(fb, LABEL_X, CONTENT_Y + ROW * (i + 1), line)
+
+
 def draw_shutdown_confirm(fb: Framebuffer, state: AppState) -> None:
     del state
-    draw_page_header(fb, "SHUTDOWN")
-    text(fb, LABEL_X, CONTENT_Y + ROW, HALT)
+    _draw_power_confirm(fb, "SHUTDOWN", SHUTDOWN_CONFIRM_LINES)
+
+
+def draw_restart_confirm(fb: Framebuffer, state: AppState) -> None:
+    del state
+    _draw_power_confirm(fb, "RESTART", RESTART_CONFIRM_LINES)
 
 
 def draw_shutting_down(fb: Framebuffer, state: AppState) -> None:
     del state
     draw_lifecycle(fb, SHUTTING_DOWN_TEXT)
+
+
+def draw_restarting(fb: Framebuffer, state: AppState) -> None:
+    del state
+    draw_lifecycle(fb, RESTARTING_TEXT)
 
 
 DRAWERS = {
@@ -710,10 +770,13 @@ DRAWERS = {
     ScreenId.SYSTEM: draw_system,
     ScreenId.WIZ_CONTROL: draw_wiz_control,
     ScreenId.WIZ_DEVICES: draw_wiz_devices,
+    ScreenId.WIZ_INFO: draw_wiz_info,
     ScreenId.VERSION: draw_version,
     ScreenId.SHUTDOWN_CONFIRM: draw_shutdown_confirm,
+    ScreenId.RESTART_CONFIRM: draw_restart_confirm,
     ScreenId.STARTING_UP: draw_starting_up,
     ScreenId.SHUTTING_DOWN: draw_shutting_down,
+    ScreenId.RESTARTING: draw_restarting,
 }
 
 

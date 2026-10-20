@@ -730,3 +730,52 @@ def test_identify_parse_fail_closed():
     assert BRIDGE.parse_identify_mac("identify=98:77:d5:aa:41:30\n") == "9877d5aa4130"
     assert BRIDGE.parse_identify_mac("identify=9877d5aa4130\n") == "9877d5aa4130"
 
+
+def test_discover_parse_fail_closed():
+    assert BRIDGE.parse_discover_requested("") is False
+    assert BRIDGE.parse_discover_requested("wiz=on\n") is False
+    assert BRIDGE.parse_discover_requested("discover=\n") is False
+    assert BRIDGE.parse_discover_requested("discover=yes\n") is False
+    assert BRIDGE.parse_discover_requested("discover=true\n") is False
+    assert BRIDGE.parse_discover_requested("discover=1\n") is True
+    assert BRIDGE.parse_discover_requested("discover=on\n") is True
+
+
+def test_discover_wanted_requires_wiz_on(harness):
+    harness.status.write_text("wiz=off\ndiscover=1\n", encoding="utf-8")
+    assert harness.mod.discover_wanted() is False
+    harness.mod.discover_wiz()
+    assert harness.sends == []
+    harness.status.write_text("wiz=on\ndiscover=1\n", encoding="utf-8")
+    assert harness.mod.discover_wanted() is True
+
+
+def test_discover_flag_interrupts_slow_interval(harness):
+    harness.write_status(wiz="on")
+    harness.mod.apply_configured([MAC_A], ips={MAC_A: "10.42.0.20"})
+    with harness.mod.devices_lock:
+        harness.mod.devices[MAC_A] = {"ip": "10.42.0.20", "last_seen": time.time()}
+    assert harness.mod.all_known_found() is True
+    harness.monkeypatch.setattr(harness.mod, "DISCOVERY_INTERVAL", 30.0)
+    harness.monkeypatch.setattr(harness.mod, "FAST_DISCOVERY_INTERVAL", 30.0)
+    thread = threading.Thread(target=harness.mod.discovery_loop, daemon=True)
+    thread.start()
+    try:
+        deadline = time.time() + 1.0
+        while not harness.sends and time.time() < deadline:
+            time.sleep(0.02)
+        first = len(harness.sends)
+        assert first >= 1
+        time.sleep(0.12)
+        assert len(harness.sends) == first
+        harness.status.write_text(
+            "sat=100\nhue=0\nmaster=100\nwiz=on\ndiscover=1\n", encoding="utf-8"
+        )
+        deadline = time.time() + 1.0
+        while len(harness.sends) == first and time.time() < deadline:
+            time.sleep(0.02)
+        assert len(harness.sends) > first
+    finally:
+        harness.mod._loop_stop.set()
+        thread.join(timeout=1.0)
+
